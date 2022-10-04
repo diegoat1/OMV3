@@ -145,7 +145,7 @@ def exerdistfx(symmetry, strengthdist):
                 pass
             l+=1
 
-        
+        print(exeweek)
         k=k+1
 
     return

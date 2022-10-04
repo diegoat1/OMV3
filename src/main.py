@@ -30,6 +30,21 @@ def home():
     #    username = session['username']
     return render_template('home.html', title='Página principal')
 
+@app.route('/dashboard')
+def dashboard():
+    username = session['username']
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+    dietadata=cursor.fetchall()
+    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=?', [username])
+    dinamicodata=cursor.fetchall()
+    cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username])
+    estaticodata=cursor.fetchall()
+    cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
+    objetivodata=cursor.fetchall()
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'])
+
 @app.route('/mantenimiento')
 def mantenimiento():
     return render_template('mantenimiento.html', title='Mantenimiento')
@@ -284,7 +299,7 @@ def login():
             success_message = 'Bienvenido {} !'.format(username)
             flash(success_message)
             session['username'] = username
-            return redirect(url_for('recipe'))
+            return redirect(url_for('dashboard'))
         else:
             error_message = 'Ingrese su numero de documento.'
             flash(error_message)
