@@ -32,6 +32,13 @@
     One.helpers(["easy-pie-chart", "sparkline"]);
   });
 </script>
+<script>
+  $('#js-dataTable-full-pagination').dataTable( {
+     columnDefs: [
+       { type: 'date-yyyy-mm-dd-desc', targets: 0 }
+     ]
+  } );
+</script>
 <script>jQuery(function () {
   One.helpers(['flatpickr', 'datepicker', 'colorpicker', 'maxlength', 'select2', 'masked-inputs', 'rangeslider']);
 });</script>
