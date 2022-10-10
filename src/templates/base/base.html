@@ -103,7 +103,7 @@
                         <span class="smini-visible">
                         </span>
                         <span class="smini-hide font-size-h6 tracking-wider">
-                            Omega<span class="font-w400">NUTRICIÓN</span>
+                            Omega<span class="font-w400">Fitness</span>
                         </span>
                     </a>
                     <!-- END Logo -->
@@ -274,6 +274,13 @@
                             <i class="fa fa-fw fa-ellipsis-v"></i>
                         </button>
                         <!-- END Toggle Mini Sidebar -->
+                        
+                        <!-- Apps Modal -->
+                        <!-- Opens the Apps modal found at the bottom of the page, after footer’s markup -->
+                        <button type="button" class="btn btn-sm btn-dual mr-2" data-toggle="modal" data-target="#one-modal-apps">
+                            <i class="fa fa-fw fa-cubes"></i>
+                        </button>
+                        <!-- END Apps Modal -->
 
                         <!-- Open Search Section (visible on smaller screens) -->
                         <!-- Layout API, functionality initialized in Template._uiApiLayout() -->
@@ -378,6 +385,54 @@
                 </div>
             </footer>
             <!-- END Footer -->
+
+            <!-- Apps Modal -->
+            <!-- Opens from the modal toggle button in the header -->
+            <div class="modal fade" id="one-modal-apps" tabindex="-1" role="dialog" aria-labelledby="one-modal-apps" aria-hidden="true">
+                <div class="modal-dialog modal-sm" role="document">
+                    <div class="modal-content">
+                        <div class="block block-rounded block-themed block-transparent mb-0">
+                            <div class="block-header bg-primary-dark">
+                                <h3 class="block-title">Aplicaciones</h3>
+                                <div class="block-options">
+                                    <button type="button" class="btn-block-option" data-dismiss="modal" aria-label="Close">
+                                        <i class="si si-close"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="block-content block-content-full">
+                                <div class="row gutters-tiny">
+                                    <div class="col-6">
+                                        <!-- VISTA PRINCIPAL -->
+                                        <a class="block block-rounded block-link-shadow bg-body" href="/dashboard">
+                                            <div class="block-content text-center">
+                                                <i class="si si-speedometer fa-2x text-primary"></i>
+                                                <p class="font-w600 font-size-sm mt-2 mb-3">
+                                                    Principal
+                                                </p>
+                                            </div>
+                                        </a>
+                                        <!-- END VISTA PRINCIPAL -->
+                                    </div>
+                                    <div class="col-6">
+                                        <!-- RECETAS -->
+                                        <a class="block block-rounded block-link-shadow bg-body" href="/recipe">
+                                            <div class="block-content text-center">
+                                                <i class="si si-magic-wand fa-2x text-primary"></i>
+                                                <p class="font-w600 font-size-sm mt-2 mb-3">
+                                                    Recetas
+                                                </p>
+                                            </div>
+                                        </a>
+                                        <!-- END RECETAS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END Apps Modal -->
         </div>
         <!-- END Page Container -->
 
