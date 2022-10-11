@@ -8,273 +8,341 @@
 {% block contentsubtitle %} {% endblock %}
 
 {% block content %}
-<div>
-    <!-- Mensaje -->
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-danger alert-dismissable" role="alert">
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
-                <p class="mb-0">{{ message }}</p>
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-    <!-- END Mensaje -->
-</div>
-
-<div class="row">
-    <div class="col-lg-12">
-        <div class="block block-rounded">
-            <div class="block-header">
-                <h3 class="block-title">Gráfico</h3>
-                <div class="block-options">
-                    <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
-                        <i class="si si-refresh"></i>
+    <div>
+        <!-- Mensaje -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-danger alert-dismissable" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">×</span>
                     </button>
+                    <p class="mb-0">{{ message }}</p>
                 </div>
-            </div>
-            <div class="block-content block-content-full text-center">
-                <div class="py-3">
-                    <!-- Lines Chart Container -->
-                    <canvas class="js-chartjs-lines"></canvas>
-                </div>
-            </div>
-        </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <!-- END Mensaje -->
     </div>
-        <!-- END Lines Chart -->
-</div>
 
-<div class="row">
-    <div class="col-lg-12">
-        <div class="block block-rounded">
-            <ul class="nav nav-tabs nav-tabs-alt" data-toggle="tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link" href="#btabs-alt-static-stat">Perfil Estático</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="#btabs-alt-static-dyna">Perfil Dinámico</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#btabs-alt-static-anal">Analisis</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#btabs-alt-static-goal">Objetivos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#btabs-alt-static-fore">Pronóstico</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#btabs-alt-static-diet">Dieta</a>
-                </li>
-            </ul>
-            <div class="block-content tab-content">
-                <div class="tab-pane" id="btabs-alt-static-diet" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
-                            <thead>
-                                <tr>
-                                    <th>Calorias</th>
-                                    <th>Proteína</th>
-                                    <th class="d-none d-sm-table-cell">Grasa</th>
-                                    <th class="d-none d-sm-table-cell">Carbohidratos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for dieta in dieta %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{dieta.2}}</td>
-                                    <td class="font-w600 font-size-sm">{{dieta.3}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dieta.4}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dieta.5}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="block block-rounded">
+                <div class="block-header">
+                    <h3 class="block-title">Gráfico</h3>
+                    <div class="block-options">
+                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
+                            <i class="si si-refresh"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="tab-pane active" id="btabs-alt-static-dyna" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table-responsive-lg table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
-                            <thead>
-                                <tr>
-                                    <th>Fecha de Registro</th>
-                                    <th>Peso</th>
-                                    <th class="d-none d-sm-table-cell">Perimetro de abdomen</th>
-                                    <th class="d-none d-sm-table-cell">Perimetro de cíntura</th>
-                                    <th class="d-none d-sm-table-cell">Perimetro de cadera</th>
-                                    <th>% de grasa corporal</th>
-                                    <th class="d-none d-sm-table-cell">IMC</th>
-                                    <th>IMMC</th>
-                                    <th class="d-none d-sm-table-cell">Peso graso</th>
-                                    <th class="d-none d-sm-table-cell">Peso magro</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for dinamico in dinamico %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.6}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.5}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.3}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.4}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.7}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.8}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.9}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.10}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.11}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="tab-pane" id="btabs-alt-static-anal" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table-responsive-lg table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
-                            <thead>
-                                <tr>
-                                    <th>Fecha de Registro</th>
-                                    <th class="d-none d-sm-table-cell">Δ de días</th>
-                                    <th>Δ de peso</th>
-                                    <th class="d-none d-sm-table-cell">Categoría Δ Peso </th>
-                                    <th class="d-none d-sm-table-cell">Δ PG</th>
-                                    <th class="d-none d-sm-table-cell">Δ PM</th>
-                                    <th class="d-none d-sm-table-cell">Relación de perdida de PM (RPPM)</th>
-                                    <th>Categoría de (RPPM)</th>
-                                    <th class="d-none d-sm-table-cell">Relación de ganancia de PG (RGPG)</th>
-                                    <th>Categoría de RGPG</th>
-                                    <th class="d-none d-sm-table-cell">Puntaje IMMC</th>
-                                    <th class="d-none d-sm-table-cell">Puntaje BF</th>
-                                    <th>Puntaje corporal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for dinamico in dinamico %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.12}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.13}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.19}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.15}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.17}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.20}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.21}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.22}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.23}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.24}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.25}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.26}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="tab-pane" id="btabs-alt-static-fore" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table-responsive-lg table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
-                            <thead>
-                                <tr>
-                                    <th>Fecha de Registro</th>
-                                    <th class="d-none d-sm-table-cell">Peso objetivo</th>
-                                    <th class="d-none d-sm-table-cell">Peso magro objetivo</th>
-                                    <th class="d-none d-sm-table-cell">Peso graso objetivo</th>
-                                    <th class="d-none d-sm-table-cell">Perímetro de abdomen</th>
-                                    <th class="d-none d-sm-table-cell">Perímetro de cintura</th>
-                                    <th class="d-none d-sm-table-cell">Perímetro de cadera</th>
-                                    <th class="d-none d-sm-table-cell">Días de aumento de peso</th>
-                                    <th class="d-none d-sm-table-cell">Días de descenso de peso</th>
-                                    <th>Días para llegar al objetivo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for dinamico in dinamico %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.30}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.31}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.32}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.33}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.34}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.35}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.27}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.28}}</td>
-                                    <td class="font-w600 font-size-sm">{{dinamico.29}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="tab-pane" id="btabs-alt-static-stat" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
-                            <thead>
-                                <tr>
-                                    <th>Nombre y apellido</th>
-                                    <th class="d-none d-sm-table-cell">DNI</th>
-                                    <th class="d-none d-sm-table-cell">Número de Telefono</th>
-                                    <th class="d-none d-sm-table-cell">Email</th>
-                                    <th class="d-none d-sm-table-cell">Sexo</th>
-                                    <th class="d-none d-sm-table-cell">Fecha de Nacimiento</th>
-                                    <th class="d-none d-sm-table-cell">Altura</th>
-                                    <th class="d-none d-sm-table-cell">Cuello</th>
-                                    <th class="d-none d-sm-table-cell">Muñeca</th>
-                                    <th class="d-none d-sm-table-cell">Tobillo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for estatico in estatico %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{estatico.0}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.1}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.2}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.3}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.4}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.5}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.6}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.7}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.8}}</td>
-                                    <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.9}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="tab-pane" id="btabs-alt-static-goal" role="tabpanel">
-                    <div class="block-content block-content-full">
-                        <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
-                        <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
-                            <thead>
-                                <tr>
-                                    <th>IMMC objetivo</th>
-                                    <th>BF objetivo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for objetivo in objetivo %}
-                                <tr>
-                                    <td class="font-w600 font-size-sm">{{objetivo.1}}</td>
-                                    <td class="font-w600 font-size-sm">{{objetivo.2}}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="block-content block-content-full text-center">
+                    <div class="p-4">
+                        <canvas class="js-chartjs-visitors" height="320"></canvas>
                     </div>
                 </div>
             </div>
         </div>
+            <!-- END Lines Chart -->
+        <div class="col-lg-6">
+            <div class="block block-rounded">
+                <ul class="nav nav-tabs nav-tabs-alt" data-toggle="tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#btabs-alt-static-stat">Perfil Estático</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#btabs-alt-static-dyna">Perfil Dinámico</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#btabs-alt-static-anal">Analisis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#btabs-alt-static-goal">Objetivos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#btabs-alt-static-fore">Pronóstico</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#btabs-alt-static-diet">Dieta</a>
+                    </li>
+                </ul>
+                <div class="block-content tab-content">
+                    <div class="tab-pane" id="btabs-alt-static-diet" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
+                                <thead>
+                                    <tr>
+                                        <th>Calorias</th>
+                                        <th>Proteína</th>
+                                        <th class="d-none d-sm-table-cell">Grasa</th>
+                                        <th class="d-none d-sm-table-cell">Carbohidratos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dieta in dieta %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{dieta.2}}</td>
+                                        <td class="font-w600 font-size-sm">{{dieta.3}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dieta.4}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dieta.5}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane active" id="btabs-alt-static-dyna" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table-responsive table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha de Registro</th>
+                                        <th>Peso</th>
+                                        <th class="d-none d-sm-table-cell">Perimetro de abdomen</th>
+                                        <th class="d-none d-sm-table-cell">Perimetro de cíntura</th>
+                                        <th class="d-none d-sm-table-cell">Perimetro de cadera</th>
+                                        <th>% de grasa corporal</th>
+                                        <th class="d-none d-sm-table-cell">IMC</th>
+                                        <th>IMMC</th>
+                                        <th class="d-none d-sm-table-cell">Peso graso</th>
+                                        <th class="d-none d-sm-table-cell">Peso magro</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dinamico in dinamico %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.6}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.5}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.3}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.4}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.7}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.8}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.9}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.10}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.11}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="btabs-alt-static-anal" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table-responsive-lg table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha de Registro</th>
+                                        <th class="d-none d-sm-table-cell">Δ de días</th>
+                                        <th>Δ de peso</th>
+                                        <th class="d-none d-sm-table-cell">Categoría Δ Peso </th>
+                                        <th class="d-none d-sm-table-cell">Δ PG</th>
+                                        <th class="d-none d-sm-table-cell">Δ PM</th>
+                                        <th class="d-none d-sm-table-cell">Relación de perdida de PM (RPPM)</th>
+                                        <th>Categoría de (RPPM)</th>
+                                        <th class="d-none d-sm-table-cell">Relación de ganancia de PG (RGPG)</th>
+                                        <th>Categoría de RGPG</th>
+                                        <th class="d-none d-sm-table-cell">Puntaje IMMC</th>
+                                        <th class="d-none d-sm-table-cell">Puntaje BF</th>
+                                        <th>Puntaje corporal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dinamico in dinamico %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.12}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.13}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.19}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.15}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.17}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.20}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.21}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.22}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.23}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.24}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.25}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.26}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="btabs-alt-static-fore" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table-responsive-lg table-bordered table-striped table-vcenter js-dataTable-full-pagination-date">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha de Registro</th>
+                                        <th class="d-none d-sm-table-cell">Peso objetivo</th>
+                                        <th class="d-none d-sm-table-cell">Peso magro objetivo</th>
+                                        <th class="d-none d-sm-table-cell">Peso graso objetivo</th>
+                                        <th class="d-none d-sm-table-cell">Perímetro de abdomen</th>
+                                        <th class="d-none d-sm-table-cell">Perímetro de cintura</th>
+                                        <th class="d-none d-sm-table-cell">Perímetro de cadera</th>
+                                        <th class="d-none d-sm-table-cell">Días de aumento de peso</th>
+                                        <th class="d-none d-sm-table-cell">Días de descenso de peso</th>
+                                        <th>Días para llegar al objetivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dinamico in dinamico %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{dinamico.2}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.30}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.31}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.32}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.33}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.34}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.35}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.27}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.28}}</td>
+                                        <td class="font-w600 font-size-sm">{{dinamico.29}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="btabs-alt-static-stat" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre y apellido</th>
+                                        <th class="d-none d-sm-table-cell">DNI</th>
+                                        <th class="d-none d-sm-table-cell">Número de Telefono</th>
+                                        <th class="d-none d-sm-table-cell">Email</th>
+                                        <th class="d-none d-sm-table-cell">Sexo</th>
+                                        <th class="d-none d-sm-table-cell">Fecha de Nacimiento</th>
+                                        <th class="d-none d-sm-table-cell">Altura</th>
+                                        <th class="d-none d-sm-table-cell">Cuello</th>
+                                        <th class="d-none d-sm-table-cell">Muñeca</th>
+                                        <th class="d-none d-sm-table-cell">Tobillo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for estatico in estatico %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{estatico.0}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.1}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.2}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.3}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.4}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.5}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.6}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.7}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.8}}</td>
+                                        <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{estatico.9}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="btabs-alt-static-goal" role="tabpanel">
+                        <div class="block-content block-content-full">
+                            <!-- DataTables init on table by adding .js-dataTable-full-pagination class, functionality is initialized in js/pages/be_tables_datatables.min.js which was auto compiled from _js/pages/be_tables_datatables.js -->
+                            <table class="table table-bordered table-striped table-vcenter js-dataTable-full-pagination">
+                                <thead>
+                                    <tr>
+                                        <th>IMMC objetivo</th>
+                                        <th>BF objetivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for objetivo in objetivo %}
+                                    <tr>
+                                        <td class="font-w600 font-size-sm">{{objetivo.1}}</td>
+                                        <td class="font-w600 font-size-sm">{{objetivo.2}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+{% endblock %}
 
+{% block customscripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.1.0/chart.min.js"></script>
+<script>
+    jQuery(function(){
+        // Set Global Chart.js configuration
+        Chart.defaults.color                                = '#999';
+        Chart.defaults.scale.grid.color                     = 'transparent';
+        Chart.defaults.scale.grid.zeroLineColor             = 'transparent';
+        Chart.defaults.elements.line.borderWidth            = 2;
+        Chart.defaults.elements.point.radius                = 4;
+        Chart.defaults.elements.point.hoverRadius           = 6;
+        Chart.defaults.plugins.tooltip.radius               = 4;
+        Chart.defaults.plugins.legend.display               = true;
+
+        // Get Chart Container
+        var chartVisitors = jQuery('.js-chartjs-visitors');
+
+        // Init Chart
+        var chart = new Chart(chartVisitors, {
+            type: 'line',
+            data: {
+                labels: [{% for dinamico in dinamico %} '{{ dinamico.2 }}', {% endfor %}],
+                datasets: [
+                    {
+                        label: 'Kilos',
+                        fill: !0,
+                        backgroundColor: 'rgba(220,220,220,.3)',
+                        borderColor: 'rgba(220,220,220,1)',
+                        pointBackgroundColor: 'rgba(220,220,220,1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(220,220,220,1)',
+                        data: [{% for dinamico in dinamico %} '{{ dinamico.6 }}', {% endfor %}]
+                    },
+                    {
+                        label: 'Kilos de grasa',
+                        fill: !0,
+                        backgroundColor: 'rgba(227, 120, 80, .3)',
+                        borderColor: 'rgba(227, 120, 80, 1)',
+                        pointBackgroundColor: 'rgba(227, 120, 80, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(227, 120, 80, 1)',
+                        data: [{% for dinamico in dinamico %} '{{ dinamico.10 }}', {% endfor %}]
+                    },
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                tension: .6,
+                scales: {
+                    y: {
+                        suggestedMin: 0
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ' ' + context.parsed.y + ' Kg.';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}
 

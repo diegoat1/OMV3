@@ -37,13 +37,14 @@ def dashboard():
     cursor = basededatos.cursor()
     cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
     dietadata=cursor.fetchall()
-    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC', [username])
+    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=?', [username])
     dinamicodata=cursor.fetchall()
     cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username])
     estaticodata=cursor.fetchall()
     cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
     objetivodata=cursor.fetchall()
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'])
+    labels = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], labels=labels)
 
 @app.route('/mantenimiento')
 def mantenimiento():

@@ -141,3 +141,4 @@ class pageCompCharts {
 
 // Initialize when page loads
 jQuery(() => { pageCompCharts.init(); });
+
