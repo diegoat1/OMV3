@@ -26,9 +26,11 @@ def before_request():
 
 @app.route('/')
 def home():
-    #if 'username' in session:
-    #    username = session['username']
-    return render_template('home.html', title='Página principal')
+    if 'username' in session:
+        username = session['username']
+        return redirect(url_for('dashboard'))
+    #return render_template('home.html', title='Página principal')
+    return redirect("https://linktr.ee/omeganutricion", code=302)
 
 @app.route('/dashboard')
 def dashboard():
