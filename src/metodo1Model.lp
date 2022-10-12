@@ -1,12 +1,20 @@
 \* metodo1 *\
 Maximize
-Total_de_calorias: 450.01 Alim_Milanesa
+Total_de_calorias: 655.381 Alim_Arroz_blanco + 133.056 Alim_Atun_al_agua
+ + 119.8382 Alim_Queso_crema
 Subject To
-Limite_inferior_de_carbos: 49.25 Alim_Milanesa >= 88.5071393443
-Limite_inferior_de_grasas: 12.09 Alim_Milanesa >= 19.312957958
-Limite_inferior_de_proteinas: 36.05 Alim_Milanesa >= 99.058875
-Limite_superior_de_carbos: 49.25 Alim_Milanesa <= 97.8236803279
-Limite_superior_de_grasas: 12.09 Alim_Milanesa <= 21.3459009009
-Limite_superior_de_proteinas: 36.05 Alim_Milanesa <= 109.486125
-_C1: 450.01 Alim_Milanesa <= 972.716504209
+Limite_inferior_de_carbos: 147.9075 Alim_Arroz_blanco
+ + 0.95015 Alim_Queso_crema >= 33.2733606557
+Limite_inferior_de_grasas: 1.221 Alim_Arroz_blanco + 1.4784 Alim_Atun_al_agua
+ + 9.7198 Alim_Queso_crema >= 29.042042042
+Limite_inferior_de_proteinas: 13.1905 Alim_Arroz_blanco
+ + 29.9376 Alim_Atun_al_agua + 7.13985 Alim_Queso_crema >= 33.019625
+Limite_superior_de_carbos: 147.9075 Alim_Arroz_blanco
+ + 0.95015 Alim_Queso_crema <= 36.7758196721
+Limite_superior_de_grasas: 1.221 Alim_Arroz_blanco + 1.4784 Alim_Atun_al_agua
+ + 9.7198 Alim_Queso_crema <= 32.0990990991
+Limite_superior_de_proteinas: 13.1905 Alim_Arroz_blanco
+ + 29.9376 Alim_Atun_al_agua + 7.13985 Alim_Queso_crema <= 36.495375
+_C1: 655.381 Alim_Arroz_blanco + 133.056 Alim_Atun_al_agua
+ + 119.8382 Alim_Queso_crema <= 554.263495791
 End

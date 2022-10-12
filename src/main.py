@@ -272,7 +272,11 @@ def recipe():
     recipe_form = forms.RecipeForm(request.form)
     nameuser = session['username']
     if request.method == 'POST':
-        functions.recipe(recipe_form, nameuser)
+        try:
+            functions.recipe(recipe_form, nameuser)
+        except:
+            message= '{} no tiene una dieta definida.'.format(nameuser)
+            flash (message)
     return render_template('recipe.html', title='Tu plan nutricional', form=recipe_form, username=session['username'])
 
 # FUNCIÓN EN DESARROLLO, SUPONGO QUE ES PARA HACER RECETAS PERSONALIZADAS 
