@@ -280,7 +280,7 @@
                                 <dd class="text-muted mb-0">Porcentaje de grasa corporal</dd>
                             </dl>
                             <div>
-                                {% if deltabf>=0 %}
+                                {% if deltabf<=0 %}
                                 <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-success bg-success-light">
                                     <i class="fa fa-caret-up mr-1"></i>
                                 {% else %}
@@ -301,7 +301,7 @@
                                 data-spot-color="transparent"
                                 data-min-spot-color="transparent"
                                 data-max-spot-color="transparent"
-                            {% if deltabf>=0 %}
+                            {% if deltabf<=0 %}
                                 data-line-color="rgba(70,195,123, .4)"
                                 data-fill-color="rgba(70,195,123, .15)"
                                 data-highlight-spot-color="#46C37B"
