@@ -39,14 +39,130 @@ def dashboard():
     cursor = basededatos.cursor()
     cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
     dietadata=cursor.fetchall()
-    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=?', [username])
+    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO ASC', [username])
     dinamicodata=cursor.fetchall()
     cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username])
     estaticodata=cursor.fetchall()
     cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
     objetivodata=cursor.fetchall()
-    labels = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], labels=labels)
+
+    # CALCULOS EXTRAS PARA MOSTRAR
+
+    agua=round(dinamicodata[-1][6]/25,1)
+    sexo=estaticodata[0][4]
+    abdomen=int(dinamicodata[-1][5])
+    
+    bodycat=["Obeso", "Sobrepeso", "Robusto", "Falto de ejercicio", "Balanceado", "Balanceado muscular", "Delgado", "Balanceado delgado", "Delgado muscular"]
+    bodyscore= dinamicodata[-1][26]
+    
+    ffmi=dinamicodata[-1][9]
+    bf=dinamicodata[-1][7]
+    imc=dinamicodata[-1][8]
+    
+    if sexo == "M":
+        if abdomen > 102:
+            diff = abdomen - 102
+            abdcatrisk = 'Riesgo muy elevado de evento cardiovascular, deberías disminuir ' + str(diff) + ' cm.'
+        elif abdomen > 95:
+            diff = abdomen - 95
+            abdcatrisk = 'Riesgo elevado de evento cardiovascular, deberías disminuir ' + str(diff) + ' cm.'
+        else:
+            abdcatrisk = 'Te encuentras en un rango normal'
+        if bf>24:
+            factor=0
+        elif bf<17:
+            factor=2
+        else:
+            factor=1
+        if ffmi>21.5:
+            factor=2+factor*3
+        elif ffmi<19:
+            factor=factor*3
+        else:
+            factor=1+factor*3
+    elif sexo == "F":
+        if abdomen > 88:
+            diff = abdomen - 88
+            abdcatrisk = 'Riesgo muy elevado de evento cardiovascular, deberías disminuir ' + str(diff) + ' cm.'
+        elif abdomen > 82:
+            diff = abdomen - 82
+            abdcatrisk = 'Riesgo elevado de evento cardiovascular, deberías disminuir ' + str(diff) + ' cm.'
+        else:
+            abdcatrisk = 'Te encuentras en un rango normal'
+        if bf>32:
+            factor=0
+        elif bf<25:
+            factor=2
+        else:
+            factor=1
+        if ffmi>19:
+            factor=2+factor*3
+        elif ffmi<16.25:
+            factor=factor*3
+        else:
+            factor=1+factor*3
+
+    categoria=bodycat[factor]
+
+    fat=dinamicodata[-1][10]
+    lean=dinamicodata[-1][11]
+    def calculator(fat):
+        maxloss=fat*31
+        mapace = maxloss*7/3500
+        remain1 = mapace%100
+        mint = round(mapace)
+        remain1 = mapace-mint
+        suff1 = round(remain1*100)
+        mapace = mint + suff1/100
+        return(mapace)
+
+    fatrate=calculator(fat)
+    leanrate=lean/268
+
+    fatweeks=(fat-dinamicodata[-1][32])/fatrate
+    fatdays=fatweeks*7
+    leanweeks=(dinamicodata[-1][31]-lean)/leanrate
+    leandays=leanweeks*7
+    if fatdays<0:
+        fatdays=0
+    else:
+        pass
+    if leandays<0:
+        leandays=0
+    else:
+        pass
+
+    idealdays=leandays+fatdays
+    habitperformance=round(idealdays/dinamicodata[-1][29]*100)
+
+    deltapeso=round(dinamicodata[-1][13]*1000)
+    deltapg=round(dinamicodata[-1][15]*1000)
+    deltapm=round(dinamicodata[-1][17]*1000)
+
+    deltaimc=round((dinamicodata[-1][8]-dinamicodata[-2][8])*100/dinamicodata[-2][8],1)
+    deltaffmi=round((dinamicodata[-1][9]-dinamicodata[-2][9])*100/dinamicodata[-2][9],1)
+    deltabf=round((dinamicodata[-1][7]-dinamicodata[-2][7])*100/dinamicodata[-2][7],1)
+
+    listaimc=[]
+    for i in range(14):
+        listaimc.append(dinamicodata[-14+i][8])
+
+    listaffmi=[]
+    for i in range(14):
+        listaffmi.append(dinamicodata[-14+i][9])
+
+    print(listaffmi)
+
+    listabf=[]
+    for i in range(14):
+        listabf.append(dinamicodata[-14+i][7])
+
+    print(listabf)
+
+
+    #(437, 'Toffaletti, Miguel Angel', '2022-10-11', 0, 0, 110, 94.55, 30.6, 31.59, 21.92, 28.94, 65.61, 24, -0.35, -0.01, -0.92, -0.04, 0.57, 0.02, 'Disminución del peso', -1.64, 'Impresionante', 2.64, '', 78, 0, 39, 0, 102, 102, 88, 65, 23, 102, 0, 0)
+
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf)
 
 @app.route('/mantenimiento')
 def mantenimiento():

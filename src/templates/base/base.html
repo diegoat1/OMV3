@@ -247,6 +247,12 @@
                                     <span class="nav-main-link-name">Recetas</span>
                                 </a>
                             </li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link active" href="/mantenimiento">
+                                    <i class="nav-main-link-icon fa fa-dumbbell"></i>
+                                    <span class="nav-main-link-name">Entrenamientos</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     <!-- END Side Navigation -->
@@ -354,9 +360,12 @@
                 <div class="bg-body-light">
                     <div class="content content-full">
                         <div class="d-flex flex-column flex-sm-row justify-content-sm-between align-items-sm-center">
-                            <h1 class="flex-sm-fill h3 my-2">
-                                {% block herotitle %} {% endblock %}<small class="d-block d-sm-inline-block mt-2 mt-sm-0 font-size-base font-w400 text-muted">{% block herosubtitle %} {% endblock %}</small>
+                            <h1 class="h3 font-w700 mb-2">
+                                {% block herotitle %} {% endblock %}
                             </h1>
+                            <h2 class="h6 font-w500 text-muted mb-0">
+                               {% block herosubtitle %} {% endblock %}
+                            </h2>
                         </div>
                     </div>
                 </div>
