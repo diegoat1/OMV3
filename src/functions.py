@@ -221,7 +221,6 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
             goalbf=goal[1]
 
         #TENDENCIAS SUBIDA DE PESO
-        go=0
         cursor.execute("SELECT DELTADIAPM, DELTADIAPG FROM PERFILDINAMICO WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC LIMIT 7", ["Aumento del peso", nameuser])
         increasetrend=cursor.fetchall()
         if len(increasetrend)>0:
@@ -234,7 +233,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
             aveincpm=deltadiapm/(len(increasetrend))
             go=1
         else:
-            pass
+            go=0
 
         #TENDENCIAS BAJADA DE PESO
         cursor.execute("SELECT DELTADIAPM, DELTADIAPG FROM PERFILDINAMICO WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC LIMIT 7", ["Disminución del peso", nameuser])
@@ -251,7 +250,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
             avedecpm=deltadiapm/(len(decreasetrend))
             go=go*1
         else:
-            pass
+            go=0
 
         #RELACIÓN DE RENDIMIENTOS
         

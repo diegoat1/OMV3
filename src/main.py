@@ -133,7 +133,10 @@ def dashboard():
         pass
 
     idealdays=leandays+fatdays
-    habitperformance=round(idealdays/dinamicodata[-1][29]*100)
+    try:
+        habitperformance=round(idealdays/dinamicodata[-1][29]*100)
+    except:
+        habitperformance=0
 
     deltapeso=round(dinamicodata[-1][13]*1000)
     deltapg=round(dinamicodata[-1][15]*1000)
@@ -144,23 +147,21 @@ def dashboard():
     deltabf=round((dinamicodata[-1][7]-dinamicodata[-2][7])*100/dinamicodata[-2][7],1)
 
     listaimc=[]
-    for i in range(14):
-        listaimc.append(dinamicodata[-14+i][8])
+    if len(dinamicodata)<14:
+        lendata=len(dinamicodata)
+    else:
+        lendata=14
+    
+    for i in range(lendata):
+        listaimc.append(dinamicodata[-lendata+i][8])
 
     listaffmi=[]
-    for i in range(14):
-        listaffmi.append(dinamicodata[-14+i][9])
-
-    print(listaffmi)
+    for i in range(lendata):
+        listaffmi.append(dinamicodata[-lendata+i][9])
 
     listabf=[]
-    for i in range(14):
-        listabf.append(dinamicodata[-14+i][7])
-
-    print(listabf)
-
-
-    #(437, 'Toffaletti, Miguel Angel', '2022-10-11', 0, 0, 110, 94.55, 30.6, 31.59, 21.92, 28.94, 65.61, 24, -0.35, -0.01, -0.92, -0.04, 0.57, 0.02, 'Disminución del peso', -1.64, 'Impresionante', 2.64, '', 78, 0, 39, 0, 102, 102, 88, 65, 23, 102, 0, 0)
+    for i in range(lendata):
+        listabf.append(dinamicodata[-lendata+i][7])
 
     return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf)
 
