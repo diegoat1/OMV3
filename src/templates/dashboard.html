@@ -225,6 +225,8 @@
                                 data-highlight-line-color="#D26C7A"
                             {% endif %}
                                 data-tooltip-suffix="IMC"></span>
+                            <!--<span class="js-range-slider"> 
+                            </span>-->
                         </div>
                     </div>
                 </div>
@@ -553,6 +555,11 @@
 
 {% block customscripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.1.0/chart.min.js"></script>
+<!--Plugin CSS file with desired skin-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/css/ion.rangeSlider.min.css"/>
+
+<!--Plugin JavaScript file-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/js/ion.rangeSlider.min.js"></script>   
 <script>
     jQuery(function(){
         // Set Global Chart.js configuration
@@ -622,5 +629,17 @@
         });
     });
 </script>
+<script>var $range = $(".js-range-slider");
+
+    $range.ionRangeSlider({
+        skin: "flat",
+        type: "single",
+        grid: true,
+        grid_snap: true,
+        min: 0,
+        max: 50,
+        from: {{ imc }},
+        from_fixed: true,
+    });</script>
 {% endblock %}
 

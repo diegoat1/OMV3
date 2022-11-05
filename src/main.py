@@ -17,9 +17,9 @@ def before_request():
         username = session['username']
     else:
         pass
-    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'login', 'update', 'planner', 'recipecreator']:
-        return redirect(url_for('home'))
-    if 'username' not in session and request.endpoint in ['create', 'recipe', 'update', 'planner', 'recipecreator']:
+    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'login', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe']:
+        return redirect(url_for('dashboard'))
+    if 'username' not in session and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'recipe']:
         return redirect(url_for('login'))
 
 ### PÁGINA EN MANTENIMIENTO ###
@@ -142,9 +142,14 @@ def dashboard():
     deltapg=round(dinamicodata[-1][15]*1000)
     deltapm=round(dinamicodata[-1][17]*1000)
 
-    deltaimc=round((dinamicodata[-1][8]-dinamicodata[-2][8])*100/dinamicodata[-2][8],1)
-    deltaffmi=round((dinamicodata[-1][9]-dinamicodata[-2][9])*100/dinamicodata[-2][9],1)
-    deltabf=round((dinamicodata[-1][7]-dinamicodata[-2][7])*100/dinamicodata[-2][7],1)
+    if len(dinamicodata)>1:
+        deltaimc=round((dinamicodata[-1][8]-dinamicodata[-2][8])*100/dinamicodata[-2][8],1)
+        deltaffmi=round((dinamicodata[-1][9]-dinamicodata[-2][9])*100/dinamicodata[-2][9],1)
+        deltabf=round((dinamicodata[-1][7]-dinamicodata[-2][7])*100/dinamicodata[-2][7],1)
+    else:
+        deltaimc=0
+        deltaffmi=0
+        deltabf=0
 
     listaimc=[]
     if len(dinamicodata)<14:
