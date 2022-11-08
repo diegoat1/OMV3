@@ -80,6 +80,42 @@ def dashboard():
             factor=factor*3
         else:
             factor=1+factor*3
+        if bf>20:
+            bfcat="Promedio: No es un abdomen plano; se beneficiará de la pérdida de grasa."
+        elif bf>15:
+            bfcat="Fit/Saludable: Sin barriga; bien moldeado en la mayoría de la ropa."
+        elif bf>10:
+            bfcat="Atlético: Abs visible con la flexión y una buena iluminación."
+        else:
+            bfcat="Módelo: Abdominales visibles sin flexión"
+        if ffmi>25:
+            immccat="Uso de esteroides: Posible pero muy poco probable sin esteroides."
+        elif ffmi>24:
+            immccat="Límite Constitución muscular superior a la media."
+        elif ffmi>22.5:
+            immccat="Excelente: Constitución muscular superior a la media."
+        elif ffmi>21:
+            immccat="Muy buena: Constitución muscular promedio."
+        elif ffmi>20:
+            immccat="Buena: Constitución muscular promedio."
+        elif ffmi>19:
+            immccat="Normal: Constitución muscular promedio."
+        elif ffmi>18:
+            immccat="Casi normal: Complexión dñebil y constitución muscular baja."
+        else:
+            immccat="Pobre: Complexión dñebil y constitución muscular baja."
+        if imc>40:
+            imccat="Obesidad morbida - Riesgo cardiovascular: Extremadamente alto."
+        elif imc>35:
+            imccat="Obesidad severa - Riesgo cardiovascular: Muy alto."
+        elif imc>30:
+            imccat="Obesidad - Riesgo cardiovascular: Alto"
+        elif imc>25:
+            imccat="Sobrepeso - Riesgo cardiovascular: Incrementado"
+        elif imc>18.5:
+            imccat="Normal - Riesgo cardiovascular: Mínimo"
+        else:
+            imccat="Bajo peso - Riesgo cardiovascular: Mínimo"
     elif sexo == "F":
         if abdomen > 88:
             diff = abdomen - 88
@@ -101,6 +137,42 @@ def dashboard():
             factor=factor*3
         else:
             factor=1+factor*3
+        if bf>30:
+            bfcat="Promedio: No es un abdomen plano; se beneficiará de la pérdida de grasa."
+        elif bf>22:
+            bfcat="Fit/Saludable: Sin barriga; bien moldeado en la mayoría de la ropa."
+        elif bf>18:
+            bfcat="Atlético: Abs visible con la flexión y una buena iluminación."
+        else:
+            bfcat="Módelo: Abdominales visibles sin flexión"
+        if ffmi>22:
+            immccat="Uso de esteroides: Posible pero muy poco probable sin esteroides."
+        elif ffmi>20.5:
+            immccat="Límite Constitución muscular superior a la media."
+        elif ffmi>18.5:
+            immccat="Excelente: Constitución muscular superior a la media."
+        elif ffmi>17:
+            immccat="Muy buena: Constitución muscular promedio."
+        elif ffmi>16:
+            immccat="Buena: Constitución muscular promedio."
+        elif ffmi>14.5:
+            immccat="Normal: Constitución muscular promedio."
+        elif ffmi>13.5:
+            immccat="Casi normal: Complexión dñebil y constitución muscular baja."
+        else:
+            immccat="Pobre: Complexión dñebil y constitución muscular baja."
+        if imc>40:
+            imccat="Obesidad morbida - Riesgo cardiovascular: Extremadamente alto."
+        elif imc>35:
+            imccat="Obesidad severa - Riesgo cardiovascular: Muy alto."
+        elif imc>30:
+            imccat="Obesidad - Riesgo cardiovascular: Alto"
+        elif imc>25:
+            imccat="Sobrepeso - Riesgo cardiovascular: Incrementado"
+        elif imc>18.5:
+            imccat="Normal - Riesgo cardiovascular: Mínimo"
+        else:
+            imccat="Bajo peso - Riesgo cardiovascular: Mínimo"
 
     categoria=bodycat[factor]
 
@@ -149,7 +221,7 @@ def dashboard():
     else:
         deltaimc=0
         deltaffmi=0
-        deltabf=0
+        deltabf=0   
 
     listaimc=[]
     if len(dinamicodata)<14:
@@ -168,7 +240,7 @@ def dashboard():
     for i in range(lendata):
         listabf.append(dinamicodata[-lendata+i][7])
 
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf)
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat)
 
 @app.route('/mantenimiento')
 def mantenimiento():
@@ -416,22 +488,27 @@ def cooking():
 def login():
     login_form = forms.LoginForm(request.form)
     if request.method == 'POST' and login_form.validate():
-        email=login_form.email.data
-        basededatos = sqlite3.connect('src/Basededatos')
-        cursor = basededatos.cursor()
-        cursor.execute(
-            'SELECT NOMBRE_APELLIDO, DNI FROM PERFILESTATICO WHERE EMAIL=?', [email])
-        datos = cursor.fetchone()
-        username = datos[0]
-        password = datos[1]
-        if str(password) == str(login_form.password.data):
-            success_message = 'Bienvenido {} !'.format(username)
-            flash(success_message)
-            session['username'] = username
-            return redirect(url_for('dashboard'))
-        else:
-            error_message = 'Ingrese su numero de documento.'
+        try:
+            email=login_form.email.data
+            basededatos = sqlite3.connect('src/Basededatos')
+            cursor = basededatos.cursor()
+            cursor.execute(
+                'SELECT NOMBRE_APELLIDO, DNI FROM PERFILESTATICO WHERE EMAIL=?', [email])
+            datos = cursor.fetchone()
+            username = datos[0]
+            password = datos[1]
+            if str(password) == str(login_form.password.data):
+                success_message = 'Bienvenido {} !'.format(username)
+                flash(success_message)
+                session['username'] = username
+                return redirect(url_for('dashboard'))
+            else:
+                error_message = 'Ingrese su numero de documento.'
+                flash(error_message)
+        except:
+            error_message = 'El correo ingresado no se encuentra registrado. Hablar con el Administrador.'
             flash(error_message)
+            return render_template('login.html', title='Ingrese su usuario', form=login_form)        
     return render_template('login.html', title='Ingrese su usuario', form=login_form)
 
 ### FUNCIÓN PARA DESLOGUEARSE ###

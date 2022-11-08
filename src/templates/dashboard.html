@@ -202,6 +202,7 @@
                                     {{ deltaimc }}%
                                 </div>
                             </div>
+
                         </div>
                         <div class="block-content p-1 text-center overflow-hidden">
                             <!-- Sparkline Line: Orders -->
@@ -225,8 +226,13 @@
                                 data-highlight-line-color="#D26C7A"
                             {% endif %}
                                 data-tooltip-suffix="IMC"></span>
-                            <!--<span class="js-range-slider"> 
-                            </span>-->
+                            <!-- <span class="js-range-slider"> 
+                            </span> -->
+                        </div>
+                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                            <a class="font-w500 d-flex align-items-center">
+                                {{ imccat }}
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -272,6 +278,11 @@
                             {% endif %}
                                 data-tooltip-prefix="FFMI"></span>
                         </div>
+                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                            <a class="font-w500 d-flex align-items-center">
+                                {{ immccat }}
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <div class="col-xl-12">
@@ -315,6 +326,11 @@
                                 data-highlight-line-color="#D26C7A"
                             {% endif %}
                                 data-tooltip-prefix="%BF"></span>
+                        </div>
+                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                            <a class="font-w500 d-flex align-items-center">
+                                {{ bfcat }}
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -632,10 +648,10 @@
 <script>var $range = $(".js-range-slider");
 
     $range.ionRangeSlider({
-        skin: "flat",
+        background: "blue",
         type: "single",
-        grid: true,
-        grid_snap: true,
+        grid: false,
+        grid_snap: false,
         min: 0,
         max: 50,
         from: {{ imc }},
