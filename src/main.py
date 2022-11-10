@@ -32,6 +32,13 @@ def home():
     #return render_template('home.html', title='Página principal')
     return redirect("https://linktr.ee/omeganutricion", code=302)
 
+@app.route('/resume')
+def resume():
+    username = session['username']
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    return render_template('mantenimiento.html', title='Resumen', username=session['username'], value=0)
+
 @app.route('/dashboard')
 def dashboard():
     username = session['username']
