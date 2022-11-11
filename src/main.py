@@ -108,7 +108,7 @@ def dashboard():
         elif ffmi>19:
             immccat="Normal: Constitución muscular promedio."
         elif ffmi>18:
-            immccat="Casi normal: Complexión dñebil y constitución muscular baja."
+            immccat="Casi normal: Complexión débil y constitución muscular baja."
         else:
             immccat="Pobre: Complexión dñebil y constitución muscular baja."
         if imc>40:
