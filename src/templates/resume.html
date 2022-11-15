@@ -2,7 +2,7 @@
 
 {% block title %} {{ title }} {% endblock %}
 
-{% block herotitle %} Resumen de {{ username }} {% endblock %}
+{% block herotitle %} Resumen de <a class="font-w600">{{ username }}</a> {% endblock %}
 {% block herosubtitle %} {% endblock %}
 {% block contenttitle %} {% endblock %}
 {% block contentsubtitle %} {% endblock %}
@@ -31,27 +31,25 @@
         <div class="content content-boxed">
             <div class="row items-push text-center">
                 <div class="col-6 col-md-3">
-                    <div class="font-size-sm font-w600 text-muted text-uppercase">Sales</div>
-                    <a class="link-fx font-size-h3" href="javascript:void(0)">17980</a>
+                    <div class="font-size-sm font-w600 text-muted text-uppercase">Peso</div>
+                    <a class="link-fx font-size-h3" href="javascript:void(0)">{{ peso }} kg.</a>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="font-size-sm font-w600 text-muted text-uppercase">Products</div>
-                    <a class="link-fx font-size-h3" href="javascript:void(0)">27</a>
+                    <div class="font-size-sm font-w600 text-muted text-uppercase">Porcentaje de grasa corporal</div>
+                    <a class="link-fx font-size-h3" href="javascript:void(0)">{{ bf }}%</a>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="font-size-sm font-w600 text-muted text-uppercase">Followers</div>
-                    <a class="link-fx font-size-h3" href="javascript:void(0)">1360</a>
+                    <div class="font-size-sm font-w600 text-muted text-uppercase">Índice de masa magra corporal</div>
+                    <a class="link-fx font-size-h3" href="javascript:void(0)">{{ ffmi }}</a>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="font-size-sm font-w600 text-muted text-uppercase mb-2">739 Ratings</div>
+                    <div class="font-size-sm font-w600 text-muted text-uppercase mb-2">Rendimiento</div>
                     <span class="text-warning">
+                        {% for i in range(star) %}
                         <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star-half"></i>
+                        {% endfor %}
                     </span>
-                    <span class="font-size-sm text-muted">(4.9)</span>
+                    <span class="font-size-sm text-muted">({{ star }})</span>
                 </div>
             </div>
         </div>
@@ -62,215 +60,83 @@
         <div class="row">
             <div class="col-md-7 col-xl-8">
                 <!-- Updates -->
+                {% for i in range(10) %}
                 <ul class="timeline timeline-alt py-0">
                     <li class="timeline-event">
-                        <div class="timeline-event-icon bg-default">
-                            <i class="fab fa-facebook-f"></i>
+                        {% if dinamicodata[i][19]=="Disminución del peso" %}
+                        <div class="timeline-event-icon bg-flat">
+                            <i class="fa fa-angle-down"></i>
                         </div>
                         <div class="timeline-event-block block invisible" data-toggle="appear">
                             <div class="block-header">
-                                <h3 class="block-title">Facebook</h3>
+                                
+                                <h3 class="block-title">Has disminuido de peso</h3>
                                 <div class="block-options">
-                                    <div class="timeline-event-time block-options-item font-size-sm">
-                                        just now
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="block-content">
-                                <p class="font-w600 mb-2">
-                                    + 290 Page Likes
-                                </p>
-                                <p>
-                                    This is great, keep it up!
-                                </p>
-                            </div>
+                        {% elif dinamicodata[i][19]=="Aumento del peso" %}
+                        <div class="timeline-event-icon bg-city">
+                            <i class="fa fa-angle-up"></i>
                         </div>
-                    </li>
-                    <li class="timeline-event">
+                        <div class="timeline-event-block block invisible" data-toggle="appear">
+                            <div class="block-header">
+                                
+                                <h3 class="block-title">Has aumentado de peso</h3>
+                                <div class="block-options">
+                        {% else %}
                         <div class="timeline-event-icon bg-modern">
-                            <i class="fa fa-briefcase"></i>
+                            <i class="fa fa-angle-right"></i>
                         </div>
                         <div class="timeline-event-block block invisible" data-toggle="appear">
                             <div class="block-header">
-                                <h3 class="block-title">Products</h3>
+                                
+                                <h3 class="block-title">No hay cambios en el peso</h3>
                                 <div class="block-options">
+                        {% endif %}
                                     <div class="timeline-event-time block-options-item font-size-sm">
-                                        4 hrs ago
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="block-content block-content-full">
-                                <p class="font-w600 mb-2">
-                                    3 New Products were added!
-                                </p>
-                                <div class="d-flex">
-                                    <a class="item item-rounded bg-info mr-2" href="javascript:void(0)">
-                                        <i class="si si-rocket fa-2x text-white-75"></i>
-                                    </a>
-                                    <a class="item item-rounded bg-amethyst mr-2" href="javascript:void(0)">
-                                        <i class="si si-calendar fa-2x text-white-75"></i>
-                                    </a>
-                                    <a class="item item-rounded bg-city mr-2" href="javascript:void(0)">
-                                        <i class="si si-speedometer fa-2x text-white-75"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="timeline-event">
-                        <div class="timeline-event-icon bg-info">
-                            <i class="fab fa-twitter"></i>
-                        </div>
-                        <div class="timeline-event-block block invisible" data-toggle="appear">
-                            <div class="block-header">
-                                <h3 class="block-title">Twitter</h3>
-                                <div class="block-options">
-                                    <div class="timeline-event-time block-options-item font-size-sm">
-                                        12 hrs ago
+                                        <a class="font-w600">{{ dinamicodata[i][2] }}</a>
                                     </div>
                                 </div>
                             </div>
                             <div class="block-content">
+                                {% if dinamicodata[i][19]=="Disminución del peso" %}
                                 <p class="font-w600 mb-2">
-                                    + 1150 Followers
+                                    Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control. Tu peso ha cambiado <a class="font-w600">{{ dinamicodata[i][13] }}</a> kilos.
+                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][21] }}</a>.
                                 </p>
                                 <p>
-                                    You’re getting more and more followers, keep it up!
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
                                 </p>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="timeline-event">
-                        <div class="timeline-event-icon bg-smooth">
-                            <i class="fa fa-database"></i>
-                        </div>
-                        <div class="timeline-event-block block invisible" data-toggle="appear">
-                            <div class="block-header">
-                                <h3 class="block-title">Backup</h3>
-                                <div class="block-options">
-                                    <div class="timeline-event-time block-options-item font-size-sm">
-                                        1 day ago
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="block-content">
+                                {% elif dinamicodata[i][19]=="Aumento del peso" %}
                                 <p class="font-w600 mb-2">
-                                    Database backup completed!
+                                    Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control. Tu peso ha cambiado <a class="font-w600">{{ dinamicodata[i][13] }}</a> kilos.
+                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][23] }}</a>.
                                 </p>
                                 <p>
-                                    Download the <a href="javascript:void(0)">latest backup</a>.
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
                                 </p>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="timeline-event">
-                        <div class="timeline-event-icon bg-dark">
-                            <i class="fa fa-cog"></i>
-                        </div>
-                        <div class="timeline-event-block block invisible" data-toggle="appear">
-                            <div class="block-header">
-                                <h3 class="block-title">System</h3>
-                                <div class="block-options">
-                                    <div class="timeline-event-time block-options-item font-size-sm">
-                                        1 week ago
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="block-content">
+                                {% else %}
                                 <p class="font-w600 mb-2">
-                                    App updated to v2.02
+                                    Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control.
                                 </p>
                                 <p>
-                                    Check the complete changelog at the <a href="javascript:void(0)">activity page</a>.
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
                                 </p>
-                            </div>
-                        </div>
-                    </li>
-                    <li class="timeline-event">
-                        <div class="timeline-event-icon bg-modern">
-                            <i class="fa fa-briefcase"></i>
-                        </div>
-                        <div class="timeline-event-block block invisible" data-toggle="appear">
-                            <div class="block-header">
-                                <h3 class="block-title">Products</h3>
-                                <div class="block-options">
-                                    <div class="timeline-event-time block-options-item font-size-sm">
-                                        2 months ago
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="block-content block-content-full">
-                                <p class="font-w600 mb-2">
-                                    1 New Product was added!
-                                </p>
-                                <a class="item item-rounded bg-muted" href="javascript:void(0)">
-                                    <i class="si si-wallet fa-2x text-white-75"></i>
-                                </a>
+                                {% endif %}
                             </div>
                         </div>
                     </li>
                 </ul>
+                {% endfor %}
+
                 <!-- END Updates -->
             </div>
             <div class="col-md-5 col-xl-4">
-                <!-- Products -->
-                <div class="block block-rounded">
-                    <div class="block-header block-header-default">
-                        <h3 class="block-title">
-                            <i class="fa fa-briefcase text-muted mr-1"></i> Products
-                        </h3>
-                        <div class="block-options">
-                            <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
-                                <i class="si si-refresh"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="block-content">
-                        <div class="media d-flex align-items-center push">
-                            <div class="mr-3">
-                                <a class="item item-rounded bg-info" href="javascript:void(0)">
-                                    <i class="si si-rocket fa-2x text-white-75"></i>
-                                </a>
-                            </div>
-                            <div class="media-body">
-                                <div class="font-w600">MyPanel</div>
-                                <div class="font-size-sm">Responsive App Template</div>
-                            </div>
-                        </div>
-                        <div class="media d-flex align-items-center push">
-                            <div class="mr-3">
-                                <a class="item item-rounded bg-amethyst" href="javascript:void(0)">
-                                    <i class="si si-calendar fa-2x text-white-75"></i>
-                                </a>
-                            </div>
-                            <div class="media-body">
-                                <div class="font-w600">Project Time</div>
-                                <div class="font-size-sm">Web Application</div>
-                            </div>
-                        </div>
-                        <div class="media d-flex align-items-center push">
-                            <div class="mr-3">
-                                <a class="item item-rounded bg-city" href="javascript:void(0)">
-                                    <i class="si si-speedometer fa-2x text-white-75"></i>
-                                </a>
-                            </div>
-                            <div class="media-body">
-                                <div class="font-w600">iDashboard</div>
-                                <div class="font-size-sm">Bootstrap Admin Template</div>
-                            </div>
-                        </div>
-                        <div class="text-center push">
-                            <button type="button" class="btn btn-sm btn-light">View More..</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- END Products -->
+
 
                 <!-- Ratings -->
                 <div class="block block-rounded">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">
-                            <i class="fa fa-pencil-alt text-muted mr-1"></i> Ratings
+                            <i class="fa fa-calendar-check text-muted mr-1"></i> Controles
                         </h3>
                         <div class="block-options">
                             <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
@@ -279,66 +145,58 @@
                         </div>
                     </div>
                     <div class="block-content">
+                        {% for datos in datos %}
                         <div class="font-size-sm push">
                             <div class="d-flex justify-content-between mb-2">
                                 <div>
-                                    <a class="font-w600" href="">Carl Wells</a>
-                                    <span class="text-muted">(5/5)</span>
+                                    <a class="font-w600" href="">{{ datos[0] }}</a>
                                 </div>
-                                <div class="text-warning">
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
+                                <div class="block-options">
+                                    <div class="timeline-event-time block-options-item font-size-sm">
+                                        Cada <a class="font-w600">{{ datos[2] }}</a> días control.
+                                    </div>
                                 </div>
                             </div>
-                            <p class="mb-0">Flawless design execution! I'm really impressed with the product, it really helped me build my app so fast! Thank you!</p>
+                            <p class="mb-2">{{ datos[1] }}</p>
                         </div>
-                        <div class="font-size-sm push">
-                            <div class="d-flex justify-content-between mb-2">
-                                <div>
-                                    <a class="font-w600" href="">Henry Harrison</a>
-                                    <span class="text-muted">(5/5)</span>
-                                </div>
-                                <div class="text-warning">
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                </div>
-                            </div>
-                            <p class="mb-0">Great value for money and awesome support! Would buy again and again! Thanks!</p>
-                        </div>
-                        <div class="font-size-sm push">
-                            <div class="d-flex justify-content-between mb-2">
-                                <div>
-                                    <a class="font-w600" href="">Amber Harvey</a>
-                                    <span class="text-muted">(5/5)</span>
-                                </div>
-                                <div class="text-warning">
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                </div>
-                            </div>
-                            <p class="mb-0">Working great in all my devices, quality and quantity in a great package! Thank you!</p>
-                        </div>
-                        <div class="text-center push">
-                            <button type="button" class="btn btn-sm btn-light">Read More..</button>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 <!-- END Ratings -->
+
+                                <!-- Products -->
+                                <div class="block block-rounded">
+                                    <div class="block-header block-header-default">
+                                        <h3 class="block-title">
+                                            <i class="fa fa-dumbbell text-muted mr-1"></i> Rútina
+                                        </h3>
+                                        <div class="block-options">
+                                            <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
+                                                <i class="si si-refresh"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="text-center">
+                                            <p>
+                                                <i class="fa fa-3x fa-cog fa-spin text-primary"></i>
+                                            </p>
+                                            <h1 class="h4 mb-1">
+                                                Lo siento, estamos desarrollandolo..
+                                            </h1>
+                                            <h2 class="h6 font-w400 text-muted mb-3">
+                                                ..pero pronto funcionara!
+                                            </h2>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- END Products -->
 
                 <!-- Followers -->
                 <div class="block block-rounded">
                     <div class="block-header block-header-default">
                         <h3 class="block-title">
-                            <i class="fa fa-share-alt text-muted mr-1"></i> Followers
+                            <i class="fa fa-drumstick-bite text-muted mr-1"></i> Dieta
                         </h3>
                         <div class="block-options">
                             <button type="button" class="btn-block-option" data-toggle="block-option" data-action="state_toggle" data-action-mode="demo">
@@ -347,46 +205,16 @@
                         </div>
                     </div>
                     <div class="block-content">
-                        <ul class="nav-items font-size-sm">
-                            <li>
-                                <a class="media py-2" href="javascript:void(0)">
-                                    <div class="mr-3 ml-2 overlay-container overlay-bottom">
-                                        <img class="img-avatar img-avatar48" src="assets/media/avatars/avatar5.jpg" alt="">
-                                        <span class="overlay-item item item-tiny item-circle border border-2x border-white bg-success"></span>
-                                    </div>
-                                    <div class="media-body">
-                                        <div class="font-w600">Alice Moore</div>
-                                        <div class="font-w400 text-muted">Copywriter</div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="media py-2" href="javascript:void(0)">
-                                    <div class="mr-3 ml-2 overlay-container overlay-bottom">
-                                        <img class="img-avatar img-avatar48" src="assets/media/avatars/avatar16.jpg" alt="">
-                                        <span class="overlay-item item item-tiny item-circle border border-2x border-white bg-success"></span>
-                                    </div>
-                                    <div class="media-body">
-                                        <div class="font-w600">Thomas Riley</div>
-                                        <div class="font-w400 text-muted">Web Developer</div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="media py-2" href="javascript:void(0)">
-                                    <div class="mr-3 ml-2 overlay-container overlay-bottom">
-                                        <img class="img-avatar img-avatar48" src="assets/media/avatars/avatar2.jpg" alt="">
-                                        <span class="overlay-item item item-tiny item-circle border border-2x border-white bg-warning"></span>
-                                    </div>
-                                    <div class="media-body">
-                                        <div class="font-w600">Megan Fuller</div>
-                                        <div class="font-w400 text-muted">Web Designer</div>
-                                    </div>
-                                </a>
-                            </li>
-                        </ul>
-                        <div class="text-center push">
-                            <button type="button" class="btn btn-sm btn-light">Load More..</button>
+                        <div class="text-center">
+                            <p>
+                                <i class="fa fa-3x fa-cog fa-spin text-primary"></i>
+                            </p>
+                            <h1 class="h4 mb-1">
+                                Lo siento, estamos desarrollandolo..
+                            </h1>
+                            <h2 class="h6 font-w400 text-muted mb-3">
+                                ..pero pronto funcionara!
+                            </h2>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,60 @@
+{% extends 'base/base.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block herotitle %} Calculadora de calorias {% endblock %}
+{% block herosubtitle %} Hola <a class="font-w600">{{ username }}</a>, vamos calcular las calorías que consume tu cuerpo habitualmente. {% endblock %}
+{% block contenttitle %} Completa los datos {% endblock %}
+{% block contentsubtitle %} Luego de presionar el boton enviar, aparecera el resultado con las calorías correspondientes. {% endblock %}
+
+{% block content %}
+
+
+    <div class="block block-rounded">
+        <div class="block-content block-content-full">
+            <!-- Formulario -->
+            {% from "_macro.html" import render_field %}
+
+            <form name="sentMessage" id="recipeForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="row push">
+                    <div class="col-lg-4">
+                        <label for="example-text-input">Calculos</label>
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="alert alert-danger alert-dismissable" role="alert">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                                {% for category, message in messages %}
+                                <p class="{{ category }}">{{ message }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    <div class="col-lg-8 col-xl-8">
+                        <div class="form-group">
+                            <label for="example-text-input">Momento del día</label>
+                            {{ render_field(form.menues, class='form-control form-control-lg') }}
+                        </div>
+                        <div class="form-group">
+                            <label for="example-text-input">Receta</label>
+                            {{ render_field(form.receta, class='form-control form-control-lg') }}  
+                        </div>
+
+                        <div id="success" class="form-group row justify-content-center mb-0">
+                            <div class="col-md-6 col-xl-5">
+                                <button type="submit" class="btn btn-block btn-primary">
+                                    <i class="fa fa-fw fa-sign-in-alt mr-1"></i> Enviar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+            <!-- END Formulario -->
+        </div>
+
+    {% endblock %}

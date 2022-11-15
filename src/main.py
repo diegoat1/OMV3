@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, make_response, session, redirect, url_for, flash, jsonify
 from flask_wtf import CSRFProtect
 import sqlite3
+import math
+from datetime import datetime
 
 import forms
 import functions
@@ -37,7 +39,91 @@ def resume():
     username = session['username']
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
-    return render_template('mantenimiento.html', title='Resumen', username=session['username'], value=0)
+    cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+    dietadata=cursor.fetchall()
+    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC', [username])
+    dinamicodata=cursor.fetchall()
+    cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username])
+    estaticodata=cursor.fetchall()
+    cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
+    objetivodata=cursor.fetchall()
+    cursor.execute("SELECT ALTURA FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [username])
+    altura=cursor.fetchone()[0]
+    cursor.execute("SELECT CIRC_CUELLO FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [username])
+    ccu=cursor.fetchone()[0]
+
+    sexo=estaticodata[0][4]
+    fat=dinamicodata[0][10]
+    lean=dinamicodata[0][11]
+    peso=dinamicodata[0][6]
+    ccin=dinamicodata[0][3]
+    ccad=dinamicodata[0][4]
+    cabd=dinamicodata[0][5]
+    
+    #Calculo de porcentaje de grasa corporal
+    if sexo=="M":
+        bf=495/(1.0324-0.19077*math.log((cabd-1)-ccu,10)+0.15456*math.log(altura,10))-450
+        fatfinal=lean/((100-bf)/100)*bf/100
+    elif sexo=="F":
+        bf=495/(1.29579-0.35004*math.log((ccad+ccin-2)-ccu,10)+0.221*math.log(altura,10))-450
+        fatfinal=lean/((100-bf)/100)*bf/100
+    
+    def calculator(fat):
+        maxloss=fat*31
+        mapace = maxloss*7/3500
+        remain1 = mapace%100
+        mint = round(mapace)
+        remain1 = mapace-mint
+        suff1 = round(remain1*100)
+        mapace = mint + suff1/100
+        return(mapace)
+    fatrate=calculator(fat)
+
+    deltafat=fat-fatfinal
+    dias=deltafat/fatrate*7
+
+    leanrate=lean/268
+    if sexo=="M":
+        deltalean=0.5
+    elif sexo=="F":
+        deltalean=0.25
+    dias2=deltalean/leanrate*7
+
+    
+    if sexo=="M":
+        datos=(["Disminución de peso", "Deberías bajar en 1 semana, aproximadamente " + str(round(fatrate,2)) + " kg. Y para el próximo control bajar 1 cm. de abdomen.", round(dias)],["Aumento de peso", "Deberías subir en 1 semana, aproximadamente " + str(round(leanrate,2)) + " kg. Y para el próximo control 500 gramos de músculo.", round(dias2) ])
+    elif sexo=="F":
+        datos=(["Disminución de peso", "Deberías bajar en 1 semana, aproximadamente " + str(round(fatrate,2)) + " kg. Y para el próximo control bajar 1 cm. de cintura y otro de cadera.", round(dias)],["Aumento de peso", "Deberías subir en 1 semana, aproximadamente " + str(round(leanrate,2)) + " kg. Y para el próximo control 250 gramos de músculo.", round(dias2) ])
+
+    ffmi=dinamicodata[-1][9]
+    bf=dinamicodata[-1][7]
+
+    fatdays=(fat-dinamicodata[0][32])/fatrate*7
+    leandays=(dinamicodata[0][31]-lean)/leanrate*7
+    if fatdays<0:
+        fatdays=0
+    else:
+        pass
+    if leandays<0:
+        leandays=0
+    else:
+        pass
+
+    idealdays=leandays+fatdays
+    try:
+        star=round(idealdays/dinamicodata[0][29]*5)
+    except:
+        star=0
+
+    return render_template('resume.html', title='Resumen', username=session['username'], datos=datos, ffmi=ffmi, bf=bf, peso=peso, dinamicodata=dinamicodata, star=star)
+
+@app.route('/caloriescal', methods=['GET', 'POST'])
+def caloriescal():
+    username = session['username']
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    recipe_form = forms.RecipeForm(request.form)
+    return render_template('caloriescal.html', title='Calculadora de calorías',form=recipe_form, username=session['username'], value=0)
 
 @app.route('/dashboard')
 def dashboard():
