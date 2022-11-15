@@ -100,25 +100,25 @@
                                 {% if dinamicodata[i][19]=="Disminución del peso" %}
                                 <p class="font-w600 mb-2">
                                     Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control. Tu peso ha cambiado <a class="font-w600">{{ dinamicodata[i][13] }}</a> kilos.
-                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][21] }}</a>.
+                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][21] }}</a>. Debido a que has perdido un <a class="font-w600">{{ dinamicodata[i][20]*100 }}%</a> de masa magra.
                                 </p>
                                 <p>
-                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas. De los cuales <a class="font-w600">{{ dinamicodata[i][28] }}</a> días son de descenso de peso y <a class="font-w600">{{ dinamicodata[i][27] }}</a> son de aumento de peso.
                                 </p>
                                 {% elif dinamicodata[i][19]=="Aumento del peso" %}
                                 <p class="font-w600 mb-2">
                                     Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control. Tu peso ha cambiado <a class="font-w600">{{ dinamicodata[i][13] }}</a> kilos.
-                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][23] }}</a>.
+                                    La calificación de lo que ha ocurrido es: <a class="font-w600">{{ dinamicodata[i][23] }}</a>. Debido a que has ganado un <a class="font-w600">{{ dinamicodata[i][22]*100 }}%</a> de masa grasa.
                                 </p>
                                 <p>
-                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas. De los cuales <a class="font-w600">{{ dinamicodata[i][28] }}</a> días son de descenso de peso y <a class="font-w600">{{ dinamicodata[i][27] }}</a> son de aumento de peso.
                                 </p>
                                 {% else %}
                                 <p class="font-w600 mb-2">
                                     Han pasado <a class="font-w600">{{ dinamicodata[i][12] }}</a> días de tu último control.
                                 </p>
                                 <p>
-                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas.
+                                    Para llegar a tu objetivo faltan <a class="font-w600">{{ dinamicodata[i][29] }}</a> días al ritmo que vas. De los cuales <a class="font-w600">{{ dinamicodata[i][28] }}</a> días son de descenso de peso y <a class="font-w600">{{ dinamicodata[i][27] }}</a> son de aumento de peso.
                                 </p>
                                 {% endif %}
                             </div>
