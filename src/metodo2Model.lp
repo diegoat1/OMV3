@@ -1,8 +1,8 @@
 \* metodo2 *\
 Maximize
-Total_de_calorias: 450.01 Alim_Milanesa
+Total_de_calorias: 278.4918 Alim_Leche_descremada
 Subject To
-Limite_inferior_de_proteinas: 36.05 Alim_Milanesa >= 99.058875
-_C1: 450.01 Alim_Milanesa <= 972.716504209
-_C2: 450.01 Alim_Milanesa <= 924.080678999
+Limite_inferior_de_proteinas: 40.8678 Alim_Leche_descremada >= 23.4670955882
+_C1: 278.4918 Alim_Leche_descremada <= 335.356798581
+_C2: 278.4918 Alim_Leche_descremada <= 318.588958652
 End
