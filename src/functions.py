@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import math
 from flask import *
+import numpy as np
 
 ### FUNCIÓN QUE AGREGA LOS PERFILES ###
 
@@ -53,7 +54,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
     basededatos = sqlite3.connect("src/Basededatos")
     cursor = basededatos.cursor()
     try:
-        cursor.execute("CREATE TABLE PERFILDINAMICO (ID INTEGER PRIMARY KEY AUTOINCREMENT, NOMBRE_APELLIDO VARCHAR(50), FECHA_REGISTRO DATE, CIRC_CIN DECIMAL, CIRC_CAD DECIMAL, CIRC_ABD DECIMAL, PESO DECIMAL, BF DECIMAL, IMC DECIMAL, IMMC DECIMAL, PESO_GRASO DECIMAL, PESO_MAGRO DECIMAL, DELTADIA INTEGER, DELTAPESO DECIMAL, DELTADIAPESO DECIMAL, DELTAPG DECIMAL, DELTADIAPG DECIMAL, DELTAPM DECIMAL, DELTADIAPM DECIMAL, DELTAPESOCAT VARCHAR(50), LBMLOSS DECIMAL, LBMLOSSCAT VARCHAR(50), FBMGAIN DECIMAL, FBMGAINCAT VARCHAR (50), SCOREIMMC DECIMAL, SCOREBF DECIMAL, BODYSCORE DECIMAL, INCDAYS INTEGER, DECDAYS INTEGER, DAYS INTEGER, PF DECIMAL, PMF DECIMAL, PGF DECIMAL, ABDF DECIMAL, CINF DECIMAL, CADF DECIMAL)")
+        cursor.execute("CREATE TABLE PERFILDINAMICO (ID INTEGER PRIMARY KEY AUTOINCREMENT, NOMBRE_APELLIDO VARCHAR(50), FECHA_REGISTRO DATE, CIRC_CIN DECIMAL, CIRC_CAD DECIMAL, CIRC_ABD DECIMAL, PESO DECIMAL, BF DECIMAL, IMC DECIMAL, IMMC DECIMAL, PESO_GRASO DECIMAL, PESO_MAGRO DECIMAL, DELTADIA INTEGER, DELTAPESO DECIMAL, DELTADIAPESO DECIMAL, DELTAPG DECIMAL, DELTADIAPG DECIMAL, DELTAPM DECIMAL, DELTADIAPM DECIMAL, DELTAPESOCAT VARCHAR(50), LBMLOSS DECIMAL, LBMLOSSCAT VARCHAR(50), FBMGAIN DECIMAL, FBMGAINCAT VARCHAR (50), SCOREIMMC DECIMAL, SCOREBF DECIMAL, BODYSCORE DECIMAL, INCDAYS INTEGER, DECDAYS INTEGER, DAYS INTEGER, PF DECIMAL, PMF DECIMAL, PGF DECIMAL, ABDF DECIMAL, CINF DECIMAL, CADF DECIMAL, SOLVER_CATEGORY VARCHAR(50))")
     except sqlite3.OperationalError:
         pass
     try:
@@ -220,47 +221,78 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
             goalimmc=goal[0]
             goalbf=goal[1]
 
-        #TENDENCIAS SUBIDA DE PESO
-        cursor.execute("SELECT DELTADIAPM, DELTADIAPG FROM PERFILDINAMICO WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC LIMIT 7", ["Aumento del peso", nameuser])
-        increasetrend=cursor.fetchall()
-        if len(increasetrend)>0:
-            deltadiapg=0
-            deltadiapm=0
-            for i in range(len(increasetrend)):
-                deltadiapg=deltadiapg+increasetrend[i][1]
-                deltadiapm=deltadiapm+increasetrend[i][0]
-            aveincpg=deltadiapg/(len(increasetrend))
-            aveincpm=deltadiapm/(len(increasetrend))
-            go=1
-        else:
-            go=0
+        def clean_data(data1, data2):
+            # Calcula la media y la desviación estándar para ambas listas
+            mean1, std1 = np.mean(data1), np.std(data1)
+            mean2, std2 = np.mean(data2), np.std(data2)
+            
+            # Identifica los índices de los valores dentro de dos desviaciones estándar de la media
+            valid_indices1 = ((data1 >= mean1 - 2*std1) & (data1 <= mean1 + 2*std1))
+            valid_indices2 = ((data2 >= mean2 - 2*std2) & (data2 <= mean2 + 2*std2))
+            
+            # Solo conserva los valores que son válidos en ambas listas
+            valid_indices = valid_indices1 & valid_indices2
+            cleaned_data1 = [val for idx, val in enumerate(data1) if valid_indices[idx]]
+            cleaned_data2 = [val for idx, val in enumerate(data2) if valid_indices[idx]]
+            
+            return cleaned_data1, cleaned_data2
 
-        #TENDENCIAS BAJADA DE PESO
-        cursor.execute("SELECT DELTADIAPM, DELTADIAPG FROM PERFILDINAMICO WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC LIMIT 7", ["Disminución del peso", nameuser])
-        decreasetrend=cursor.fetchall()
-        global avedecpm
-        global avedecpg
-        if len(decreasetrend)>0:
-            deltadiapg=0
-            deltadiapm=0
-            for i in range(len(decreasetrend)):
-                deltadiapg=deltadiapg+decreasetrend[i][1]
-                deltadiapm=deltadiapm+decreasetrend[i][0]
-            avedecpg=deltadiapg/(len(decreasetrend))
-            avedecpm=deltadiapm/(len(decreasetrend))
-            go=go*1
-        else:
-            go=0
+        def calculate_averages(params, db_connection, max_days=None, fbmgain_limit=None, lbmloss_limit=None):
+            cursor = db_connection.cursor()
 
-        #RELACIÓN DE RENDIMIENTOS
-        
-        #ratio=0
-        #if go==1:
-        #    ratio=-avedecpg/aveincpm
-        #else:
-        #    pass
+            # Preparar la consulta SQL
+            
+            if fbmgain_limit is None:
+                query = ("SELECT DELTAPM, DELTAPG, DELTADIA FROM PERFILDINAMICO "
+                    "WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO DESC")
+                params = params
+            else:
+                if params[1] is None:
+                    query = ("SELECT DELTAPM, DELTAPG, DELTADIA FROM PERFILDINAMICO "
+                    "WHERE DELTAPESOCAT=? AND FBMGAIN<? AND LBMLOSS<? ORDER BY FECHA_REGISTRO DESC")
+                    params = [params[0]] + [fbmgain_limit, lbmloss_limit]                    
+                else:
+                    query = ("SELECT DELTAPM, DELTAPG, DELTADIA FROM PERFILDINAMICO "
+                    "WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? AND FBMGAIN<? AND LBMLOSS<? ORDER BY FECHA_REGISTRO DESC")
+                    params = params + [fbmgain_limit, lbmloss_limit]
 
-        #PUNTAJE CORPORAL
+            print("Executing query:", query)
+            print("With parameters:", params)
+
+            # Ejecutar la consulta
+            cursor.execute(query, params)
+            trend_data = cursor.fetchall()
+
+            print("Todos los datos: ", trend_data)
+
+            # Inflar los datos
+            inflated_deltadiapm = []
+            inflated_deltadiapg = []
+            for deltapm, deltapg, deltadia in trend_data:
+                deltadiapm=deltapm/deltadia
+                deltadiapg=deltapg/deltadia
+                for i in range(deltadia):
+                    if max_days and len(inflated_deltadiapm) >= max_days:
+                        break  # Salir del bucle si se alcanza el límite
+                    inflated_deltadiapm.append(deltadiapm)
+                    inflated_deltadiapg.append(deltadiapg)
+                if max_days and len(inflated_deltadiapm) >= max_days:
+                    break  # Salir del bucle principal si se alcanza el límite
+
+            # Limpiar los datos
+            cleaned_deltadiapm, cleaned_deltadiapg = clean_data(inflated_deltadiapm, inflated_deltadiapg)
+
+            print("Datos limpiados PG: ", cleaned_deltadiapg)
+            print("Datos limpiados PM: ", cleaned_deltadiapm)
+
+            # Calcular los promedios
+            def get_average(data):
+                return sum(data) / len(data) if data else 0
+
+            ave_deltadiapm = get_average(cleaned_deltadiapm)
+            ave_deltadiapg = get_average(cleaned_deltadiapg)
+
+            return ave_deltadiapm, ave_deltadiapg
 
         #ESTABLECER LAS ECUACIONES DE PUNTAJE
         ScoreFMMI=0
@@ -325,27 +357,69 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
         
         #SOLVER FORECAST
 
-        incdays=0
-        decdays=0
-        days=0
-        if go==1:
+        def solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf):
+            incdays=0
+            decdays=0
+            days=0
+            solver_category=""
+            
             forecast = LpProblem("Days", LpMinimize)
             IncDays = LpVariable("incdays", 0)
             DecDays = LpVariable("decdays", 0)
+            
             forecast += lpSum(IncDays+DecDays)
-            forecast += lpSum(IncDays*aveincpm+DecDays*avedecpm+pm) == pmf, "PM FINAL"
-            forecast += lpSum(IncDays*aveincpm+DecDays*avedecpg+pg) == pgf, "PG FINAL "
-            forecast.solve()
+            forecast += lpSum(IncDays*aveincpm+DecDays*avedecpm+pm) >= pmf, "PM FINAL"
+            forecast += lpSum(IncDays*aveincpg+DecDays*avedecpg+pg) <= pgf, "PG FINAL "
+            
+            status=forecast.solve()
 
-            decdays=round(forecast.variables()[0].varValue)
-            incdays=round(forecast.variables()[1].varValue)
-            days=round(value(forecast.objective))
+            if status == 1:                
+                decdays=round(forecast.variables()[0].varValue)
+                incdays=round(forecast.variables()[1].varValue)
+                days=round(value(forecast.objective))
+                solver_category="Óptimo"
+            else: 
+                solver_category="No calculable"
+
+            return incdays, decdays, days, solver_category
+        
+        max_days = 183  # o cualquier número que desees
+        
+        aveincpm, aveincpg = calculate_averages(["Aumento del peso", nameuser], basededatos, max_days)
+        avedecpm, avedecpg = calculate_averages(["Disminución del peso", nameuser], basededatos, max_days)
+
+        print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
+        
+        incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
+        
+        if solver_category == "No calculable":
+            aveincpm, aveincpg = calculate_averages(["Aumento del peso", nameuser], basededatos, max_days, 0.5, 99)
+            avedecpm, avedecpg = calculate_averages(["Disminución del peso", nameuser], basededatos, max_days, 99, 0.5)
+            
+            print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
+
+            incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
+
+            if solver_category == "No calculable":
+                aveincpm, aveincpg = calculate_averages(["Aumento del peso", None], basededatos, max_days, 0.5, 99)
+                avedecpm, avedecpg = calculate_averages(["Disminución del peso", None], basededatos, max_days, 99, 0.5)
+                
+                print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
+                
+                incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
+
+                if solver_category == "Óptimo":
+                    solver_category = "General"
+            
+            else:
+                solver_category = "Positivo"
         else:
-                pass
+            solver_category="Completo"
 
-        update=(round(pf), round(pmf), round(pgf), ScoreFMMI, ScoreBF, BodyScore, incdays, decdays, days, round(abdf), round(cinf), round(cadf), id)
+        print("ID: ", id, "Categoria solver: ", solver_category)
 
-        cursor.execute("UPDATE PERFILDINAMICO SET PF=?, PMF=?, PGF=?, SCOREIMMC=?, SCOREBF=?, BODYSCORE=?, INCDAYS=?, DECDAYS=?, DAYS=?, ABDF=?, CINF=?, CADF=? WHERE ID=?", (update))
+        update=(round(pf), round(pmf), round(pgf), ScoreFMMI, ScoreBF, BodyScore, incdays, decdays, days, round(abdf), round(cinf), round(cadf), solver_category, id)
+        cursor.execute("UPDATE PERFILDINAMICO SET PF=?, PMF=?, PGF=?, SCOREIMMC=?, SCOREBF=?, BODYSCORE=?, INCDAYS=?, DECDAYS=?, DAYS=?, ABDF=?, CINF=?, CADF=?, SOLVER_CATEGORY=? WHERE ID=?", update)
         basededatos.commit()
 
         success_message = 'Los datos del usuario {} han sido registrados y calculados.'.format(nameuser)

@@ -91,10 +91,11 @@
             <!-- Conversion Rate -->
             <div class="block block-rounded d-flex flex-column">
                 <!-- Radar -->
+                {% if solver_category == "General" %}
                 <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
                     <dl class="mb-0">
                         <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
-                        <dd class="text-muted mb-0">Rendimiento</dd>
+                        <dd class="text-muted mb-0">Rendimiento general</dd>
                     </dl>
                     {% if habitperformance>=66 %}
                     <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
@@ -108,9 +109,52 @@
                 </div>
                 <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
                     <a class="font-w500 d-flex align-items-center">
-                        El puntaje 100 es el ritmo ideal para subir y bajar de peso.
+                        No hay suficientes datos tuyos para un cálculo preciso. Este resultado se basa en datos generales de muchas personas.
                     </a>
                 </div>
+                {% elif solver_category == "Completo" %}
+                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
+                    <dl class="mb-0">
+                        <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
+                        <dd class="text-muted mb-0">Rendimiento completo</dd>
+                    </dl>
+                    {% if habitperformance>=66 %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% elif habitperformance<=33 %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#e37d7d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% else %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#dce37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% endif %}
+                        <span>{{ habitperformance }}<br><small class="text-muted">/100</small></span>
+                    </div>
+                </div>
+                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                    <a class="font-w500 d-flex align-items-center">
+                        Este resultado es un reflejo completo de tu estilo de vida durante el último año, tanto los buenos como los malos días. Acercarse al 100% significa que estás en el camino correcto.
+                    </a>
+                </div>
+                {% elif solver_category == "Positivo" %}
+                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
+                    <dl class="mb-0">
+                        <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
+                        <dd class="text-muted mb-0">Rendimiento positivo</dd>
+                    </dl>
+                    {% if habitperformance>=66 %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% elif habitperformance<=33 %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#e37d7d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% else %}
+                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#dce37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
+                    {% endif %}
+                        <span>{{ habitperformance }}<br><small class="text-muted">/100</small></span>
+                    </div>
+                </div>
+                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                    <a class="font-w500 d-flex align-items-center">
+                        Este resultado se basa solo en tus días buenos. Un puntaje alto aquí muestra que tus esfuerzos están dando frutos, pero ten en cuenta que no incluye los días menos exitosos.
+                    </a>
+                </div>
+                {% endif %}
             </div>
             <!-- END Conversion Rate-->
         </div>
@@ -484,6 +528,7 @@
                                 <th class="d-none d-sm-table-cell">Días de aumento de peso</th>
                                 <th class="d-none d-sm-table-cell">Días de descenso de peso</th>
                                 <th>Días para llegar al objetivo</th>
+                                <th class="d-none d-sm-table-cell">Categoria</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -499,6 +544,7 @@
                                 <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.27}}</td>
                                 <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.28}}</td>
                                 <td class="font-w600 font-size-sm">{{dinamico.29}}</td>
+                                <td class="d-none d-sm-table-cell font-w600 font-size-sm">{{dinamico.36}}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

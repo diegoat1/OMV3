@@ -19,9 +19,9 @@ def before_request():
         username = session['username']
     else:
         pass
-    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'login', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe']:
+    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'login', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'strengthstandard', 'trainingplanner']:
         return redirect(url_for('dashboard'))
-    if 'username' not in session and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'recipe']:
+    if 'username' not in session and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'recipe', 'strengthstandard', 'trainingplanner']:
         return redirect(url_for('login'))
 
 ### PÁGINA EN MANTENIMIENTO ###
@@ -145,7 +145,7 @@ def dashboard():
     sexo=estaticodata[0][4]
     abdomen=int(dinamicodata[-1][5])
     
-    bodycat=["Obeso", "Sobrepeso", "Robusto", "Falto de ejercicio", "Balanceado", "Balanceado muscular", "Delgado", "Balanceado delgado", "Delgado muscular"]
+    bodycat=["Graso", "Sobrepeso", "Robusto", "Inactivo", "Balanceado", "Balanceado muscular", "Delgado", "Balanceado delgado", "Delgado muscular"]
     bodyscore= dinamicodata[-1][26]
     
     ffmi=dinamicodata[-1][9]
@@ -296,10 +296,23 @@ def dashboard():
         leandays=0
     else:
         pass
-
+    
     idealdays=leandays+fatdays
+
+    
+    print("peso graso: ", fat)
+    print("peso graso objetivo: ", dinamicodata[-1][32]) #
+    print("rango de descenso de peso: ", fatrate)
+    print("dias de descenso: ", fatdays)
+    print("Los días ideales son: ", idealdays)
+
+    solver_category=dinamicodata[-1][36]
     try:
         habitperformance=round(idealdays/dinamicodata[-1][29]*100)
+        if habitperformance>=100:
+            habitperformance=100
+        else:
+            pass
     except:
         habitperformance=0
 
@@ -333,11 +346,30 @@ def dashboard():
     for i in range(lendata):
         listabf.append(dinamicodata[-lendata+i][7])
 
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat)
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat, solver_category=solver_category)
+
+### FUNCIÓN DE MANTENIMIENTO ###
 
 @app.route('/mantenimiento')
 def mantenimiento():
     return render_template('mantenimiento.html', title='Mantenimiento')
+
+### FUNCIÓN DEL ESTANDAR DE FUERZA ###
+
+@app.route('/strengthstandard')
+def strengthstandard():
+    return render_template('symmetricstrength.html', title='Strength Standard')
+
+### FUNCION DEL PLANIFICADOR DE ENTRENAMIENTOS ###
+@app.route('/trainingplanner', methods=['GET', 'POST'])
+def trainingplanner():
+    tplanner_form = forms.TplannerForm(request.form)
+    if request.method == 'POST':
+        datos=[tplanner_form.nameuser.data, tplanner_form.squatscore.data, tplanner_form.floorpullscore.data, tplanner_form.horizontalpressscore.data, tplanner_form.verticalpressscore.data, tplanner_form.pullscore.data, tplanner_form.diasdeentrenamiento.data, tplanner_form.numerodeejercicios.data, ]
+        trainfunction.planentrenamientopaso1(datos)
+        #success_message = 'Actualizado {} !'.format(tplanner_form.nameuser.data)
+        #flash(success_message)
+    return render_template('trainingplanner.html', title='Configuración del plan de entrenamiento', form=tplanner_form, username=session['username'])
 
 ### FUNCIÓN PARA CREAR PERFILES ESTATICOS ###
 

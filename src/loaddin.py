@@ -24,23 +24,23 @@ cursor = basededatos.cursor()
 
 for i in i:
     list=[]
-    for j in range(0,9):
+    for j in range(0,6):
         data=df.iloc[i,j]
         list.append(data)
     nameuser=str(list[0])
     fdr=list[1].date()
-    peso=list[2]
+    peso=list[5]
     cursor.execute('SELECT SEXO FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [nameuser])
     sexo=cursor.fetchone()[0]
     if sexo=='M':
-        cabd=list[7]
+        cabd=list[4]
         ccin=0
         ccad=0
     else:
-        ccin=list[7]
+        ccin=list[2]
         cabd=0
-        ccad=list[8]
+        ccad=list[3]
 
     datos=(nameuser, str(fdr), peso, cabd, ccin, ccad)
-    print(datos)
+    #print(datos)
     functions.actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad)
