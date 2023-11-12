@@ -298,14 +298,7 @@ def dashboard():
         pass
     
     idealdays=leandays+fatdays
-
     
-    print("peso graso: ", fat)
-    print("peso graso objetivo: ", dinamicodata[-1][32]) #
-    print("rango de descenso de peso: ", fatrate)
-    print("dias de descenso: ", fatdays)
-    print("Los días ideales son: ", idealdays)
-
     solver_category=dinamicodata[-1][36]
     try:
         habitperformance=round(idealdays/dinamicodata[-1][29]*100)

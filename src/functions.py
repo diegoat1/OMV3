@@ -256,14 +256,9 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
                     "WHERE DELTAPESOCAT=? AND NOMBRE_APELLIDO=? AND FBMGAIN<? AND LBMLOSS<? ORDER BY FECHA_REGISTRO DESC")
                     params = params + [fbmgain_limit, lbmloss_limit]
 
-            print("Executing query:", query)
-            print("With parameters:", params)
-
             # Ejecutar la consulta
             cursor.execute(query, params)
             trend_data = cursor.fetchall()
-
-            print("Todos los datos: ", trend_data)
 
             # Inflar los datos
             inflated_deltadiapm = []
@@ -281,9 +276,6 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
 
             # Limpiar los datos
             cleaned_deltadiapm, cleaned_deltadiapg = clean_data(inflated_deltadiapm, inflated_deltadiapg)
-
-            print("Datos limpiados PG: ", cleaned_deltadiapg)
-            print("Datos limpiados PM: ", cleaned_deltadiapm)
 
             # Calcular los promedios
             def get_average(data):
@@ -388,23 +380,17 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
         aveincpm, aveincpg = calculate_averages(["Aumento del peso", nameuser], basededatos, max_days)
         avedecpm, avedecpg = calculate_averages(["Disminución del peso", nameuser], basededatos, max_days)
 
-        print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
-        
         incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
         
         if solver_category == "No calculable":
             aveincpm, aveincpg = calculate_averages(["Aumento del peso", nameuser], basededatos, max_days, 0.5, 99)
             avedecpm, avedecpg = calculate_averages(["Disminución del peso", nameuser], basededatos, max_days, 99, 0.5)
             
-            print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
-
             incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
 
             if solver_category == "No calculable":
                 aveincpm, aveincpg = calculate_averages(["Aumento del peso", None], basededatos, max_days, 0.5, 99)
                 avedecpm, avedecpg = calculate_averages(["Disminución del peso", None], basededatos, max_days, 99, 0.5)
-                
-                print("aveincpm: ",aveincpm, "avedecpm: ",avedecpm,"aveincpg: ", aveincpg,"avedecpg: ", avedecpg,"pm: ", pm,"pmf: ", pmf,"pg: ", pg,"pf: ", pgf)
                 
                 incdays, decdays, days, solver_category = solver(aveincpm, avedecpm, aveincpg, avedecpg, pm, pmf, pg, pgf)
 
@@ -415,8 +401,6 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
                 solver_category = "Positivo"
         else:
             solver_category="Completo"
-
-        print("ID: ", id, "Categoria solver: ", solver_category)
 
         update=(round(pf), round(pmf), round(pgf), ScoreFMMI, ScoreBF, BodyScore, incdays, decdays, days, round(abdf), round(cinf), round(cadf), solver_category, id)
         cursor.execute("UPDATE PERFILDINAMICO SET PF=?, PMF=?, PGF=?, SCOREIMMC=?, SCOREBF=?, BODYSCORE=?, INCDAYS=?, DECDAYS=?, DAYS=?, ABDF=?, CINF=?, CADF=?, SOLVER_CATEGORY=? WHERE ID=?", update)
