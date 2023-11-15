@@ -300,19 +300,20 @@ def dashboard():
     idealdays=leandays+fatdays
     
     solver_category=dinamicodata[-1][36]
-    print(idealdays/dinamicodata[-1][29]*100)
+    habitperformance=idealdays/dinamicodata[-1][29]*100
+    if habitperformance>=100:
+            habitperformance=100
+    else:
+        pass
     try:
         if solver_category =="General":
-            habitperformance=round(idealdays/dinamicodata[-1][29]*100)/3
+            habitperformance=round(habitperformance/3)
         elif solver_category =="Positivo":
-            habitperformance=round(100/3+(idealdays/dinamicodata[-1][29]*100)/3)
+            habitperformance=round(100/3+(habitperformance)/3)
         elif solver_category =="Completo":
-            habitperformance=round(200/3+idealdays/dinamicodata[-1][29]*100/3)
+            habitperformance=round(200/3+habitperformance/3)
             
-        if habitperformance>=100:
-            habitperformance=100
-        else:
-            pass
+        
     except:
         habitperformance=0
 
