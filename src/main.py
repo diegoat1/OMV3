@@ -300,6 +300,7 @@ def dashboard():
     idealdays=leandays+fatdays
     
     solver_category=dinamicodata[-1][36]
+    print(idealdays/dinamicodata[-1][29]*100)
     try:
         if solver_category =="General":
             habitperformance=round(idealdays/dinamicodata[-1][29]*100)/3
