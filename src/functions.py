@@ -1218,3 +1218,99 @@ def recipe(recipeform, nameuser):
         error_message= "NO FUNCIONA - AVISE POR FAVOR"
         flash(error_message)
         redirect ( url_for('recipe') )
+
+def process_diet(diet_form, nameuser):
+    # Imprimir datos del formulario
+    # for field in diet_form:
+    #     print(f"{field.name}: {field.data}")
+
+    # Conexión con la base de datos
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    cursor.execute("SELECT PROTEINA, GRASA, CH, LIBERTAD FROM DIETA WHERE NOMBRE_APELLIDO=?", [nameuser])
+    dieta = cursor.fetchall()
+    cursor.execute("SELECT * FROM GRUPOSALIMENTOS")
+    datos = cursor.fetchall()
+
+    # Ahora puedes trabajar con los datos obtenidos
+    # for fila in datos:
+            # Aquí puedes acceder a cada columna de la fila
+            # Por ejemplo, fila[0] será el valor de "CATEGORÍA", fila[1] será el valor de "PORCION", etc.
+            # Puedes imprimirlos o procesarlos como necesites
+    #     print(fila)
+
+    # Asegurarse de que hay datos disponibles
+    if dieta:
+        proteina = dieta[0][0]
+        grasa = dieta[0][1]
+        ch = dieta[0][2]
+        libertad = dieta[0][3]
+
+        # Imprimir los valores obtenidos de la base de datos
+        # print("Proteina:", proteina)
+        # print("Grasa:", grasa)
+        # print("CH (Carbohidratos):", ch)
+        # print("Libertad:", libertad)
+    else:
+        print("No se encontraron datos para el usuario:", nameuser)
+
+    total_porciones = 0
+    porcentajes_grupos = {}
+
+    # Sumar las porciones y calcular porcentajes
+    for field in diet_form:
+        if '_porciones_semanales' in field.name and field.data is not None:
+            grupo_alimento = field.name.replace('_porciones_semanales', '')
+            total_porciones += field.data
+            porcentajes_grupos[grupo_alimento] = field.data  # Se guardan las porciones por ahora
+
+    # Verificar si el total de porciones es mayor que cero
+    if total_porciones > 0:
+        # Calcular porcentajes
+        for grupo in porcentajes_grupos:
+            porcentajes_grupos[grupo] = (porcentajes_grupos[grupo] / total_porciones) * 100
+            # print(f"{grupo}: {porcentajes_grupos[grupo]}%")
+    else:
+        print("No se registraron porciones.")
+
+    def calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas):
+        # Crear el problema de optimización
+        problema = LpProblem("PlanOptimoDieta", LpMinimize)
+
+        # Variables: Porciones de cada alimento
+        porciones_plan = {alimento: LpVariable(f"porcion_plan_{alimento}", 0, None, LpContinuous) for alimento in datos_alimentos if alimento in alimentos_incluidos}
+
+        # Función objetivo: Minimizar el error cuadrático
+        error_cuadratico = lpSum([(porciones_plan[alimento] - porciones_consumidas[alimento])**2 for alimento in porciones_plan])
+        problema += error_cuadratico
+
+        # Restricciones nutricionales
+        problema += lpSum([porciones_plan[alimento] * datos_alimentos[alimento]['proteina'] for alimento in porciones_plan]) <= requerimientos['proteina'] * (1 + margen_libertad/100)
+        # Agregar restricciones similares para grasas y carbohidratos
+
+        # Resolver el problema
+        problema.solve()
+
+        # Resultados
+        if LpStatus[problema.status] == "Optimal":
+            print("Solución óptima encontrada")
+            for alimento in porciones_plan:
+                print(f"{alimento}: {porciones_plan[alimento].varValue}")
+        else:
+            print("No se encontró una solución óptima")
+
+    # Ejemplo de uso
+    datos_alimentos = {
+        'Alimento1': {'proteina': ..., 'grasa': ..., 'carbohidratos': ..., 'porcion_consumida': ...},
+        'Alimento2': {'proteina': ..., 'grasa': ..., 'carbohidratos': ..., 'porcion_consumida': ...},
+        # ...
+    }
+
+    requerimientos = {'proteina': proteina, 'grasa': grasa, 'carbohidratos': ch}
+    alimentos_incluidos = ['Alimento1', 'Alimento2', ...]
+    margen_libertad = libertad
+    porciones_consumidas = {'Alimento1': ..., 'Alimento2': ..., ...}
+
+    calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas)
+
+    flash("Guardado el tamaño de las porciones")

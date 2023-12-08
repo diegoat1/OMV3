@@ -19,6 +19,8 @@ from wtforms.fields.html5 import EmailField
 from wtforms.fields.html5 import DateField
 from wtforms.fields.html5 import TimeField
 from wtforms.fields.html5 import DateTimeField
+from wtforms.validators import DataRequired, NumberRange
+import sqlite3
 import functions
 
 def length_honeypot(form, field):
@@ -227,3 +229,20 @@ class RecipeForm(Form):
     def __init__(self, *args, **kwargs):
         super(RecipeForm, self).__init__(*args, **kwargs)
         self.receta.choices = functions.listadereceta()
+
+def get_all_food_groups():
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    cursor.execute("SELECT CATEGORÍA FROM GRUPOSALIMENTOS")
+    all_food_groups = cursor.fetchall()
+    cursor.close()
+    basededatos.close()
+    return all_food_groups
+
+class DietForm(Form):
+    all_food_groups = get_all_food_groups()
+
+    for group_name_tuple in all_food_groups:
+        group_name = group_name_tuple[0]  # Extrae el nombre del grupo de la tupla
+        locals()[f"{group_name}_incluir"] = BooleanField(f'Incluir {group_name}', default="checked")
+        locals()[f"{group_name}_porciones_semanales"] = IntegerField(f'{group_name} - Nº de Porciones Semanales', validators=[DataRequired(), NumberRange(min=0)])

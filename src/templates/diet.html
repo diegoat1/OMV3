@@ -1,0 +1,71 @@
+{% extends 'base/base.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block herotitle %} Dieta {% endblock %}
+{% block herosubtitle %} Aquí puedes revisar y ajustar tus hábitos alimenticios, <a class="font-w600">{{ username }}</a>. {% endblock %}
+{% block contenttitle %} Registra tu consumo semanal {% endblock %}
+{% block contentsubtitle %} Ingresa la cantidad de porciones que consumes semanalmente para cada grupo de alimentos. {% endblock %}
+
+{% block content %}
+<div class="block block-rounded">
+    <div class="block-content block-content-full">
+        <!-- Formulario -->
+        {% from "_macro.html" import render_field %}
+
+        <form name="sentMessage" id="dietForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="row push">
+                <div class="col-lg-12">
+                    <label for="example-text-input">Dieta Semanal</label>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="alert alert-danger alert-dismissable" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                            {% for category, message in messages %}
+                            <p class="{{ category }}">{{ message }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            <div class="row push">
+                <div class="col-12">
+                    {% for group_name_tuple in form.all_food_groups %}
+                        {% set group_name = group_name_tuple[0] %}
+                        <div class="form-group row" style="margin-bottom: 0px;">
+                            <div class="col-2">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="{{ group_name }}-incluir" name="{{ group_name }}_incluir" {{ 'checked' if form[group_name + '_incluir'].data else '' }}>
+                                    <label class="custom-control-label" for="{{ group_name }}-incluir">Incluir {{ group_name }}</label>
+                                </div>
+                            </div>
+                            <div class="col-2">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">{{ group_name }}</span>
+                                        </div>
+                                        {{ render_field(form[group_name + '_porciones_semanales'], class='form-control', id=group_name + '-porciones') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <!-- Botón de envío -->
+                    <div class="col-xl-12">
+                        <button type="submit" class="btn btn-block btn-primary">
+                            <i class="fa fa-fw fa-sign-in-alt mr-1"></i> Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <!-- END Formulario -->
+    </div>
+</div>
+
+{% endblock %}

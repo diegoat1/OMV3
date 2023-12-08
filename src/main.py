@@ -601,6 +601,25 @@ def recipe():
             flash (message)
     return render_template('recipe.html', title='Tu plan nutricional', form=recipe_form, username=session['username'])
 
+# FUNCIÓN PARA CALCULAR LA DIETA
+
+@app.route('/diet', methods=['GET', 'POST'])
+def diet():
+    diet_form = forms.DietForm(request.form)
+    nameuser = session['username']
+
+    if request.method == 'POST':
+        try:
+            # Aquí llamas a la función que procesa la información del formulario
+            functions.process_diet(diet_form, nameuser)
+
+        except Exception as e:
+            # Manejo de excepciones con un mensaje específico
+            message = '{} no tiene una dieta definida. Error: {}'.format(nameuser, e)
+            flash(message)
+    
+    return render_template('diet.html', title='Tu plan de dieta', form=diet_form, username=session['username'])
+
 # FUNCIÓN EN DESARROLLO, SUPONGO QUE ES PARA HACER RECETAS PERSONALIZADAS 
 
 @app.route('/cooking')
@@ -649,20 +668,36 @@ def logout():
 
 @app.route('/databasemanager')
 def databasemanager():
+    """
+    Retrieves data from a SQLite database and renders it in a template.
+
+    Returns:
+        Rendered template with the retrieved data and other variables.
+    """
+    # Connect to the SQLite database
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
+
+    # Execute SQL queries to retrieve data from the tables
     cursor.execute('SELECT * FROM RECETAS')
-    recipedata= cursor.fetchall()
+    recipedata = cursor.fetchall()
+
     cursor.execute('SELECT * FROM ALIMENTOS')
-    alimentodata= cursor.fetchall()
+    alimentodata = cursor.fetchall()
+
     cursor.execute('SELECT * FROM DIETA')
-    dietadata=cursor.fetchall()
+    dietadata = cursor.fetchall()
+
     cursor.execute('SELECT * FROM PERFILDINAMICO ORDER BY FECHA_REGISTRO DESC')
-    dinamicodata=cursor.fetchall()
+    dinamicodata = cursor.fetchall()
+
     cursor.execute('SELECT * FROM PERFILESTATICO')
-    estaticodata=cursor.fetchall()
+    estaticodata = cursor.fetchall()
+
     cursor.execute('SELECT * FROM OBJETIVO')
-    objetivodata=cursor.fetchall()
+    objetivodata = cursor.fetchall()
+
+    # Render the template with the retrieved data and other variables
     return render_template('databasemanager.html', recipes=recipedata, alimento=alimentodata, dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Administrador de base de datos', username=session['username'])
 
 ### FUNCIÓN PARA CORRER LA APLICACIÓN
