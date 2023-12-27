@@ -1,3 +1,5 @@
+import numpy as np
+from scipy.optimize import *
 from pulp import *
 import sqlite3
 from io import *
@@ -6,6 +8,8 @@ from datetime import datetime
 import math
 from flask import *
 import numpy as np
+
+
 
 ### FUNCIÓN QUE AGREGA LOS PERFILES ###
 
@@ -1256,61 +1260,150 @@ def process_diet(diet_form, nameuser):
 
     total_porciones = 0
     porcentajes_grupos = {}
+    porciones_consumidas = {}
 
     # Sumar las porciones y calcular porcentajes
     for field in diet_form:
         if '_porciones_semanales' in field.name and field.data is not None:
             grupo_alimento = field.name.replace('_porciones_semanales', '')
             total_porciones += field.data
-            porcentajes_grupos[grupo_alimento] = field.data  # Se guardan las porciones por ahora
 
     # Verificar si el total de porciones es mayor que cero
     if total_porciones > 0:
-        # Calcular porcentajes
-        for grupo in porcentajes_grupos:
-            porcentajes_grupos[grupo] = (porcentajes_grupos[grupo] / total_porciones) * 100
-            # print(f"{grupo}: {porcentajes_grupos[grupo]}%")
+        # Calcular porcentajes y llenar el diccionario porciones_consumidas
+        for field in diet_form:
+            if '_porciones_semanales' in field.name and field.data is not None:
+                grupo_alimento = field.name.replace('_porciones_semanales', '')
+                porcentaje = (field.data / total_porciones) * 100
+                porciones_consumidas[grupo_alimento] = porcentaje
+
+                #print(f"{grupo_alimento}: {porcentaje}%")
     else:
         print("No se registraron porciones.")
+    
+    alimentos_incluidos = []
+    nutrientes_incluidos = []
 
-    def calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas):
-        # Crear el problema de optimización
-        problema = LpProblem("PlanOptimoDieta", LpMinimize)
+    for field in diet_form:
+        if 'alimento_' in field.name and field.data:
+            alimento = field.name.replace('alimento_', '').replace('_incluir', '')
+            alimentos_incluidos.append(alimento)
+        elif 'nutriente_' in field.name and field.data:
+            nutriente = field.name.replace('nutriente_', '').replace('_incluir', '')
+            nutrientes_incluidos.append(nutriente)
 
-        # Variables: Porciones de cada alimento
-        porciones_plan = {alimento: LpVariable(f"porcion_plan_{alimento}", 0, None, LpContinuous) for alimento in datos_alimentos if alimento in alimentos_incluidos}
-
-        # Función objetivo: Minimizar el error cuadrático
-        error_cuadratico = lpSum([(porciones_plan[alimento] - porciones_consumidas[alimento])**2 for alimento in porciones_plan])
-        problema += error_cuadratico
-
-        # Restricciones nutricionales
-        problema += lpSum([porciones_plan[alimento] * datos_alimentos[alimento]['proteina'] for alimento in porciones_plan]) <= requerimientos['proteina'] * (1 + margen_libertad/100)
-        # Agregar restricciones similares para grasas y carbohidratos
-
-        # Resolver el problema
-        problema.solve()
-
-        # Resultados
-        if LpStatus[problema.status] == "Optimal":
-            print("Solución óptima encontrada")
-            for alimento in porciones_plan:
-                print(f"{alimento}: {porciones_plan[alimento].varValue}")
-        else:
-            print("No se encontró una solución óptima")
-
+    print(alimentos_incluidos)
+    print(nutrientes_incluidos)
     # Ejemplo de uso
-    datos_alimentos = {
-        'Alimento1': {'proteina': ..., 'grasa': ..., 'carbohidratos': ..., 'porcion_consumida': ...},
-        'Alimento2': {'proteina': ..., 'grasa': ..., 'carbohidratos': ..., 'porcion_consumida': ...},
-        # ...
-    }
+    # Nombres de los nutrientes en el orden en que aparecen en la fila de datos
+    nombres_nutrientes = ["porcion", "descripcion", "costo", "agua", "energia", "proteina", "grasas_totales", "carbohidratos", 
+                        "fibra_dietaria", "azucar_total", "calcio", "hierro", "magnesio", 
+                        "fosforo", "potasio", "sodio", "zinc", "cobre", "selenio", 
+                        "vitamina_c", "tiamina", "riboflavina", "niacina", "vitamina_b6", 
+                        "folato_total", "acido_folico", "folato_alimentario", 
+                        "folato_dfe", "colina_total", "vitamina_b12", "vitamina_a_rae", 
+                        "retinol", "alfa_caroteno", "beta_caroteno", "criptoxantina_beta", 
+                        "licopeno", "luteina_zeaxantina", "vitamina_e", "vitamina_d", 
+                        "vitamina_k", "agtsaturado", "agtmi", "agtpi", "colesterol", 
+                        "vitaminab12_agre", "vitaminae_agre", "cafeina", "teobromina", 
+                        "alcohol"]
+
+    datos_alimentos = {}
+    for fila in datos:
+        nombre_alimento = fila[0]
+        valores_nutrientes = fila[1:]  # Asumiendo que los nutrientes comienzan en la segunda columna
+
+        # Crear un diccionario para el alimento actual
+        info_nutrientes = {}
+        for i, nombre_nutriente in enumerate(nombres_nutrientes):
+            info_nutrientes[nombre_nutriente] = valores_nutrientes[i]
+        
+        # Agregar el alimento y su información al diccionario principal
+        datos_alimentos[nombre_alimento] = info_nutrientes
+
+    # Imprimir el diccionario
+    #for alimento, info in datos_alimentos.items():
+    #    print(f"{alimento}: {info}")
 
     requerimientos = {'proteina': proteina, 'grasa': grasa, 'carbohidratos': ch}
-    alimentos_incluidos = ['Alimento1', 'Alimento2', ...]
     margen_libertad = libertad
-    porciones_consumidas = {'Alimento1': ..., 'Alimento2': ..., ...}
+
+    def calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas):
+
+        #print(datos_alimentos)
+        #print(requerimientos)
+        #print(alimentos_incluidos)
+        #print(margen_libertad)
+        #print(porciones_consumidas)
+
+        for alimento in datos_alimentos:
+            datos_alimentos[alimento]['proteina'] = float(datos_alimentos[alimento]['proteina'])
+        # Repetir para otros nutrientes si es necesario
+
+        def funcion_objetivo(x, datos_alimentos, porciones_consumidas, alimentos_incluidos):
+            error = 0
+            # Calcular la suma total de las porciones ajustadas a 100 gramos
+            sumatoria_total = sum(x[i] * 100 / datos_alimentos[alimento]['porcion'] for i, alimento in enumerate(alimentos_incluidos))
+            for i, alimento in enumerate(alimentos_incluidos):
+                error += ((x[i]*100/datos_alimentos[alimento]['porcion'])*100/sumatoria_total - porciones_consumidas[alimento])**2
+            return error
+        
+        def restriccion_calorias(x, datos_alimentos, requerimientos, alimentos_incluidos):
+            total_calorias = sum(x[i] * (datos_alimentos[alimento]['proteina'] * 4 + 
+                                        datos_alimentos[alimento]['grasas_totales'] * 9 + 
+                                        datos_alimentos[alimento]['carbohidratos'] * 4) 
+                                for i, alimento in enumerate(alimentos_incluidos))
+            calorias_objetivo = requerimientos['proteina'] * 4 + requerimientos['grasa'] * 9 + requerimientos['carbohidratos'] * 4
+            return calorias_objetivo - total_calorias
+        
+        def restriccion_proteinas(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_proteinas = sum(x[i] * datos_alimentos[alimento]['proteina'] for i, alimento in enumerate(alimentos_incluidos))
+            return requerimientos['proteina'] - total_proteinas
+
+        # Punto de inicio
+        x0 = np.array([porciones_consumidas[alimento] for alimento in alimentos_incluidos])
+
+        # Límites inferiores y superiores para cada variable
+        bounds = [(0, None) for _ in alimentos_incluidos]
+
+        # Definir las restricciones
+        cons = [
+           {'type': 'eq', 'fun': lambda x: restriccion_calorias(x, datos_alimentos, requerimientos, alimentos_incluidos)},
+        ]
+
+        # Añadir la restricción de proteinas
+        cons.append({'type': 'ineq', 'fun': lambda x: restriccion_proteinas(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+
+        # Resolver el problema
+        res = minimize(funcion_objetivo, x0, bounds=bounds, args=(datos_alimentos, porciones_consumidas, alimentos_incluidos), constraints=cons, method='SLSQP')
+
+        #print(res)
+
+        # Resultado de las porciones óptimas
+        porciones_optimas = res.x
+
+        # Imprimir las porciones óptimas para cada alimento y calcular el total de proteínas
+        total_proteinas = 0
+        total_grasas=0
+        total_carbohidratos=0
+        total_calorias = 0
+        for alimento, porcion in zip(alimentos_incluidos, porciones_optimas):
+            flash(f"{alimento}: {round(porcion,1)} unidades")
+            total_proteinas += porcion * datos_alimentos[alimento]['proteina']
+            total_grasas += porcion * datos_alimentos[alimento]['grasas_totales']
+            total_carbohidratos += porcion * datos_alimentos[alimento]['carbohidratos']
+            total_calorias += porcion * (datos_alimentos[alimento]['proteina'] * 4 + datos_alimentos[alimento]['grasas_totales'] * 9 + datos_alimentos[alimento]['carbohidratos'] *4)
+
+        flash(f"Total de proteínas en la dieta: {round(total_proteinas)} gramos")
+        flash(f"Total de grasas en la dieta: {round(total_grasas)} gramos")
+        flash(f"Total de carbohidratos en la dieta: {round(total_carbohidratos)} gramos")
+        flash(f"Total de calorias en la dieta: {round(total_calorias)} calorias")
+
 
     calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas)
 
     flash("Guardado el tamaño de las porciones")
+
+
+
+

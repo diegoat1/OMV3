@@ -241,8 +241,12 @@ def get_all_food_groups():
 
 class DietForm(Form):
     all_food_groups = get_all_food_groups()
+    nutrients = ['Proteinas', 'Grasas totales', 'Carbohidratos', 'Fibra dietaria', 'Azucar total', 'Calcio', 'Hierro', 'Magnesio', 'Fósforo', 'Potasio', 'Sodio', 'Zinc', 'Vitaminas', 'Acidos grasos']
 
     for group_name_tuple in all_food_groups:
-        group_name = group_name_tuple[0]  # Extrae el nombre del grupo de la tupla
-        locals()[f"{group_name}_incluir"] = BooleanField(f'Incluir {group_name}', default="checked")
-        locals()[f"{group_name}_porciones_semanales"] = IntegerField(f'{group_name} - Nº de Porciones Semanales', validators=[DataRequired(), NumberRange(min=0)])
+        group_name = group_name_tuple[0]
+        locals()[f"alimento_{group_name}_incluir"] = BooleanField(f'Incluir {group_name}', default="checked")
+
+    for nutrient in nutrients:
+        locals()[f"nutriente_{nutrient}_incluir"] = BooleanField(f'Incluir {nutrient}', default="checked")
+

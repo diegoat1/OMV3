@@ -33,28 +33,46 @@
                 </div>
             </div>
             <div class="row push">
-                <div class="col-12">
-                    {% for group_name_tuple in form.all_food_groups %}
-                        {% set group_name = group_name_tuple[0] %}
-                        <div class="form-group row" style="margin-bottom: 0px;">
+                <div class="col-lg-12">
+                    <h3>Seleccionar Alimentos y sus cantidades</h3>
+                    <div class="form-group row">
+                        {% for group_name_tuple in form.all_food_groups %}
+                            {% set group_name = group_name_tuple[0] %}
+                            <!-- Columna para incluir alimentos -->
                             <div class="col-2">
                                 <div class="custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="{{ group_name }}-incluir" name="{{ group_name }}_incluir" {{ 'checked' if form[group_name + '_incluir'].data else '' }}>
-                                    <label class="custom-control-label" for="{{ group_name }}-incluir">Incluir {{ group_name }}</label>
+                                    <input type="checkbox" class="custom-control-input" id="alimento_{{ group_name }}-incluir" name="alimento_{{ group_name }}_incluir" {{ 'checked' if form['alimento_' + group_name + '_incluir'].data else '' }}>
+                                    <label class="custom-control-label" for="alimento_{{ group_name }}-incluir">Incluir {{ group_name }}</label>
                                 </div>
                             </div>
+                            <!-- Columna para las porciones semanales -->
                             <div class="col-2">
                                 <div class="form-group">
                                     <div class="input-group">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text">{{ group_name }}</span>
                                         </div>
-                                        {{ render_field(form[group_name + '_porciones_semanales'], class='form-control', id=group_name + '-porciones') }}
+                                        {{ render_field(form['alimento_' + group_name + '_porciones_semanales'], class='form-control', id='alimento_' + group_name + '-porciones') }}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    {% endfor %}
+                        {% endfor %}
+                    </div>
+                     <!-- Aquí comienza la sección de nutrientes -->
+                     <h3>Seleccionar Nutrientes</h3>
+                     <div class="form-group row">
+                         {% for nutrient in form.nutrients %}
+                         <div class="col-4">
+                             <div class="form-group">
+                                 <div class="custom-control custom-switch">
+                                     <input type="checkbox" class="custom-control-input" id="nutriente_{{ nutrient }}-incluir" name="nutriente_{{ nutrient }}_incluir" {{ 'checked' if form['nutriente_' + nutrient + '_incluir'].data else '' }}>
+                                     <label class="custom-control-label" for="nutriente_{{ nutrient }}-incluir">Incluir {{ nutrient }}</label>
+                                 </div>
+                             </div>
+                         </div>
+                         {% endfor %}
+                     </div>
+                    </div>
                     <!-- Botón de envío -->
                     <div class="col-xl-12">
                         <button type="submit" class="btn btn-block btn-primary">
