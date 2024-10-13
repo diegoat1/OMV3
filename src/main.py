@@ -123,7 +123,7 @@ def caloriescal():
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
     recipe_form = forms.RecipeForm(request.form)
-    return render_template('caloriescal.html', title='Calculadora de calorías',form=recipe_form, username=session['username'], value=0)
+    return render_template('mantenimiento.html', title='Calculadora de calorías',form=recipe_form, username=session['username'], value=0)
 
 @app.route('/dashboard')
 def dashboard():
