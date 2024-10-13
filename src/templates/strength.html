@@ -1,0 +1,51 @@
+{% extends 'base/base.html' %}
+
+{% block title %} Análisis de Fuerza {% endblock %}
+
+{% block herotitle %} Análisis de Tu Fuerza {% endblock %}
+{% block herosubtitle %} Descubre tus fortalezas y debilidades <a class="font-w600">{{ username }}</a>, y compárate con otros levantadores. {% endblock %}
+{% block contenttitle %} Evalúa Tu Fuerza {% endblock %}
+{% block contentsubtitle %} Obtén un análisis detallado y personalizado de tu rendimiento en levantamiento. {% endblock%}
+
+
+{% block content %}
+
+{% from "_macro.html" import render_field %}  
+
+<link rel="stylesheet" href="static/res/css/style1285.css?etag=ZghyVnuu">
+<link rel="stylesheet" href="static/res/css/custom3a57.css?etag=ElI7Eb3S">
+<script>document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/, 'js');</script>
+<script>(function (d, s, id) { var js, fjs = d.getElementsByTagName(s)[0]; if (d.getElementById(id)) return; js = d.createElement(s); js.id = id; js.src = "../connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.4&appId=1470848179876699"; fjs.parentNode.insertBefore(js, fjs); }(document, 'script', 'facebook-jssdk'));</script>
+
+<div id="wrapper" ng-app="symmetricstrength">
+    <div class="portlet light">
+        <div class="portlet-body">
+            <form name="sentMessage" id="updateForm" method="POST">
+            <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="form-group form-md-line-input form-md-floating-label col-md-6">
+                            <label for="example-text-input">Apellido y nombre:</label>
+                            {{ render_field(form.nameuser, class='form-control edited', value=value.1) }}
+                        </div>
+                        <div class="form-group form-md-line-input form-md-floating-label col-md-6">
+                            <label for="example-email-input">Fecha de registro:</label>
+                            {{ render_field(form.fdr, class='form-control', value=value.2) }}  
+                        </div>
+                    </div>
+                </div>
+        </div>
+    </div>
+</form>
+    <main page-type="loggedIn" username="diegoat1" logged-in-username="diegoat1" hide-weight="false"></main>
+</div>
+<script src="static/res/libsb7fb.js?etag=W_iKDuqc"></script>
+<script src="static/res/angular684a.js?etag=D6lEYJMt"></script>
+<script src="static/res/angular/symmetricstrength8e91.js?etag=HQGwZokQ"></script>
+<script src="static/res/angular/components/main965f.js?etag=u5pajWRN"></script>
+<script src="static/res/angular/components/standards8d4b.js?etag=2jsdoNiP"></script>
+<script data-cfasync="false" src="cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+<script>if (window.location.href.match(/symmetricstrength\.com/)) { (function (i, s, o, g, r, a, m) { i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () { (i[r].q = i[r].q || []).push(arguments) }, i[r].l = 1 * new Date(); a = s.createElement(o), m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m) })(window, document, 'script', '../www.google-analytics.com/analytics.js', 'ga'); ga('create', 'UA-29825048-6', 'auto'); ga('require', 'displayfeatures'); ga('send', 'pageview'); }</script>
+<script>if (jQuery) { jQuery(document).ready(function () { Metronic.init(); Layout.init(); }); }</script>
+
+{% endblock %}

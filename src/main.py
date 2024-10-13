@@ -31,8 +31,8 @@ def home():
     if 'username' in session:
         username = session['username']
         return redirect(url_for('dashboard'))
-    #return render_template('home.html', title='Página principal')
-    return redirect("https://linktr.ee/omeganutricion", code=302)
+    return render_template('home.html', title='Página principal')
+    #return redirect("https://linktr.ee/omegamedicina", code=302)
 
 @app.route('/resume')
 def resume():
@@ -359,7 +359,34 @@ def mantenimiento():
 
 @app.route('/strengthstandard')
 def strengthstandard():
-    return render_template('symmetricstrength.html', title='Strength Standard')
+    update_form = forms.UpdateForm(request.form)
+    return render_template('strength.html', title='Strength Standard', form=update_form, username=session['username'], value=0)
+
+@app.route('/api/lifts', methods=['POST'])
+def add_lift():
+    # Parsear el JSON recibido en la solicitud
+    data = request.json
+    print(data)
+    try:
+        data = request.json
+        if not data:
+            raise ValueError("No se recibieron datos válidos")
+        
+        # Aquí estaría tu lógica para manejar los datos
+        
+        return jsonify({"message": "Datos guardados correctamente"}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": "Ocurrió un error inesperado"}), 500
+
+@app.route('/api/submit-strength-results', methods=['POST'])
+def submit_strength_results():
+    data = request.json  # Obtener los datos enviados en la solicitud
+    csrf_token = request.headers.get('X-CSRFToken')
+    # Aquí puedes agregar la lógica para procesar los datos...
+    return jsonify({"status": "success", "message": "Datos recibidos correctamente"}), 200
+
 
 ### FUNCION DEL PLANIFICADOR DE ENTRENAMIENTOS ###
 @app.route('/trainingplanner', methods=['GET', 'POST'])
@@ -435,7 +462,7 @@ def editperfildin(ID):
         return redirect(url_for('databasemanager'))
     return render_template('update.html', title='Actualizar perfil', form=update_form, username=session['username'], value=defaultvalue)
 
-### FUNCIÓN PARA ELIMINAR PERFILES DINAMICOS ###
+### FUNCIÓN PARA ELIMINAR PERFILES DINAMICOS ###aa
 
 @app.route('/delperfildin/<string:ID>')
 def delperfildin(ID):

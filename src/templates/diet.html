@@ -25,7 +25,8 @@
                                 <span aria-hidden="true">×</span>
                             </button>
                             {% for category, message in messages %}
-                            <p class="{{ category }}">{{ message }}</p>
+                                <!-- Aplica el filtro 'safe' directamente al mensaje -->
+                                <p class="{{ category }}">{{ message|safe }}</p>
                             {% endfor %}
                         </div>
                     {% endif %}

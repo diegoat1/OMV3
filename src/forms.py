@@ -1,27 +1,8 @@
-from wtforms import Form
-from wtforms import StringField
-from wtforms import TextField
-from wtforms import PasswordField
-from wtforms import HiddenField
-from wtforms import IntegerField
-from wtforms import FloatField
-from wtforms import BooleanField
-from wtforms import DateField
-from wtforms import validators
-from wtforms import TimeField
-from wtforms import RadioField
-from wtforms import FieldList
-from wtforms import FormField
-from wtforms import SelectField
-from wtforms import FileField
+from wtforms import (Form, StringField, TextField, PasswordField, HiddenField, IntegerField, FloatField, BooleanField, DateField, validators, TimeField, RadioField, FieldList, FormField, SelectField, FileField)
 from wtforms.widgets import ListWidget
-from wtforms.fields.html5 import EmailField
-from wtforms.fields.html5 import DateField
-from wtforms.fields.html5 import TimeField
-from wtforms.fields.html5 import DateTimeField
+from wtforms.fields.html5 import (EmailField, DateField, TimeField, DateTimeField)
 from wtforms.validators import DataRequired, NumberRange
-import sqlite3
-import functions
+import sqlite3, functions
 
 def length_honeypot(form, field):
     if len(field.data) > 0:
@@ -242,10 +223,10 @@ def get_all_food_groups():
 class DietForm(Form):
     all_food_groups = get_all_food_groups()
     nutrients = ['Proteinas', 'Grasas totales', 'Carbohidratos', 'Fibra dietaria', 'Azucar total', 'Calcio', 'Hierro', 'Magnesio', 'Fósforo', 'Potasio', 'Sodio', 'Zinc', 'Vitaminas', 'Acidos grasos']
-
     for group_name_tuple in all_food_groups:
         group_name = group_name_tuple[0]
         locals()[f"alimento_{group_name}_incluir"] = BooleanField(f'Incluir {group_name}', default="checked")
+        locals()[f"alimento_{group_name}_porciones_semanales"] = IntegerField(f'{group_name} - Nº de Porciones Semanales', validators=[DataRequired(), NumberRange(min=0)], default=0)
 
     for nutrient in nutrients:
         locals()[f"nutriente_{nutrient}_incluir"] = BooleanField(f'Incluir {nutrient}', default="checked")

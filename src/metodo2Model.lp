@@ -1,8 +1,8 @@
 \* metodo2 *\
 Maximize
-Total_de_calorias: 278.4918 Alim_Leche_descremada
+Total_de_calorias: 599.63985 Alim_Leche_descremada
 Subject To
-Limite_inferior_de_proteinas: 40.8678 Alim_Leche_descremada >= 23.4670955882
-_C1: 278.4918 Alim_Leche_descremada <= 335.356798581
-_C2: 278.4918 Alim_Leche_descremada <= 318.588958652
+Limite_inferior_de_proteinas: 41.26584 Alim_Leche_descremada >= 42.0606547315
+_C1: 599.63985 Alim_Leche_descremada <= 888.174501146
+_C2: 599.63985 Alim_Leche_descremada <= 843.765776088
 End

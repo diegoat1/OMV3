@@ -1,0 +1,21 @@
+# HTTrack Website Copier Cookie File
+# This file format is compatible with Netscape cookies
+.google.com	TRUE	/	FALSE	1999999999	NID	511=k_L9ufDVFu6NVUhpPHhUlIhj1H4Z4_0-gr8AZC6Z1wPfJoRNxGmNpAhlu_h3xoMXDJJi194-ihpN5IWE8EwHsjLqvL7B4Oov1DvxWpl9-FJj4kNIp-K2h03ANed7nI77meNJa5K3O8acMEZFWgvuyTwQ6KX1TQkf43evx7PrbQk
+.facebook.com	TRUE	/	FALSE	1999999999	sb	2O1aYqlgl0r4Z7DcmchLqLw5
+.twitter.com	TRUE	/	FALSE	1999999999	guest_id_marketing	v1%3A165012661046415747
+.twitter.com	TRUE	/	FALSE	1999999999	guest_id_ads	v1%3A165012661046415747
+.twitter.com	TRUE	/	FALSE	1999999999	personalization_id	v1_OMi/rlrVE3uZ34qxkEzBkA=="
+.twitter.com	TRUE	/	FALSE	1999999999	guest_id	v1%3A165012661046415747
+twitter.com	TRUE	/	FALSE	1999999999	SameSite	None
+.twitter.com	TRUE	/	FALSE	1999999999	ct0	4719325a3e267eb9b1580081bf658cc7
+twitter.com	TRUE	/	FALSE	1999999999	cms-csp-nonce	a9585bc286104156a7b72680b41b3e9
+.facebook.com	TRUE	/	FALSE	1999999999	noscript	1
+.facebook.com	TRUE	/	FALSE	1999999999	datr	1-1aYh46x0OhCCyjVIjbmrjE
+accounts.google.com	TRUE	/	FALSE	1999999999	__Host-GAPS	1:Ua-c4LzIMHwFRghgxTlCE7mT2Sczbg:kiyzGqYMHhuxkE73
+accounts.google.com	TRUE	/	FALSE	1999999999	Priority	HIGH
+.facebook.com	TRUE	/	FALSE	1999999999	fr	0JhaRhfzYwAJEqINL..BiWu30.jn.AAA.0.0.BiWu8m.AWWcpoQvDaA
+.uspa.net	TRUE	/	FALSE	1999999999	incap_ses_1228_2258177	2/YNIa0AUluOR3AZH7wKERPwWmIAAAAAmzcUyqVoUjWuWVKK3tQ9nQ==
+.uspa.net	TRUE	/	FALSE	1999999999	visid_incap_2258177	gRfqycFuQF2RLQYEsIn3SfnwWmIAAAAAQUIPAAAAAADK0xb+QD5R1VEaMixTOtsY
+.uspa.net	TRUE	/	FALSE	1999999999	incap_ses_1373_2258177	OlEUNwjd9AHLyeDmneANE/nwWmIAAAAArD1EdT4qaW2Te7CA+68hNw==
+symmetricstrength.com	TRUE	/	FALSE	1999999999	_SESSION	detgthtiEz0JJeMVnh4vCDTof4o0BhIQOKSQ1dWSblMdT/CCaO7+xs7QWns67AtpSsVQecen/wPgkpa7dVHQbrrzabCMB1nD0ud2oJHAMSP/JhApXHk+OgZpHsgMEDWfB1NnjICgogUNFl5aWkhe2AubcDTJaAbk16eeGgrpwUxXszEovkNv0d65+zAQDlIppaFHZ3ga5Mrsd2FlpZ3NWULxtp/tCUh0uQKtfbVDxQ4=
+

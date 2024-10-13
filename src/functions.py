@@ -1273,7 +1273,7 @@ def process_diet(diet_form, nameuser):
         # Calcular porcentajes y llenar el diccionario porciones_consumidas
         for field in diet_form:
             if '_porciones_semanales' in field.name and field.data is not None:
-                grupo_alimento = field.name.replace('_porciones_semanales', '')
+                grupo_alimento = field.name.replace('alimento_', '').replace('_porciones_semanales', '')
                 porcentaje = (field.data / total_porciones) * 100
                 porciones_consumidas[grupo_alimento] = porcentaje
 
@@ -1285,15 +1285,18 @@ def process_diet(diet_form, nameuser):
     nutrientes_incluidos = []
 
     for field in diet_form:
-        if 'alimento_' in field.name and field.data:
-            alimento = field.name.replace('alimento_', '').replace('_incluir', '')
-            alimentos_incluidos.append(alimento)
-        elif 'nutriente_' in field.name and field.data:
+        if field.name.endswith('_incluir') and field.data:
+            alimento = field.name.replace('_incluir', '')
+            if 'alimento_' in alimento:
+                alimento = alimento.replace('alimento_', '')
+                alimentos_incluidos.append(alimento)
+        if 'nutriente_' in field.name and field.data:
             nutriente = field.name.replace('nutriente_', '').replace('_incluir', '')
             nutrientes_incluidos.append(nutriente)
 
-    print(alimentos_incluidos)
-    print(nutrientes_incluidos)
+    #print(alimentos_incluidos)
+    #print(nutrientes_incluidos)
+    
     # Ejemplo de uso
     # Nombres de los nutrientes en el orden en que aparecen en la fila de datos
     nombres_nutrientes = ["porcion", "descripcion", "costo", "agua", "energia", "proteina", "grasas_totales", "carbohidratos", 
@@ -1328,10 +1331,10 @@ def process_diet(diet_form, nameuser):
     requerimientos = {'proteina': proteina, 'grasa': grasa, 'carbohidratos': ch}
     margen_libertad = libertad
 
-    def calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas):
+    def calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, nutrientes_incluidos, margen_libertad, porciones_consumidas):
 
         #print(datos_alimentos)
-        #print(requerimientos)
+        print(requerimientos)
         #print(alimentos_incluidos)
         #print(margen_libertad)
         #print(porciones_consumidas)
@@ -1348,6 +1351,10 @@ def process_diet(diet_form, nameuser):
                 error += ((x[i]*100/datos_alimentos[alimento]['porcion'])*100/sumatoria_total - porciones_consumidas[alimento])**2
             return error
         
+        # Definir las restricciones
+
+        cons = []
+        
         def restriccion_calorias(x, datos_alimentos, requerimientos, alimentos_incluidos):
             total_calorias = sum(x[i] * (datos_alimentos[alimento]['proteina'] * 4 + 
                                         datos_alimentos[alimento]['grasas_totales'] * 9 + 
@@ -1356,23 +1363,187 @@ def process_diet(diet_form, nameuser):
             calorias_objetivo = requerimientos['proteina'] * 4 + requerimientos['grasa'] * 9 + requerimientos['carbohidratos'] * 4
             return calorias_objetivo - total_calorias
         
-        def restriccion_proteinas(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+        # Restricción de calorías (siempre presente)
+        cons.append({'type': 'eq', 'fun': lambda x: restriccion_calorias(x, datos_alimentos, requerimientos, alimentos_incluidos)})
+        
+        def restriccion_proteinas_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
             total_proteinas = sum(x[i] * datos_alimentos[alimento]['proteina'] for i, alimento in enumerate(alimentos_incluidos))
-            return requerimientos['proteina'] - total_proteinas
+            limite_inferior = requerimientos['proteina'] * (1 - margen_libertad / 100)
+            return total_proteinas - limite_inferior
 
+        def restriccion_proteinas_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_proteinas = sum(x[i] * datos_alimentos[alimento]['proteina'] for i, alimento in enumerate(alimentos_incluidos))
+            limite_superior = requerimientos['proteina'] * (1 + margen_libertad / 100)
+            return limite_superior - total_proteinas
+
+         # Añadir restricciones basadas en nutrientes incluidos
+        if 'Proteinas' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_proteinas_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_proteinas_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+
+        def restriccion_gt_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_grasas = sum(x[i] * datos_alimentos[alimento]['grasas_totales'] for i, alimento in enumerate(alimentos_incluidos))
+            limite_inferior = requerimientos['grasa'] * (1 - margen_libertad / 100)
+            return total_grasas - limite_inferior
+
+        def restriccion_gt_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_grasas = sum(x[i] * datos_alimentos[alimento]['grasas_totales'] for i, alimento in enumerate(alimentos_incluidos))
+            limite_superior = requerimientos['grasa'] * (1 + margen_libertad / 100)
+            return limite_superior - total_grasas
+        
+        if 'Grasas totales' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_gt_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_gt_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+
+        def restriccion_carbos_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_carbos = sum(x[i] * datos_alimentos[alimento]['carbohidratos'] for i, alimento in enumerate(alimentos_incluidos))
+            limite_inferior = requerimientos['carbohidratos'] * (1 - margen_libertad / 100)
+            return total_carbos - limite_inferior
+
+        def restriccion_carbos_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad):
+            total_carbos = sum(x[i] * datos_alimentos[alimento]['carbohidratos'] for i, alimento in enumerate(alimentos_incluidos))
+            limite_superior = requerimientos['carbohidratos'] * (1 + margen_libertad / 100)
+            return limite_superior - total_carbos
+        
+        if 'Carbohidratos' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_carbos_min(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_carbos_max(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
+        
+        def restriccion_fibras(x, datos_alimentos, alimentos_incluidos):
+            total_fibras = sum(x[i] * datos_alimentos[alimento]['fibra_dietaria'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_fibras - 25
+        
+        if 'Fibra dietaria' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_fibras(x, datos_alimentos, alimentos_incluidos)})
+        
+        def restriccion_azucares(x, datos_alimentos, requerimientos, alimentos_incluidos):
+            total_azucares = sum(x[i] * datos_alimentos[alimento]['azucar_total'] for i, alimento in enumerate(alimentos_incluidos))
+            return requerimientos['carbohidratos']/5 - total_azucares
+        
+        if 'Azucar total' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_azucares(x, datos_alimentos, requerimientos, alimentos_incluidos)})
+
+        def restriccion_calcio_min(x, datos_alimentos, alimentos_incluidos):
+            total_calcio = sum(x[i] * datos_alimentos[alimento]['calcio'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_calcio - 1300
+        
+        def restriccion_calcio_max(x, datos_alimentos, alimentos_incluidos):
+            total_calcio = sum(x[i] * datos_alimentos[alimento]['calcio'] for i, alimento in enumerate(alimentos_incluidos))
+            return 2500 - total_calcio
+        
+        if "Calcio" in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_calcio_min(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_calcio_max(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_magnesio(x, datos_alimentos, alimentos_incluidos):
+            total_magnesio = sum(x[i] * datos_alimentos[alimento]['magnesio'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_magnesio - 420
+        
+        if 'Magnesio' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_magnesio(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_fosforo_min(x, datos_alimentos, alimentos_incluidos):
+            total_fosforo = sum(x[i] * datos_alimentos[alimento]['fosforo'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_fosforo - 700
+        
+        def restriccion_fosforo_max(x, datos_alimentos, alimentos_incluidos):
+            total_fosforo = sum(x[i] * datos_alimentos[alimento]['fosforo'] for i, alimento in enumerate(alimentos_incluidos))
+            return 4000 - total_fosforo
+        
+        if "Fósforo" in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_fosforo_min(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_fosforo_max(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_potasio(x, datos_alimentos, alimentos_incluidos):
+            total_potasio = sum(x[i] * datos_alimentos[alimento]['potasio'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_potasio - 4700
+        
+        if 'Potasio' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_potasio(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_sodio_min(x, datos_alimentos, alimentos_incluidos):
+            total_sodio = sum(x[i] * datos_alimentos[alimento]['sodio'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_sodio - 1500
+        
+        def restriccion_sodio_max(x, datos_alimentos, alimentos_incluidos):
+            total_sodio = sum(x[i] * datos_alimentos[alimento]['sodio'] for i, alimento in enumerate(alimentos_incluidos))
+            return 2300 - total_sodio
+        
+        if "Sodio" in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_sodio_min(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_sodio_max(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_zinc_min(x, datos_alimentos, alimentos_incluidos):
+            total_zinc = sum(x[i] * datos_alimentos[alimento]['zinc'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_zinc - 10
+        
+        def restriccion_zinc_max(x, datos_alimentos, alimentos_incluidos):
+            total_zinc = sum(x[i] * datos_alimentos[alimento]['zinc'] for i, alimento in enumerate(alimentos_incluidos))
+            return 40 - total_zinc
+        
+        if "Zinc" in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_zinc_min(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_zinc_max(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_vitc(x, datos_alimentos, alimentos_incluidos):
+            total_vitc = sum(x[i] * datos_alimentos[alimento]['vitamina_c'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_vitc - 90
+        
+        def restriccion_vitb6(x, datos_alimentos, alimentos_incluidos):
+            total_vitb6 = sum(x[i] * datos_alimentos[alimento]['vitamina_b6'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_vitb6 - 1.5
+        
+        def restriccion_vitb12(x, datos_alimentos, alimentos_incluidos):
+            total_vitb12 = sum(x[i] * datos_alimentos[alimento]['vitamina_b12'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_vitb12 - 2.4
+        
+        def restriccion_vita(x, datos_alimentos, alimentos_incluidos):
+            total_vita = sum(x[i] * datos_alimentos[alimento]['vitamina_a_rae'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_vita - 900
+        
+        def restriccion_folato(x, datos_alimentos, alimentos_incluidos):
+            total_vitb9 = sum(x[i] * datos_alimentos[alimento]['folato_total'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_vitb9 - 400
+        
+        if 'Vitaminas' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_vitc(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_vitb6(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_vitb12(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_vita(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_folato(x, datos_alimentos, alimentos_incluidos)})
+
+        def restriccion_ag_saturado(x, datos_alimentos, requerimientos, alimentos_incluidos):
+            total_ag_saturado = sum(x[i] * datos_alimentos[alimento]['agtsaturado'] for i, alimento in enumerate(alimentos_incluidos))
+            return requerimientos['grasa']/2 - total_ag_saturado
+        
+        def restriccion_ag_monoinsaturado(x, datos_alimentos, requerimientos, alimentos_incluidos):
+            total_agtmi = sum(x[i] * datos_alimentos[alimento]['agtmi'] for i, alimento in enumerate(alimentos_incluidos))
+            return requerimientos['grasa']/2 - total_agtmi
+        
+        def restriccion_ag_poliinsaturado(x, datos_alimentos, requerimientos, alimentos_incluidos):
+            total_agtpi = sum(x[i] * datos_alimentos[alimento]['agtpi'] for i, alimento in enumerate(alimentos_incluidos))
+            return requerimientos['grasa']/2 - total_agtpi
+        
+        def restriccion_colesterol(x, datos_alimentos, alimentos_incluidos):
+            total_colesterol = sum(x[i] * datos_alimentos[alimento]['colesterol'] for i, alimento in enumerate(alimentos_incluidos))
+            return 300 - total_colesterol
+        
+        def restriccion_colina(x, datos_alimentos, alimentos_incluidos):
+            total_colina = sum(x[i] * datos_alimentos[alimento]['colesterol'] for i, alimento in enumerate(alimentos_incluidos))
+            return total_colina - 550
+        
+        if 'Acidos grasos' in nutrientes_incluidos:
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_ag_saturado(x, datos_alimentos, requerimientos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_ag_monoinsaturado(x, datos_alimentos, requerimientos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_ag_poliinsaturado(x, datos_alimentos, requerimientos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_colesterol(x, datos_alimentos, alimentos_incluidos)})
+            cons.append({'type': 'ineq', 'fun': lambda x: restriccion_colina(x, datos_alimentos, alimentos_incluidos)})
+        
         # Punto de inicio
         x0 = np.array([porciones_consumidas[alimento] for alimento in alimentos_incluidos])
 
         # Límites inferiores y superiores para cada variable
         bounds = [(0, None) for _ in alimentos_incluidos]
-
-        # Definir las restricciones
-        cons = [
-           {'type': 'eq', 'fun': lambda x: restriccion_calorias(x, datos_alimentos, requerimientos, alimentos_incluidos)},
-        ]
-
-        # Añadir la restricción de proteinas
-        cons.append({'type': 'ineq', 'fun': lambda x: restriccion_proteinas(x, datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad)})
 
         # Resolver el problema
         res = minimize(funcion_objetivo, x0, bounds=bounds, args=(datos_alimentos, porciones_consumidas, alimentos_incluidos), constraints=cons, method='SLSQP')
@@ -1382,28 +1553,319 @@ def process_diet(diet_form, nameuser):
         # Resultado de las porciones óptimas
         porciones_optimas = res.x
 
-        # Imprimir las porciones óptimas para cada alimento y calcular el total de proteínas
+        # Imprimir las porciones óptimas para cada alimento y calcular el total de nutrientes
         total_proteinas = 0
-        total_grasas=0
-        total_carbohidratos=0
+        total_grasas = 0
+        total_carbohidratos = 0
         total_calorias = 0
+
+        # Título principal
+        flash("<i class='fa fa-utensils'></i> Resultados de la Dieta:", "block-title")
+
         for alimento, porcion in zip(alimentos_incluidos, porciones_optimas):
-            flash(f"{alimento}: {round(porcion,1)} unidades")
+            porcion_unidades = round(porcion * 100 / datos_alimentos[alimento]['porcion'] * 7, 1)
+            if porcion_unidades > 0:
+                flash(f"<i class='fa fa-apple-alt'></i> {alimento}: {porcion_unidades} unidades", "mb-0 font-w500")
+
+            # Cálculos de nutrientes
             total_proteinas += porcion * datos_alimentos[alimento]['proteina']
             total_grasas += porcion * datos_alimentos[alimento]['grasas_totales']
             total_carbohidratos += porcion * datos_alimentos[alimento]['carbohidratos']
-            total_calorias += porcion * (datos_alimentos[alimento]['proteina'] * 4 + datos_alimentos[alimento]['grasas_totales'] * 9 + datos_alimentos[alimento]['carbohidratos'] *4)
+            total_calorias += porcion * (datos_alimentos[alimento]['proteina'] * 4 + datos_alimentos[alimento]['grasas_totales'] * 9 + datos_alimentos[alimento]['carbohidratos'] * 4)
 
-        flash(f"Total de proteínas en la dieta: {round(total_proteinas)} gramos")
-        flash(f"Total de grasas en la dieta: {round(total_grasas)} gramos")
-        flash(f"Total de carbohidratos en la dieta: {round(total_carbohidratos)} gramos")
-        flash(f"Total de calorias en la dieta: {round(total_calorias)} calorias")
+        # Espacio entre secciones
+        flash("", "block-spacer")
+
+        # Totales
+        flash("<i class='fa fa-chart-pie'></i> Totales Nutricionales:", "block-title")
+        flash(f"<i class='fa fa-drumstick-bite'></i> Total de proteínas: {round(total_proteinas)} gramos", "mb-0 font-size-sm")
+        flash(f"<i class='fa fa-tint'></i> Total de grasas: {round(total_grasas)} gramos", "mb-0 font-size-sm")
+        flash(f"<i class='fa fa-bread-slice'></i> Total de carbohidratos: {round(total_carbohidratos)} gramos", "mb-0 font-size-sm")
+        flash(f"<i class='fa fa-fire'></i> Total de calorías: {round(total_calorias)} calorías", "mb-0 font-size-sm")
+
+        # Calcular el total de nutrientes en la dieta
+        totales_nutrientes = {
+            'proteina': 0,
+            'grasas_totales': 0,
+            'carbohidratos': 0,
+            'fibra_dietaria': 0,
+            'azucar_total': 0,
+            'calcio': 0,
+            'hierro': 0,
+            'magnesio': 0,
+            'fosforo': 0, 
+            'potasio': 0, 
+            'sodio': 0, 
+            'zinc': 0, 
+            'cobre': 0, 
+            'selenio': 0, 
+            'vitamina_c': 0, 
+            'tiamina': 0, 
+            'riboflavina': 0, 
+            'niacina': 0, 
+            'vitamina_b6': 0, 
+            'folato_total': 0, 
+            'acido_folico': 0, 
+            'folato_alimentario': 0, 
+            'folato_dfe': 0, 
+            'colina_total': 0, 
+            'vitamina_b12': 0, 
+            'vitamina_a_rae': 0, 
+            'retinol': 0, 
+            'alfa_caroteno': 0, 
+            'beta_caroteno': 0, 
+            'criptoxantina_beta': 0, 
+            'licopeno': 0, 
+            'luteina_zeaxantina': 0, 
+            'vitamina_e': 0, 
+            'vitamina_d': 0, 
+            'vitamina_k': 0, 
+            'agtsaturado': 0, 
+            'agtmi': 0, 
+            'agtpi': 0, 
+            'colesterol': 0, 
+            'vitaminab12_agre': 0, 
+            'vitaminae_agre': 0, 
+            'cafeina': 0, 
+            'teobromina': 0, 
+            'alcohol': 0
+            # ... Agrega más nutrientes aquí
+        }
 
 
-    calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, margen_libertad, porciones_consumidas)
+        # Ejemplo de cómo se definirían los requerimientos (esto sería parte de tu configuración o datos iniciales)
+        requerimientos_nutrientes = {
+            'proteina': {
+                'min': round(requerimientos['proteina'] * (1 - margen_libertad / 100)), 
+                'max': None, 
+                'cumple': 'Las proteínas son cruciales para la reparación y construcción de tejidos, así como para funciones metabólicas y hormonales.',
+                'nocumple': 'Una ingesta insuficiente de proteínas puede llevar a la pérdida de masa muscular y a un sistema inmunológico debilitado.'
+            },
+            'grasas_totales': {
+                'min': None, 
+                'max': round(requerimientos['grasa'] * (1 + margen_libertad / 100)),
+                'cumple': 'Las grasas son esenciales para la absorción de vitaminas y la protección de órganos. También proporcionan energía.',
+                'nocumple': 'El exceso de grasas, especialmente las saturadas y trans, puede incrementar el riesgo de enfermedades cardiovasculares.'
+            },
+             'carbohidratos': {
+                'min': None,
+                'max': round(requerimientos['carbohidratos'] * (1 + margen_libertad / 100)),
+                'cumple': 'Fuente principal de energía para el cuerpo, esencial para el funcionamiento del cerebro y músculos.',
+                'nocumple': 'Una ingesta insuficiente puede causar fatiga y dificultades en la concentración.'
+            },
+            'fibra_dietaria': {
+                'min': 25, 
+                'max': None,
+                'cumple': 'Ayuda a reducir el colesterol en sangre y mejorar la salud intestinal.',
+                'nocumple': 'Una baja ingesta de fibra puede conducir a problemas de estreñimiento y a largo plazo, aumentar el riesgo de enfermedades intestinales.'
+            },
+            'azucar_total': {
+                'min': None, 
+                'max': requerimientos['carbohidratos'] * (1 + margen_libertad / 100)/5,
+                'cumple': 'Mantener los azúcares dentro de los límites ayuda a controlar los niveles de energía y reduce el riesgo de diabetes tipo 2.',
+                'nocumple': 'El consumo excesivo de azúcar puede llevar a aumento de peso, caries dentales y un mayor riesgo de enfermedades crónicas.'
+            },
+            'calcio': {
+                'min': 1300, 
+                'max': 2500,
+                'cumple': 'Esencial para la salud ósea y la función muscular. También ayuda en la coagulación de la sangre y en la transmisión de señales nerviosas.',
+                'nocumple': 'La deficiencia de calcio puede llevar a debilidad ósea y, a largo plazo, a enfermedades como la osteoporosis.'
+            },
+            'hierro': {
+                'min': 10, 
+                'max': 45,
+                'cumple': 'El hierro es crucial para la formación de hemoglobina y previene la anemia.',
+                'nocumple': 'Una deficiencia de hierro puede llevar a fatiga, debilidad y problemas de concentración.'
+            },
+            'magnesio': {
+                'min': 420, 
+                'max': None,
+                'cumple': 'Importante para la función muscular y nerviosa, la regulación del azúcar en la sangre y la presión arterial.',
+                'nocumple': 'La deficiencia de magnesio puede causar espasmos musculares, osteoporosis y problemas cardíacos.'
+            },
+            'fosforo': {
+                'min': 700, 
+                'max': 4000,
+                'cumple': 'Esencial para la formación de huesos y dientes y juega un papel importante en cómo el cuerpo usa los carbohidratos y las grasas.',
+                'nocumple': 'Una ingesta insuficiente puede resultar en debilidad ósea o muscular.'
+            },
+            'potasio': {
+                'min': 4700, 
+                'max': None,
+                'cumple': 'Necesario para el funcionamiento adecuado de los nervios y músculos, incluido el corazón.',
+                'nocumple': 'La falta de potasio puede provocar debilidad muscular, calambres y fatiga.'
+            },
+            'sodio': {
+                'min': 1500, 
+                'max': 2300,
+                'cumple': 'Esencial para mantener el equilibrio de fluidos y necesario para la función muscular y nerviosa.',
+                'nocumple': 'El exceso de sodio puede elevar la presión arterial y aumentar el riesgo de enfermedades cardíacas.'
+            },
+            'zinc': {
+                'min': 10, 
+                'max': 40,
+                'cumple': 'Importante para la función inmune, la cicatrización de heridas y la percepción del gusto y el olfato.',
+                'nocumple': 'La deficiencia de zinc puede llevar a pérdida del apetito, retraso en el crecimiento y disminución de la capacidad inmune.'
+            },
+            'cobre': {
+                'min': 0.9, 
+                'max': 10,
+                'cumple': 'Fundamental para la formación de glóbulos rojos y mantenimiento de los nervios y el sistema inmunitario.',
+                'nocumple': 'La deficiencia de cobre puede resultar en anemia y debilidad ósea.'
+            },
+            'selenio': {
+                'min': 55, 
+                'max': 400,
+                'cumple': 'Contribuye a la protección de las células contra el daño oxidativo y al funcionamiento de la glándula tiroides.',
+                'nocumple': 'La baja ingesta de selenio puede aumentar el riesgo de problemas tiroideos y de sistema inmune.'
+            },
+            'vitamina_c': {
+                'min': 90, 
+                'max': None,
+                'cumple': 'Esencial para la formación de colágeno, la absorción del hierro y el sistema inmune.',
+                'nocumple': 'La deficiencia puede provocar escorbuto, caracterizado por sangrado de encías y fatiga.'
+            },
+             'tiamina': {
+                'min': 1.2,
+                'max': None,
+                'cumple': 'Vital para el metabolismo energético y la función nerviosa.',
+                'nocumple': 'La deficiencia puede causar problemas neurológicos y cardíacos.'
+            },
+            'riboflavina': {
+                'min': 1.3,
+                'max': None,
+                'cumple': 'Importante para el crecimiento, la producción de energía y la función celular.',
+                'nocumple': 'La falta de riboflavina puede llevar a problemas de piel y visión.'
+            },
+            'niacina': {
+                'min': 16,
+                'max': 35,
+                'cumple': 'Esencial para la conversión de alimentos en energía y el mantenimiento de células saludables.',
+                'nocumple': 'Una deficiencia puede causar pelagra, afectando la piel, el sistema digestivo y la mente.'
+            },
+            'vitamina_b6': {
+                'min': 1.5,
+                'max': None,
+                'cumple': 'Crucial para la función cerebral y la producción de hormonas y glóbulos rojos.',
+                'nocumple': 'La falta de vitamina B6 puede causar anemia y problemas del sistema nervioso.'
+            },
+            'folato_total': {
+                'min': 400,
+                'max': None,
+                'cumple': 'Importante para la formación de células sanguíneas y el desarrollo fetal.',
+                'nocumple': 'La deficiencia puede conducir a anemia y defectos del tubo neural en el embarazo.'
+            },
+            'colina_total': {
+                'min': 550,
+                'max': None,
+                'cumple': 'Esencial para la función hepática, el desarrollo cerebral y el metabolismo muscular.',
+                'nocumple': 'La falta de colina puede afectar el hígado y el cerebro.'
+            },
+            'vitamina_b12': {
+                'min': 2.4,
+                'max': None,
+                'cumple': 'Necesaria para la formación de glóbulos rojos y el funcionamiento del sistema nervioso.',
+                'nocumple': 'La deficiencia puede resultar en anemia y daño nervioso.'
+            },
+            'vitamina_a_rae': {
+                'min': 900,
+                'max': None,
+                'cumple': 'Crucial para la visión, el sistema inmunitario y la reproducción.',
+                'nocumple': 'La falta de vitamina A puede causar ceguera nocturna y aumentar el riesgo de infecciones.'
+            },
+            'vitamina_e': {
+                'min': 15,
+                'max': 1000,
+                'cumple': 'Actúa como antioxidante, protegiendo las células del daño.',
+                'nocumple': 'La deficiencia es rara, pero puede causar problemas neuromusculares.'
+            },
+            'vitamina_d': {
+                'min': 10,
+                'max': 50,
+                'cumple': 'Esencial para la salud ósea y el sistema inmunológico.',
+                'nocumple': 'La falta de vitamina D puede llevar a la debilidad ósea y muscular.'
+            },
+            'vitamina_k': {
+                'min': 120,
+                'max': None,
+                'cumple': 'Importante para la coagulación de la sangre y la salud ósea.',
+                'nocumple': 'Una deficiencia puede causar sangrado y afectar la salud de los huesos.'
+            },
+            'agtsaturado': {
+                'min': None,
+                'max': round(requerimientos['grasa'] * (1 + margen_libertad / 100)/2),
+                'cumple': 'Limitar los ácidos grasos saturados puede ayudar a mantener saludables los niveles de colesterol.',
+                'nocumple': 'El exceso de grasas saturadas puede aumentar el riesgo de enfermedades cardíacas.'
+            },
+            'agtmi': {
+                'min': None,
+                'max': round(requerimientos['grasa'] * (1 + margen_libertad / 100)/2),
+                'cumple': 'Las grasas monoinsaturadas son beneficiosas para la salud del corazón.',
+                'nocumple': 'No cumplir con este requerimiento puede afectar negativamente la salud cardiovascular.'
+            },
+            'agtpi': {
+                'min': None,
+                'max': round(requerimientos['grasa'] * (1 + margen_libertad / 100)/2),
+                'cumple': 'Los ácidos grasos poliinsaturados son esenciales para muchas funciones corporales.',
+                'nocumple': 'Una ingesta insuficiente puede afectar la salud del corazón, el cerebro y la piel.'
+            },
+            'colesterol': {
+                'min': None,
+                'max': 300,
+                'cumple': 'Mantener el colesterol dentro de un rango saludable es crucial para la salud cardiovascular.',
+                'nocumple': 'Niveles altos de colesterol pueden aumentar el riesgo de enfermedad cardíaca.'
+            }
+            # ... y así sucesivamente para otros nutrientes
+        }
 
-    flash("Guardado el tamaño de las porciones")
+        for alimento, porcion in zip(alimentos_incluidos, porciones_optimas):
+            for nutriente in totales_nutrientes.keys():
+                totales_nutrientes[nutriente] += porcion * datos_alimentos[alimento][nutriente]
 
+        # Verificar si se cumplen los límites de cada nutriente
+        cumplimientos = {}
+        for nutriente, total in totales_nutrientes.items():
+            if nutriente in requerimientos_nutrientes:
+                if requerimientos_nutrientes[nutriente]['max']==None:
+                    cumplimiento = requerimientos_nutrientes[nutriente]['min'] <= round(total)
+                elif requerimientos_nutrientes[nutriente]['min']==None:
+                    cumplimiento = round(total) <= requerimientos_nutrientes[nutriente]['max']
+                else:
+                    cumplimiento = requerimientos_nutrientes[nutriente]['min'] <= round(total) <= requerimientos_nutrientes[nutriente]['max']
+                cumplimientos[nutriente] = cumplimiento
+
+        # Separar cumplimientos y no cumplimientos
+        cumplidos = []
+        no_cumplidos = []
+
+        for nutriente, cumplimiento in cumplimientos.items():
+            if cumplimiento:
+                texto = requerimientos_nutrientes[nutriente].get('cumple', 'Requerimiento cumplido.')
+                cumplidos.append(f"<strong>{nutriente}</strong>: {texto}")
+            else:
+                texto = requerimientos_nutrientes[nutriente].get('nocumple', 'Requerimiento no cumplido.')
+                no_cumplidos.append(f"<strong>{nutriente}</strong>: {texto}")
+
+
+        # Espacio entre secciones
+        flash("", "block-spacer")
+
+        # Imprimir los resultados no cumplidos
+        if no_cumplidos:
+            flash("<i class='fa fa-exclamation-triangle'></i> Requerimientos No Cumplidos:", "block-title")
+            for mensaje in no_cumplidos:
+                flash(mensaje, "mb-0 font-size-sm")
+
+        # Espacio entre secciones
+        flash("", "block-spacer")
+
+        # Imprimir los resultados cumplidos
+        #if cumplidos:
+        #    flash("<i class='fa fa-check-circle'></i> Requerimientos Cumplidos:", "block-title")
+        #    for mensaje in cumplidos:
+        #        flash(mensaje, "mb-0 font-size-sm")
+
+    calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, nutrientes_incluidos, margen_libertad, porciones_consumidas)
 
 
 
