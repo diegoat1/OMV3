@@ -1,0 +1,1335 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_head %}
+<!-- Aseguramos que Chart.js se cargue solo una vez, priorizando la versión específica que necesitamos -->
+<script>
+    // Verificamos si Chart.js ya está cargado
+    if (typeof Chart === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"><\/script>');
+    } else {
+        console.log('Chart.js ya está cargado, versión:', Chart.version);
+    }
+</script>
+<!-- Cargamos ApexCharts para el gráfico de barras horizontales -->
+<script>
+    if (typeof ApexCharts === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js"><\/script>');
+        console.log('ApexCharts cargado desde el head');
+    } else {
+        console.log('ApexCharts ya está cargado');
+    }
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="block block-rounded">
+        <div class="block-header block-header-default">
+            <h3 class="block-title">Historial de Análisis de Fuerza</h3>
+            <div class="block-options">
+                <a href="{{ url_for('strengthstandard') }}" class="btn btn-alt-primary">
+                    <i class="fa fa-plus me-1"></i> Nuevo Análisis
+                </a>
+            </div>
+        </div>
+        <div class="block-content">
+            {% if registros %}
+                {% for registro in registros %}
+                    <div class="card mb-4 shadow-sm">
+                        {% set score_class_css = registro.score_class | lower | replace(' ', '-') if registro.score_class else 'default' %}
+                        <div class="card-header strength-card-header {{ score_class_css }} d-flex flex-column flex-md-row justify-content-between align-items-center"
+                             id="heading-hist-{{ loop.index }}"
+                             data-bs-toggle="collapse"
+                             data-bs-target="#collapse-hist-{{ loop.index }}"
+                             aria-expanded="false"
+                             aria-controls="collapse-hist-{{ loop.index }}"
+                             style="cursor: pointer;">
+                            <div class="date-info mb-2 mb-md-0">
+                                <i class="fa fa-calendar me-1"></i>
+                                <span class="fw-bold">{{ registro.fecha_analisis.split(' ')[0] if registro.fecha_analisis else 'N/A' }}</span>
+                                <small class="ms-2 text-muted">#{{ registro.id }}</small>
+                            </div>
+                            <div class="score-display text-center py-1">
+                                <div class="strength-summary-score">{{ registro.total_score | round(1) if registro.total_score is not none else 'N/A' }}</div>
+                                <div class="strength-summary-class badge bg-light text-dark">{{ registro.score_class if registro.score_class else 'N/A' }}</div>
+                            </div>
+                        </div>
+
+                        <div id="collapse-hist-{{ loop.index }}" class="collapse" aria-labelledby="heading-hist-{{ loop.index }}">
+                            <div class="card-body">
+                                <div class="row">
+    <!-- Fila 1: Score principal y categorías | Últimos levantamientos -->
+    <div class="col-md-6 mb-4">
+        <!-- Puntaje principal y por categoría -->
+        {% set score_class_bg = '#009688' %} <!-- Default intermediate color -->
+        {% if registro.score_class|lower == 'subpar' %}
+            {% set score_class_bg = '#e91e63' %}
+        {% elif registro.score_class|lower == 'untrained' %}
+            {% set score_class_bg = '#673ab7' %}
+        {% elif registro.score_class|lower == 'novice' %}
+            {% set score_class_bg = '#3f51b5' %}
+        {% elif registro.score_class|lower == 'intermediate' %}
+            {% set score_class_bg = '#009688' %}
+        {% elif registro.score_class|lower == 'advanced' %}
+            {% set score_class_bg = '#cddc39' %}
+        {% elif registro.score_class|lower == 'proficient' %}
+            {% set score_class_bg = '#4caf50' %}
+        {% elif registro.score_class|lower == 'exceptional' %}
+            {% set score_class_bg = '#ffc107' %}
+        {% elif registro.score_class|lower == 'elite' %}
+            {% set score_class_bg = '#ff5722' %}
+        {% elif registro.score_class|lower == 'world-class' %}
+            {% set score_class_bg = '#f44336' %}
+        {% endif %}
+        <div class="card mb-3 strength-analysis-card {{ registro.score_class|lower|replace(' ', '-') }}">
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex flex-column">
+                            {% if registro.categories_results_json %}
+                                {% set cat_data = registro.categories_results_json %}
+                                {% if cat_data %}
+                                    {% if cat_data.squat is defined and cat_data.squat is number %}
+                                        <div class="exercise-row">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="exercise-name">SQUAT</span>
+                                                <span class="exercise-score">{{ cat_data.squat | round(1) }}</span>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    {% if cat_data.floorPull is defined and cat_data.floorPull is number %}
+                                        <div class="exercise-row">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="exercise-name">FLOOR PULL</span>
+                                                <span class="exercise-score">{{ cat_data.floorPull | round(1) }}</span>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    {% if cat_data.horizontalPress is defined and cat_data.horizontalPress is number %}
+                                        <div class="exercise-row">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="exercise-name">HORIZONTAL PRESS</span>
+                                                <span class="exercise-score">{{ cat_data.horizontalPress | round(1) }}</span>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    {% if cat_data.verticalPress is defined and cat_data.verticalPress is number %}
+                                        <div class="exercise-row">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="exercise-name">VERTICAL PRESS</span>
+                                                <span class="exercise-score">{{ cat_data.verticalPress | round(1) }}</span>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    {% if cat_data.pullup is defined and cat_data.pullup is number %}
+                                        <div class="exercise-row">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="exercise-name">PULL-UP / ROW</span>
+                                                <span class="exercise-score">{{ cat_data.pullup | round(1) }}</span>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex">
+                        <div class="score-display w-100">
+                            <div>
+                                <div class="score-label">Score</div>
+                                <div class="total-score">{{ registro.total_score | round(1) }}</div>
+                                <div class="score-classification">{{ registro.score_class }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <!-- Últimos levantamientos registrados -->
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Últimos Levantamientos Registrados</h5>
+            </div>
+            <div class="card-body">
+                <div class="latest-lifts">
+                    <div class="mb-3">
+                        <small class="text-muted">Registrado el {{ registro.fecha_analisis.split(' ')[0] if registro.fecha_analisis else 'N/A' }}</small>
+                    </div>
+                    {% set data_source = registro.lift_fields_json or registro.lifts_json %}
+                    {% if data_source %}
+                        <h6 class="mt-3 mb-2">Levantamientos Registrados:</h6>
+                        <ul class="list-group list-group-flush">
+                            {% if data_source.backSquat %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Sentadilla Trasera
+                                    <span class="badge bg-danger rounded-pill">{{ data_source.backSquat.weight | round(1) }} kg x {{ data_source.backSquat.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.frontSquat %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Sentadilla Frontal
+                                    <span class="badge bg-danger rounded-pill">{{ data_source.frontSquat.weight | round(1) }} kg x {{ data_source.frontSquat.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.deadlift %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Peso Muerto
+                                    <span class="badge bg-warning text-dark rounded-pill">{{ data_source.deadlift.weight | round(1) }} kg x {{ data_source.deadlift.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.sumoDeadlift %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Peso Muerto Sumo
+                                    <span class="badge bg-warning text-dark rounded-pill">{{ data_source.sumoDeadlift.weight | round(1) }} kg x {{ data_source.sumoDeadlift.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.powerClean %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Cargada de Potencia
+                                    <span class="badge bg-warning text-dark rounded-pill">{{ data_source.powerClean.weight | round(1) }} kg x {{ data_source.powerClean.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.benchPress %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Press de Banca
+                                    <span class="badge bg-primary rounded-pill">{{ data_source.benchPress.weight | round(1) }} kg x {{ data_source.benchPress.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.inclineBenchPress %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Press Inclinado
+                                    <span class="badge bg-primary rounded-pill">{{ data_source.inclineBenchPress.weight | round(1) }} kg x {{ data_source.inclineBenchPress.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.dip %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Fondos en Paralelas
+                                    <span class="badge bg-primary rounded-pill">
+                                        {% if data_source.dip.weight > registro.bodyweight %}+{{ (data_source.dip.weight - registro.bodyweight) | round(1) }}{% else %}{{ data_source.dip.weight | round(1) }}{% endif %} kg x {{ data_source.dip.reps }}
+                                    </span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.overheadPress %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Press Militar
+                                    <span class="badge bg-info text-dark rounded-pill">{{ data_source.overheadPress.weight | round(1) }} kg x {{ data_source.overheadPress.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.pushPress %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Push Press
+                                    <span class="badge bg-info text-dark rounded-pill">{{ data_source.pushPress.weight | round(1) }} kg x {{ data_source.pushPress.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.snatchPress %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Press de Arranque
+                                    <span class="badge bg-info text-dark rounded-pill">{{ data_source.snatchPress.weight | round(1) }} kg x {{ data_source.snatchPress.reps }}</span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.pullup %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Dominada Prona
+                                    <span class="badge bg-success rounded-pill">
+                                        {% if data_source.pullup.weight > registro.bodyweight %}+{{ (data_source.pullup.weight - registro.bodyweight) | round(1) }}{% else %}{{ data_source.pullup.weight | round(1) }}{% endif %} kg x {{ data_source.pullup.reps }}
+                                    </span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.chinup %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Dominada Supina
+                                    <span class="badge bg-success rounded-pill">
+                                        {% if data_source.chinup.weight > registro.bodyweight %}+{{ (data_source.chinup.weight - registro.bodyweight) | round(1) }}{% else %}{{ data_source.chinup.weight | round(1) }}{% endif %} kg x {{ data_source.chinup.reps }}
+                                    </span>
+                                </li>
+                            {% endif %}
+                            {% if data_source.pendlayRow %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Remo Pendlay
+                                    <span class="badge bg-success rounded-pill">{{ data_source.pendlayRow.weight | round(1) }} kg x {{ data_source.pendlayRow.reps }}</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-light mt-3" role="alert">
+                            <small><i class="fas fa-info-circle me-1"></i> No hay datos detallados de levantamientos para este registro.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Fila 2: Detalle de levantamientos | Fortalezas y debilidades (radar) -->
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <!-- Detalle de levantamientos -->
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Detalle de Levantamientos</h5>
+            </div>
+            <div class="card-body">
+                {% if registro.lifts_results_json %}
+                    {% set lifts_data = registro.lifts_results_json %}
+                    {% if lifts_data and (lifts_data is mapping or (lifts_data is iterable and lifts_data is not string)) %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Ejercicio</th>
+                                        <th>Score</th>
+                                        <th>Peso 1RM</th>
+                                        <th>Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% if lifts_data is mapping %}
+                                    {% for key, lift in lifts_data.items() %}
+                                        {% if lift.userScore is defined and lift.userScore is not none and lift.userScore is number %}
+                                        <tr>
+                                             <td>{% if key == 'backSquat' %}Sentadilla Trasera
+                                                 {% elif key == 'benchPress' %}Press de Banca
+                                                 {% elif key == 'chinup' %}Dominada Supina
+                                                 {% elif key == 'deadlift' %}Peso Muerto
+                                                 {% elif key == 'dip' %}Fondos
+                                                 {% elif key == 'frontSquat' %}Sentadilla Frontal
+                                                 {% elif key == 'inclineBenchPress' %}Press Inclinado
+                                                 {% elif key == 'overheadPress' %}Press Militar
+                                                 {% elif key == 'pendlayRow' %}Remo Pendlay
+                                                 {% elif key == 'powerClean' %}Cargada de Potencia
+                                                 {% elif key == 'pullup' %}Dominada
+                                                 {% elif key == 'pushPress' %}Push Press
+                                                 {% elif key == 'snatchPress' %}Press de Arranque
+                                                 {% elif key == 'sumoDeadlift' %}Peso Muerto Sumo
+                                                 {% else %}{{ key }}
+                                                 {% endif %}
+                                             </td>
+                                             <td>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="me-2">{{ "%.1f"|format(lift.userScore) }}</span>
+                                                    <div class="progress" style="height: 8px; width: 60px;">
+                                                        <div class="progress-bar {% if lift.userScore < 30 %}bg-danger
+                                                                            {% elif lift.userScore < 45 %}bg-warning
+                                                                            {% elif lift.userScore < 60 %}bg-info
+                                                                            {% elif lift.userScore < 75 %}bg-primary
+                                                                            {% elif lift.userScore < 87.5 %}bg-success
+                                                                            {% else %}bg-purple{% endif %}" 
+                                                            style="width: {{ (lift.userScore/125*100)|int }}%" role="progressbar"></div>
+                                                    </div>
+                                                </div>
+                                             </td>
+                                             <td>{% if lift.user1RM is defined %}{{ lift.user1RM }} kg{% else %}N/A{% endif %}</td>
+                                             <td>{% if lift.expected is defined %}{{ lift.expected }} kg{% else %}N/A{% endif %}</td>
+                                        </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% elif lifts_data is iterable %}
+                                    {% for lift_info in lifts_data %}
+                                        <tr>
+                                            <td><strong>{{ lift_info.name }}</strong></td>
+                                            <td class="fw-bold">{{ lift_info.score | round(1) if lift_info.score is defined and lift_info.score is number and lift_info.score is not none else 'N/A' }}</td>
+                                            <td>
+                                                {% set class_text = lift_info.classification | default('N/A') %}
+                                                {% set class_badge = 'default' %}
+                                                {% if class_text | lower == 'beginner' or class_text | lower == 'novice' %}
+                                                    {% set class_badge = 'info' %}
+                                                {% elif class_text | lower == 'intermediate' %}
+                                                    {% set class_badge = 'primary' %}
+                                                {% elif class_text | lower == 'advanced' %}
+                                                    {% set class_badge = 'success' %}
+                                                {% endif %}
+                                                <div class="badge bg-{{ class_badge }}">{{ class_text }}</div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="alert alert-info">No hay datos detallados de levantamientos o el formato no es reconocido.</p>
+                        {% if registro.lifts_results_json %}
+                        <small>Raw data:</small>
+                        <pre style="font-size: 0.75em; padding: 5px;">{{ registro.lifts_results_json | tojson(indent=2) }}</pre>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <p class="alert alert-info">No hay datos detallados de levantamientos.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <!-- Fortalezas y debilidades relativas (Radar) -->
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Fortalezas y Debilidades Relativas</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="strengthChart{{ loop.index }}" width="300" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Fila 3: Resumen de rendimiento | Gráfico de músculos -->
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <!-- Resumen de rendimiento -->
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Resumen de Rendimiento</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Wilks (Powerlifting):</label>
+                            <div class="fs-5">{{ registro.powerlifting_wilks | round(2) if registro.powerlifting_wilks is not none else 'N/A' }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Total (Powerlifting):</label>
+                            <div class="fs-5">{{ registro.powerlifting_total | round(2) if registro.powerlifting_total is not none else 'N/A' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Levantamiento Más Fuerte:</label>
+                    <div><span class="badge bg-success fs-6">{{ registro.strongest_lift_name if registro.strongest_lift_name else 'N/A' }}</span></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Levantamiento Más Débil:</label>
+                    <div><span class="badge bg-warning text-dark fs-6">{{ registro.weakest_lift_name if registro.weakest_lift_name else 'N/A' }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <!-- Gráfico de músculos -->
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Grupos Musculares</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12 d-flex justify-content-center">
+                        <canvas id="muscleGroupsChart{{ loop.index }}" width="300" height="300"></canvas>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Grupos Musculares Más Fuertes:</label>
+                        <div>
+                            {% if registro.strongest_muscle_groups_names and registro.strongest_muscle_groups_names is iterable and not registro.strongest_muscle_groups_names is string %}
+                                {% for grupo in registro.strongest_muscle_groups_names %}
+                                    <span class="badge bg-success me-1 mb-1">{{ grupo }}</span>
+                                {% endfor %}
+                            {% elif registro.strongest_muscle_groups_names %}
+                                <span class="badge bg-success">{{ registro.strongest_muscle_groups_names }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Grupos Musculares Más Débiles:</label>
+                        <div>
+                            {% if registro.weakest_muscle_groups_names and registro.weakest_muscle_groups_names is iterable and not registro.weakest_muscle_groups_names is string %}
+                                {% for grupo in registro.weakest_muscle_groups_names %}
+                                    <span class="badge bg-warning text-dark me-1 mb-1">{{ grupo }}</span>
+                                {% endfor %}
+                            {% elif registro.weakest_muscle_groups_names %}
+                                <span class="badge bg-warning text-dark">{{ registro.weakest_muscle_groups_names }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+                            </div>
+                        </div>
+                    </div>
+                    {% if not loop.last %}<hr class="my-4">{% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle me-1"></i> No hay registros de análisis de fuerza guardados.
+                </div>
+            {% endif %}
+            <div class="mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-alt-secondary">
+                    <i class="fa fa-arrow-left me-1"></i> Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Vaciar la consola para ver solo los mensajes nuevos
+        console.clear();
+        console.log('Cargando historial de fuerza - Versión depuración');
+        
+        // Verificar que ApexCharts esté cargado
+        if (typeof ApexCharts !== 'undefined') {
+            console.log('ApexCharts cargado correctamente en historial-fuerzas, versión:', ApexCharts.version);
+        } else {
+            console.error('ApexCharts no está cargado. Intentando cargar...');
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js';
+            script.onload = function() {
+                console.log('ApexCharts cargado manualmente con éxito');
+            };
+            document.head.appendChild(script);
+        }
+        
+        var activeCharts = {};
+        var rawStrengthDataItems = [];
+        var rawMuscleGroupDataItems = [];
+
+        // Mostrar cantidad de registros disponibles
+        console.log('Número total de registros:', {{ registros|length }});
+        
+        {% for registro in registros %}
+            try {
+                {% if registro.lifts_results_json %}
+                    console.log('Procesando lifts_results_json para registro #{{ loop.index }}');
+                    var rawLiftData = {{ registro.lifts_results_json | tojson | safe }};
+                    console.log('Dato raw:', typeof rawLiftData, rawLiftData);
+                    rawStrengthDataItems.push({
+                        id: {{ loop.index }},
+                        rawData: rawLiftData
+                    });
+                {% else %}
+                    console.warn('El registro #{{ loop.index }} no tiene datos de lifts_results_json');
+                {% endif %}
+                
+                {% if registro.muscle_groups_results_json %}
+                    console.log('Procesando muscle_groups_results_json para registro #{{ loop.index }}');
+                    var rawMuscleData = {{ registro.muscle_groups_results_json | tojson | safe }};
+                    console.log('Dato raw:', typeof rawMuscleData, rawMuscleData);
+                    rawMuscleGroupDataItems.push({
+                        id: {{ loop.index }},
+                        rawData: rawMuscleData
+                    });
+                {% else %}
+                    console.warn('El registro #{{ loop.index }} no tiene datos de muscle_groups_results_json');
+                {% endif %}
+            } catch (error) {
+                console.error('Error procesando registro #{{ loop.index }}:', error);
+            }
+        {% endfor %}
+
+        console.log('Raw Strength Data Items:', rawStrengthDataItems);
+        console.log('Raw Muscle Group Data Items:', rawMuscleGroupDataItems);
+
+        var allStrengthData = rawStrengthDataItems.map(function(item) {
+            var strength_data_obj = { id: item.id, labels: [], scores: [], maxScores: [], backgroundColor: [], borderColor: [], pointBackgroundColor: [], pointBorderColor: [] };
+            var lifts_data = item.rawData;
+            
+            // Definir grupos de ejercicios para categorización visual
+            var exerciseGroups = {};
+            
+            // Sentadilla
+            exerciseGroups['Sentadilla'] = {
+                exercises: ['backSquat', 'frontSquat'],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                pointBorderColor: '#fff'
+            };
+            
+            // Peso Muerto
+            exerciseGroups['Peso Muerto'] = {
+                exercises: ['deadlift', 'sumoDeadlift', 'powerClean'],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                pointBorderColor: '#fff'
+            };
+            
+            // Press de Banca
+            exerciseGroups['Press de Banca'] = {
+                exercises: ['benchPress', 'inclineBenchPress', 'dip'],
+                backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                pointBackgroundColor: 'rgba(255, 206, 86, 1)',
+                pointBorderColor: '#fff'
+            };
+            
+            // Press de Hombros
+            exerciseGroups['Press de Hombros'] = {
+                exercises: ['overheadPress', 'pushPress', 'snatchPress'],
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                pointBorderColor: '#fff'
+            };
+            
+            // Dominadas/Remo
+            exerciseGroups['Dominadas/Remo'] = {
+                exercises: ['pullup', 'chinup', 'pendlayRow'],
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                pointBackgroundColor: 'rgba(153, 102, 255, 1)',
+                pointBorderColor: '#fff'
+            };
+            
+            // Otros
+            exerciseGroups['Otros'] = {
+                exercises: [],
+                backgroundColor: 'rgba(201, 203, 207, 0.2)',
+                borderColor: 'rgba(201, 203, 207, 1)',
+                pointBackgroundColor: 'rgba(201, 203, 207, 1)',
+                pointBorderColor: '#fff'
+            };
+
+            if (typeof lifts_data === 'object' && lifts_data !== null) {
+                // Procesar los datos en cualquier formato (array u objeto)
+                var processedLifts = [];
+                
+                if (Array.isArray(lifts_data)) { 
+                    lifts_data.forEach(function(lift_info) {
+                        if (lift_info.user1RM !== undefined && typeof lift_info.user1RM === 'number' && lift_info.user1RM > 0 &&
+                            lift_info.expected !== undefined && typeof lift_info.expected === 'number' && lift_info.expected > 0) {
+                            processedLifts.push({
+                                name: lift_info.name || 'Unknown Lift',
+                                key: '',  // No tenemos la clave en formato array
+                                user1RM: lift_info.user1RM,
+                                expected: lift_info.expected,
+                                percent: Math.min(Math.round((lift_info.user1RM / lift_info.expected) * 100), 150) // Limitamos a 150%
+                            });
+                        }
+                    });
+                } else { 
+                    for (var lift_key in lifts_data) {
+                        if (lifts_data.hasOwnProperty(lift_key)) {
+                            var lift_info = lifts_data[lift_key];
+                            if (lift_info.user1RM !== undefined && typeof lift_info.user1RM === 'number' && lift_info.user1RM > 0 &&
+                                lift_info.expected !== undefined && typeof lift_info.expected === 'number' && lift_info.expected > 0) {
+                                processedLifts.push({
+                                    name: lift_info.name || lift_key.replace(/([A-Z])/g, ' $1').trim().charAt(0).toUpperCase() + lift_key.replace(/([A-Z])/g, ' $1').trim().slice(1),
+                                    key: lift_key,
+                                    user1RM: lift_info.user1RM,
+                                    expected: lift_info.expected,
+                                    percent: Math.min(Math.round((lift_info.user1RM / lift_info.expected) * 100), 150) // Limitamos a 150%
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // Ordenar los ejercicios para que los del mismo grupo estén juntos
+                processedLifts.sort(function(a, b) {
+                    var groupA = 'Otros';
+                    var groupB = 'Otros';
+                    
+                    // Encontrar a qué grupo pertenece cada ejercicio
+                    for (var groupName in exerciseGroups) {
+                        if (exerciseGroups[groupName].exercises.includes(a.key)) {
+                            groupA = groupName;
+                        }
+                        if (exerciseGroups[groupName].exercises.includes(b.key)) {
+                            groupB = groupName;
+                        }
+                    }
+                    
+                    // Ordenar primero por grupo
+                    if (groupA !== groupB) {
+                        return Object.keys(exerciseGroups).indexOf(groupA) - Object.keys(exerciseGroups).indexOf(groupB);
+                    }
+                    
+                    // Si son del mismo grupo, ordenar por nombre
+                    return a.name.localeCompare(b.name);
+                });
+                
+                // Agregar cada ejercicio individualmente con su color de grupo
+                processedLifts.forEach(function(lift) {
+                    var group = exerciseGroups['Otros']; // Grupo predeterminado
+                    
+                    // Buscar a qué grupo pertenece
+                    for (var groupName in exerciseGroups) {
+                        if (exerciseGroups[groupName].exercises.includes(lift.key)) {
+                            group = exerciseGroups[groupName];
+                            break;
+                        }
+                    }
+                    
+                    strength_data_obj.labels.push(lift.name);
+                    strength_data_obj.scores.push(lift.percent);
+                    strength_data_obj.maxScores.push(100); // El esperado siempre es 100%
+                    
+                    // Agregar información de color basada en el grupo
+                    strength_data_obj.backgroundColor.push(group.backgroundColor);
+                    strength_data_obj.borderColor.push(group.borderColor);
+                    strength_data_obj.pointBackgroundColor.push(group.pointBackgroundColor);
+                    strength_data_obj.pointBorderColor.push(group.pointBorderColor);
+                });
+            }
+            return strength_data_obj;
+        });
+
+        var allMuscleGroupsData = rawMuscleGroupDataItems.map(function(item){
+            var muscle_group_obj = { id: item.id, labels: [], scores: [], colors: [] };
+            var muscle_groups = item.rawData;
+
+            if (typeof muscle_groups === 'object' && muscle_groups !== null) {
+                console.log('Procesando datos de grupos musculares:', muscle_groups);
+                
+                // Estructura de grupos agrupados por proximidad y función muscular
+                const groupOrder = [
+                    // Miembro inferior
+                    "squat", "legPress", "legExtension", "legCurl", "calfRaise",
+                    // Espalda y dominadas
+                    "pullup", "chinup", "latPulldown", "rowingMachine", "pendlayRow", "tBar", 
+                    // Empujes horizontales
+                    "horizontalPress", "benchPress", "inclineBenchPress", "declineBenchPress", "dip", "pushup",
+                    // Empujes verticales
+                    "verticalPress", "overheadPress", "pushPress", "shoulderPress",
+                    // Levantamientos y peso muerto
+                    "floorPull", "deadlift", "sumoDeadlift", "powerClean", "snatch",
+                    // Accesorios
+                    "bicepsCurl", "tricepsExtension", "lateralRaise", "facePull", "coreExercise"
+                ];
+                
+                // Mapa de nombres amigables para los ejercicios
+                const friendlyNames = {
+                    "squat": "Sentadilla",
+                    "legPress": "Prensa",
+                    "legExtension": "Extensión",
+                    "legCurl": "Curl Femoral",
+                    "calfRaise": "Pantorrilla",
+                    "pullup": "Dominadas",
+                    "chinup": "Dominadas Supinas",
+                    "latPulldown": "Jalón al Pecho",
+                    "rowingMachine": "Remo Máquina",
+                    "pendlayRow": "Remo Pendlay",
+                    "tBar": "Remo T-Bar",
+                    "horizontalPress": "Press Horizontal",
+                    "benchPress": "Press Banca",
+                    "inclineBenchPress": "Press Inclinado",
+                    "declineBenchPress": "Press Declinado",
+                    "dip": "Fondos",
+                    "pushup": "Flexiones",
+                    "verticalPress": "Press Vertical",
+                    "overheadPress": "Press Militar",
+                    "pushPress": "Push Press",
+                    "shoulderPress": "Press Hombros",
+                    "floorPull": "Levantamientos",
+                    "deadlift": "Peso Muerto",
+                    "sumoDeadlift": "Peso Muerto Sumo",
+                    "powerClean": "Power Clean",
+                    "snatch": "Arrancada",
+                    "bicepsCurl": "Curl Bíceps",
+                    "tricepsExtension": "Extensión Tríceps",
+                    "lateralRaise": "Elevación Lateral",
+                    "facePull": "Face Pull",
+                    "coreExercise": "Core"
+                };
+                
+                // Colores organizados por grupos funcionales
+                const colorGroups = {
+                    // Rojo - Piernas
+                    "squat": "rgba(255, 99, 132, 0.8)",
+                    "legPress": "rgba(255, 99, 132, 0.8)",
+                    "legExtension": "rgba(255, 99, 132, 0.8)",
+                    "legCurl": "rgba(255, 99, 132, 0.8)",
+                    "calfRaise": "rgba(255, 99, 132, 0.8)",
+                    
+                    // Azul - Espalda
+                    "pullup": "rgba(54, 162, 235, 0.8)",
+                    "chinup": "rgba(54, 162, 235, 0.8)",
+                    "latPulldown": "rgba(54, 162, 235, 0.8)",
+                    "rowingMachine": "rgba(54, 162, 235, 0.8)",
+                    "pendlayRow": "rgba(54, 162, 235, 0.8)",
+                    "tBar": "rgba(54, 162, 235, 0.8)",
+                    
+                    // Amarillo - Pecho
+                    "horizontalPress": "rgba(255, 206, 86, 0.8)",
+                    "benchPress": "rgba(255, 206, 86, 0.8)",
+                    "inclineBenchPress": "rgba(255, 206, 86, 0.8)",
+                    "declineBenchPress": "rgba(255, 206, 86, 0.8)",
+                    "dip": "rgba(255, 206, 86, 0.8)",
+                    "pushup": "rgba(255, 206, 86, 0.8)",
+                    
+                    // Verde - Hombros
+                    "verticalPress": "rgba(75, 192, 192, 0.8)",
+                    "overheadPress": "rgba(75, 192, 192, 0.8)",
+                    "pushPress": "rgba(75, 192, 192, 0.8)",
+                    "shoulderPress": "rgba(75, 192, 192, 0.8)",
+                    
+                    // Morado - Levantamientos
+                    "floorPull": "rgba(153, 102, 255, 0.8)",
+                    "deadlift": "rgba(153, 102, 255, 0.8)",
+                    "sumoDeadlift": "rgba(153, 102, 255, 0.8)",
+                    "powerClean": "rgba(153, 102, 255, 0.8)",
+                    "snatch": "rgba(153, 102, 255, 0.8)",
+                    
+                    // Naranja - Accesorios
+                    "bicepsCurl": "rgba(255, 159, 64, 0.8)",
+                    "tricepsExtension": "rgba(255, 159, 64, 0.8)",
+                    "lateralRaise": "rgba(255, 159, 64, 0.8)",
+                    "facePull": "rgba(255, 159, 64, 0.8)",
+                    "coreExercise": "rgba(255, 159, 64, 0.8)"
+                };
+                
+                // Ordenar y procesar los grupos según el orden definido
+                var tempData = [];
+                
+                // Recopilar todos los datos disponibles
+                for (let key in muscle_groups) {
+                    if (muscle_groups.hasOwnProperty(key) && muscle_groups[key] !== undefined) {
+                        const value = parseFloat(muscle_groups[key]) || 0;
+                        // Solo incluir si el valor es mayor que 0
+                        if (value > 0) {
+                            const displayName = friendlyNames[key] || key.replace(/([A-Z])/g, ' $1').trim().charAt(0).toUpperCase() + key.replace(/([A-Z])/g, ' $1').trim().slice(1);
+                            const color = colorGroups[key] || "rgba(201, 203, 207, 0.8)";
+                            tempData.push({
+                                key: key,
+                                displayName: displayName,
+                                value: value,
+                                color: color
+                            });
+                        }
+                    }
+                }
+                
+                // Ordenar según la lista predefinida
+                tempData.sort(function(a, b) {
+                    const indexA = groupOrder.indexOf(a.key);
+                    const indexB = groupOrder.indexOf(b.key);
+                    
+                    // Si ambos están en la lista, ordenar por posición
+                    if (indexA >= 0 && indexB >= 0) {
+                        return indexA - indexB;
+                    }
+                    // Si solo uno está en la lista, ponerlo primero
+                    else if (indexA >= 0) {
+                        return -1;
+                    }
+                    else if (indexB >= 0) {
+                        return 1;
+                    }
+                    // Si ninguno está en la lista, mantener el orden original
+                    return 0;
+                });
+                
+                // Agregar los datos ordenados al objeto final
+                tempData.forEach(function(item) {
+                    muscle_group_obj.labels.push(item.displayName);
+                    muscle_group_obj.scores.push(item.value);
+                    muscle_group_obj.colors.push(item.color);
+                });
+            }
+            return muscle_group_obj;
+        });
+
+        console.log('Processed allStrengthData:', allStrengthData);
+        console.log('Processed allMuscleGroupsData:', allMuscleGroupsData);
+
+        var activeCharts = {};
+
+        function createStrengthChart(chartId, data) {
+            var container = document.getElementById(chartId);
+            if (!container) {
+                console.error('Container element not found for strength chart:', chartId);
+                return;
+            }
+            
+            // Limpiar cualquier gráfico existente
+            if (activeCharts[chartId]) {
+                activeCharts[chartId].destroy();
+            }
+            
+            // Convertir el contenedor de canvas a div para ApexCharts
+            var parentElement = container.parentElement;
+            var canvasHeight = container.height;
+            var canvasWidth = container.width;
+            
+            // Quitar el canvas y crear un div para ApexCharts
+            parentElement.removeChild(container);
+            var apexDiv = document.createElement('div');
+            apexDiv.id = chartId + '-apex';
+            apexDiv.style.width = '100%';
+            apexDiv.style.height = canvasHeight + 'px';
+            parentElement.appendChild(apexDiv);
+            
+            console.log('ApexCharts: Procesando datos para el gráfico de barras');
+            
+            if (data && data.labels && data.labels.length > 0 && data.scores) {
+                // Procesar datos para gráfico de barras horizontales
+                var seriesData = [];
+                var categories = [];
+                var colorData = [];
+                
+                // Mapear los valores relativos a porcentajes de desviación
+                // El 100% es el valor esperado/objetivo y será representado como 0% en el gráfico
+                for (var i = 0; i < data.labels.length; i++) {
+                    // Solo incluir ejercicios que tienen datos
+                    if (data.scores[i] !== null && data.scores[i] !== undefined) {
+                        categories.push(data.labels[i]);
+                        
+                        // Calcular la diferencia porcentual respecto al 100%
+                        // Por ejemplo: si el score es 120%, la diferencia es +20%
+                        // Si el score es 90%, la diferencia es -10%
+                        var percentage = data.scores[i];
+                        var relativePercentage = percentage - 100;
+                        seriesData.push(Math.round(relativePercentage));
+                        
+                        // Asignar colores: verde para valores positivos, rojo para negativos
+                        if (relativePercentage >= 0) {
+                            colorData.push('#28a745'); // Verde más vibrante
+                        } else {
+                            colorData.push('#dc3545'); // Rojo más vibrante
+                        }
+                    }
+                }
+                
+                // Invertir los arrays para que aparezcan en el mismo orden que la imagen de referencia
+                categories.reverse();
+                seriesData.reverse();
+                colorData.reverse();
+                
+                // Calcular el mínimo y máximo de los datos para los límites dinámicos
+                var minValue = Math.min(...seriesData);
+                var maxValue = Math.max(...seriesData);
+                
+                // Redondear y añadir un pequeño margen
+                minValue = Math.floor(minValue * 1.1); // 10% adicional para el límite inferior
+                maxValue = Math.ceil(maxValue * 1.1);  // 10% adicional para el límite superior
+                
+                console.log('ApexCharts: Datos procesados', { categories, seriesData, colorData, minValue, maxValue });
+                
+                var options = {
+                    series: [{
+                        name: 'Rendimiento Relativo',
+                        data: seriesData
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 350,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            distributed: true,
+                            dataLabels: {
+                                position: 'center'
+                            },
+                            barHeight: '95%'
+                        },
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function(val) {
+                            return val > 0 ? '+' + val + '%' : val + '%';
+                        },
+                        style: {
+                            colors: ['#fff'],
+                            fontSize: '11px', // Reducir tamaño de fuente
+                            fontWeight: 'bold'
+                        },
+                        offsetX: 0
+                    },
+                    stroke: {
+                        width: 0
+                    },
+                    grid: {
+                        borderColor: '#e7e7e7',
+                        xaxis: {
+                            lines: {
+                                show: true
+                            }
+                        },
+                        yaxis: {
+                            lines: {
+                                show: false
+                            }
+                        }
+                    },
+                    xaxis: {
+                        categories: categories,
+                        title: {
+                            text: 'Rendimiento Relativo (%)',
+                            style: {
+                                fontWeight: 500
+                            }
+                        },
+                        labels: {
+                            formatter: function(val) {
+                                return val + '%';
+                            }
+                        },
+                        min: minValue,
+                        max: maxValue,
+                        axisTicks: {
+                            show: true,
+                        },
+                        axisBorder: {
+                            show: true,
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: {
+                                fontWeight: 500
+                            }
+                        }
+                    },
+                    colors: colorData,
+                    // Quitamos título y subtítulo
+                    title: {
+                        text: '',
+                        show: false
+                    },
+                    subtitle: {
+                        text: '',
+                        show: false
+                    },
+                    // Línea central en cero sin etiqueta
+                    annotations: {
+                        xaxis: [{
+                            x: 0,
+                            strokeDashArray: 0,
+                            borderColor: '#78909C',
+                            opacity: 0.3,
+                            offsetX: 0,
+                            label: {
+                                show: false
+                            }
+                        }]
+                    },
+                    legend: {
+                        show: false // Quitamos la leyenda
+                    },
+                    tooltip: {
+                        enabled: true,
+                        custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                            var value = series[seriesIndex][dataPointIndex];
+                            var exercise = w.globals.labels[dataPointIndex];
+                            var valueColor = value >= 0 ? '#28a745' : '#dc3545';
+                            var strengthTerm = value >= 0 ? 'más fuerte' : 'más débil';
+                            var formattedValue = value >= 0 ? `+${value}%` : `${value}%`;
+
+                            return `<div style="padding: 8px 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); font-family: sans-serif; font-size: 13px;">
+                                        <div style="font-weight: bold; margin-bottom: 5px; color: #333;">${exercise}</div>
+                                        <div>
+                                            <span style="color: ${valueColor}; font-weight: bold;">${formattedValue} ${strengthTerm}</span> que el promedio
+                                            <br>de los levantadores de tu mismo nivel.
+                                        </div>
+                                    </div>`;
+                        }
+                    }
+                };
+                
+                // Crear el gráfico
+                try {
+                    if (typeof ApexCharts === 'undefined') {
+                        console.error('ApexCharts no está cargado. Intenta recargar la página.');
+                        // Muestra un mensaje de error en el lugar donde debería estar el gráfico
+                        apexDiv.innerHTML = '<div class="alert alert-danger">Error: No se pudo cargar ApexCharts. Intenta recargar la página.</div>';
+                    } else {
+                        console.log('ApexCharts: Creando gráfico con opciones', options);
+                        activeCharts[chartId] = new ApexCharts(document.getElementById(chartId + '-apex'), options);
+                        activeCharts[chartId].render();
+                        console.log('ApexCharts: Gráfico creado exitosamente');
+                    }
+                } catch (error) {
+                    console.error('Error al crear el gráfico ApexCharts:', error);
+                    apexDiv.innerHTML = '<div class="alert alert-danger">Error al crear el gráfico: ' + error.message + '</div>';
+                }
+            } else {
+                console.warn('No hay datos o etiquetas vacías para el gráfico de fuerza:', chartId, data);
+                apexDiv.innerHTML = '<div class="alert alert-info">No hay datos suficientes para mostrar el gráfico.</div>';
+            }
+        }
+
+        function createMuscleGroupChart(chartId, data) {
+            var ctx = document.getElementById(chartId);
+            if (!ctx) {
+                console.error('Canvas element not found for muscle group chart:', chartId);
+                return;
+            }
+            ctx = ctx.getContext('2d');
+
+            if (activeCharts[chartId]) {
+                activeCharts[chartId].destroy();
+            }
+            
+            if (data && data.labels && data.labels.length > 0) {
+                console.log('Creating muscle group chart ' + chartId + ' with data:', JSON.parse(JSON.stringify(data)));
+                
+                // Calcular el promedio de los puntajes
+                let sum = 0;
+                let validValues = 0;
+                
+                for (let i = 0; i < data.scores.length; i++) {
+                    const score = parseFloat(data.scores[i]) || 0;
+                    if (score > 0) {
+                        sum += score;
+                        validValues++;
+                    }
+                }
+                
+                const averageScore = validValues > 0 ? Math.round(sum / validValues) : 0;
+                console.log('Puntaje promedio:', averageScore);
+                
+                // Crear un array de valores promedio para el dataset de referencia
+                const averageData = Array(data.labels.length).fill(averageScore);
+                
+                // Crear colores de fondo basados en los colores de los puntos, pero con opacidad
+                const backgroundColors = data.colors.map(color => {
+                    // Convertir a formato RGBA con opacidad de 0.3
+                    const rgbaColor = color.replace(/rgba?\(([\d,\s]+)(?:,\s*[\d\.]+)?\)/, 'rgba($1, 0.3)');
+                    return rgbaColor;
+                });
+                
+                // Datasets para el gráfico
+                const datasets = [
+                    {
+                        label: 'Grupos Musculares',
+                        data: data.scores,
+                        backgroundColor: function(context) {
+                            // Si estamos filtrando (hay una selección activa), usar colores por punto
+                            // Si no hay filtro activo, usar un solo color de fondo general con transparencia
+                            const chart = context.chart;
+                            const metaIndex = context.datasetIndex;
+                            const meta = chart.getDatasetMeta(metaIndex);
+                            if (meta.hidden) {
+                                return 'transparent'; // Si el dataset está oculto
+                            }
+                            return 'rgba(54, 162, 235, 0.3)'; // Color base para el área
+                        },
+                        borderColor: 'rgba(54, 162, 235, 0.8)',
+                        borderWidth: 2,
+                        pointBackgroundColor: data.colors,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: data.colors,
+                        pointHoverBorderColor: '#fff',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: 'Promedio (' + averageScore + '%)',
+                        data: averageData,
+                        backgroundColor: 'transparent',
+                        borderColor: 'rgba(120, 120, 120, 0.4)',  // Gris más claro y transparente
+                        borderWidth: 1.5,  // Línea más delgada
+                        borderDash: [3, 3],  // Patrón de guiones más corto
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false
+                    }
+                ];
+                
+                activeCharts[chartId] = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: data.labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            r: {
+                                angleLines: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
+                                ticks: { 
+                                    beginAtZero: true, 
+                                    backdropColor: 'transparent', 
+                                    color: '#666', 
+                                    suggestedMax: 100, 
+                                    font: { size: 10 } 
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                                pointLabels: { 
+                                    font: { size: 11, weight: 'bold' }, 
+                                    color: '#333' 
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'bottom',
+                                labels: { 
+                                    boxWidth: 12, 
+                                    padding: 15, 
+                                    font: { size: 11 },
+                                    filter: function(legendItem, chartData) {
+                                        // Solo mostrar la leyenda del promedio
+                                        return legendItem.text.includes('Promedio');
+                                    }
+                                }
+                            },
+                            tooltip: { 
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)', 
+                                titleFont: { size: 13 }, 
+                                bodyFont: { size: 12 }, 
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        var value = context.raw || 0;
+                                        var label = context.chart.data.labels[context.dataIndex];
+                                        if (context.dataset.label.includes('Promedio')) {
+                                            return 'Promedio: ' + value + '%';
+                                        }
+                                        return label + ': ' + value + '%';
+                                    },
+                                    afterBody: function(context) {
+                                        // Solo para puntos de datos normales (no el promedio)
+                                        if (context.length > 0 && !context[0].dataset.label.includes('Promedio')) {
+                                            const value = context[0].raw || 0;
+                                            const diff = value - averageScore;
+                                            if (diff > 0) {
+                                                return '↑ ' + diff + '% sobre el promedio';
+                                            } else if (diff < 0) {
+                                                return '↓ ' + Math.abs(diff) + '% bajo el promedio';
+                                            } else {
+                                                return 'Igual al promedio';
+                                            }
+                                        }
+                                        return '';
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Rendimiento por Grupo Muscular',
+                                position: 'top',
+                                padding: { top: 10, bottom: 10 },
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.warn('No data or empty labels for muscle group chart:', chartId, data);
+            }
+        }
+
+        var collapseElements = document.querySelectorAll('.collapse');
+        collapseElements.forEach(function(collapseEl) {
+            collapseEl.addEventListener('shown.bs.collapse', function (event) {
+                var collapseId = event.target.id;
+                if (!collapseId) return;
+                var parts = collapseId.split('-');
+                var loopIndexStr = parts[parts.length - 1];
+                var loopIndex = parseInt(loopIndexStr);
+
+                if (!isNaN(loopIndex)) {
+                    console.log('Collapse shown for index:', loopIndex);
+                    var strengthChartId = 'strengthChart' + loopIndex;
+                    var strengthItem = allStrengthData.find(function(item) { return item.id === loopIndex; });
+                    if (strengthItem) {
+                        createStrengthChart(strengthChartId, strengthItem);
+                    } else {
+                        console.warn('No strength data found for index:', loopIndex);
+                    }
+
+                    var muscleGroupsChartId = 'muscleGroupsChart' + loopIndex;
+                    var muscleGroupItem = allMuscleGroupsData.find(function(item) { return item.id === loopIndex; });
+                    console.log('Datos para muscleGroupsChart' + loopIndex + ':', muscleGroupItem);
+                    
+                    if (muscleGroupItem) {
+                        // Verificar si los datos tienen la estructura esperada
+                        if (!muscleGroupItem.labels || muscleGroupItem.labels.length === 0) {
+                            console.warn('No hay etiquetas en los datos de grupos musculares para el registro #' + loopIndex);
+                        }
+                        if (!muscleGroupItem.scores || muscleGroupItem.scores.length === 0) {
+                            console.warn('No hay puntuaciones en los datos de grupos musculares para el registro #' + loopIndex);
+                        }
+                        createMuscleGroupChart(muscleGroupsChartId, muscleGroupItem);
+                    } else {
+                        console.warn('No muscle group data found for index:', loopIndex);
+                    }
+                } else {
+                    console.error('Could not parse loop index from collapse ID:', collapseId);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.strength-card-header {
+    padding: 0.75rem 1.25rem;
+    color: #fff; /* Default text color */
+    border-bottom: none;
+}
+.strength-card-header.default { background-color: #6c757d; color: #fff; } /* Grey for default/unknown */
+.strength-card-header.subpar { background-color: #e74c3c; color: #fff; } /* Red */
+.strength-card-header.untrained { background-color: #9b59b6; color: #fff; } /* Purple */
+.strength-card-header.novice { background-color: #f39c12; color: #fff; } /* Orange */
+.strength-card-header.intermediate { background-color: #1abc9c; color: #fff; } /* Teal */
+.strength-card-header.proficient { background-color: #2ecc71; color: #fff; } /* Green */
+.strength-card-header.advanced { background-color: #f1c40f; color: #333; } /* Yellow, dark text */
+.strength-card-header.exceptional { background-color: #e67e22; color: #fff; } /* Dark Orange */
+.strength-card-header.elite { background-color: #3498db; color: #fff; } /* Blue */
+.strength-card-header.world-class { background-color: #c0392b; color: #fff; } /* Pomegranate (darker red) */
+
+.strength-summary-score {
+    font-size: 2.0rem; /* Adjusted size */
+    font-weight: bold;
+    line-height: 1.1;
+}
+.strength-summary-class {
+    font-size: 1.2rem; /* Adjusted size */
+    line-height: 1.1;
+}
+.lift-item {
+    margin-bottom: 0.4rem;
+    font-size: 1.0rem; /* Adjusted size */
+}
+.lift-item .lift-name {
+    font-weight: 500;
+}
+.lift-item .lift-score-class {
+    font-style: italic;
+    color: #555;
+}
+
+.card-header .btn-link {
+    text-decoration: none;
+    color: var(--bs-body-color);
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    border: 0;
+}
+.card-header .btn-link:hover, .card-header .btn-link:focus {
+    color: var(--bs-primary);
+    text-decoration: none;
+}
+pre {
+    padding: 10px 15px;
+    background-color: #f8f9fa; /* Lighter background for pre blocks */
+    border: 1px solid #dee2e6; /* Softer border */
+    border-radius: .25rem;
+    white-space: pre-wrap;       
+    word-wrap: break-word;       
+    font-size: 0.875em; /* Slightly smaller font for pre blocks */
+}
+</style>
+{% endblock %}

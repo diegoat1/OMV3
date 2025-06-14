@@ -178,7 +178,7 @@
                     <!-- Earnings Chart Container -->
                     <!-- Chart.js Chart is initialized in js/pages/be_pages_dashboard.min.js which was auto compiled from _js/pages/be_pages_dashboard.js -->
                     <!-- For more info and examples you can check out http://www.chartjs.org/docs/ -->
-                    <canvas class="js-chartjs-weight"></canvas>
+                    <div id="chart-weight-apex" style="min-height: 415px;" class="w-100"></div>
                 </div>
                 <div class="block-content bg-body-light">
                     <div class="row items-push text-center w-100">
@@ -634,61 +634,129 @@
         Chart.defaults.plugins.tooltip.radius               = 4;
         Chart.defaults.plugins.legend.display               = true;
 
-        // Get Chart Container
-        var chartWeight = jQuery('.js-chartjs-weight');
+        // Prepare data for ApexCharts
+        var dinamicoData = {{ dinamico|tojson }};
+        var dates = [];
+        var weights = [];
+        var fatMassKg = []; // Array para Kilos Grasos
 
-        // Init Chart
-        var chart = new Chart(chartWeight, {
+        if (dinamicoData && dinamicoData.length > 0) {
+            dinamicoData.forEach(function(entry) {
+                dates.push(entry[2]); // FECHA_REGISTRO
+                var currentWeight = parseFloat(entry[6]); // PESO_ACTUAL
+                var bodyFatPercentage = parseFloat(entry[10]); // PORCENTAJE_GRASA_CORPORAL_NUM
+                
+                weights.push(currentWeight);
+                
+                // Calcular Kilos Grasos: Peso * (%Grasa / 100)
+                var currentFatMass = currentWeight * (bodyFatPercentage / 100.0);
+                fatMassKg.push(currentFatMass.toFixed(1)); // Guardar con 1 decimal
+            });
+        }
+
+        var today = new Date();
+        var oneYearAgo = new Date(new Date().setFullYear(today.getFullYear() - 1));
+
+        var optionsApexWeight = {
+          series: [{
+            name: 'Peso (Kg)',
+            data: weights
+          }, {
+            name: 'Kilos Grasos (Kg)',
+            data: fatMassKg
+          }],
+          colors: ['#808080', '#e56767'], // Gris para Peso Total, color #e56767 para Kilos Grasos
+          chart: {
+            height: 400, // Aumentada la altura
             type: 'line',
-            data: {
-                labels: [{% for dinamico in dinamico %} '{{ dinamico.2 }}', {% endfor %}],
-                datasets: [
-                    {
-                        label: 'Kilos',
-                        fill: !0,
-                        backgroundColor: 'rgba(220,220,220,.3)',
-                        borderColor: 'rgba(220,220,220,1)',
-                        pointBackgroundColor: 'rgba(220,220,220,1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(220,220,220,1)',
-                        data: [{% for dinamico in dinamico %} '{{ dinamico.6 }}', {% endfor %}]
-                    },
-                    {
-                        label: 'Kilos de grasa',
-                        fill: !0,
-                        backgroundColor: 'rgba(227, 120, 80, .3)',
-                        borderColor: 'rgba(227, 120, 80, 1)',
-                        pointBackgroundColor: 'rgba(227, 120, 80, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(227, 120, 80, 1)',
-                        data: [{% for dinamico in dinamico %} '{{ dinamico.10 }}', {% endfor %}]
-                    },
-                ]
+            width: '100%',
+            zoom: {
+              enabled: true
             },
-            options: {
-                maintainAspectRatio: false,
-                tension: .6,
-                scales: {
-                    y: {
-                        suggestedMin: 0
+            toolbar: {
+              show: true
+            }
+          },
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            curve: 'smooth',
+            width: [2, 2]
+          },
+          title: {
+            text: 'Evolución del Peso y Kilos Grasos',
+            align: 'left'
+          },
+          markers: {
+            size: 3
+          },
+          xaxis: {
+            type: 'datetime',
+            min: oneYearAgo.getTime(),
+            max: today.getTime(),
+            categories: dates,
+            title: {
+              text: 'Fecha'
+            },
+            labels: {
+              datetimeUTC: false,
+              format: 'dd MMM yy'
+            }
+          },
+          yaxis: { // Configuración para un único eje Y
+            title: {
+              text: 'Kilogramos (Kg)'
+            },
+            labels: {
+              formatter: function (val) { 
+                return val !== null && val !== undefined ? val.toFixed(1) + " Kg" : ""; 
+              }
+            }
+          },
+          tooltip: {
+            x: {
+              format: 'dd MMM yyyy'
+            },
+            y: [
+                {
+                    formatter: function(value) {
+                        return value !== null && value !== undefined ? value.toFixed(1) + " Kg" : "";
                     }
                 },
-                interaction: {
-                    intersect: false,
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return ' ' + context.parsed.y + ' Kg.';
-                            }
-                        }
+                {
+                    formatter: function(value) {
+                        return value !== null && value !== undefined ? parseFloat(value).toFixed(1) + " Kg" : "";
                     }
                 }
+            ]
+          },
+          legend: {
+            position: 'top',
+            horizontalAlign: 'right',
+            floating: true,
+            offsetY: -25,
+            offsetX: -5
+          },
+          noData: {
+            text: 'No hay datos disponibles.',
+            align: 'center',
+            verticalAlign: 'middle',
+            offsetX: 0,
+            offsetY: 0,
+            style: {
+              fontSize: '14px'
             }
-        });
+          }
+        };
+
+        var chartElement = document.querySelector("#chart-weight-apex");
+        if (chartElement) {
+            var chartApexWeight = new ApexCharts(chartElement, optionsApexWeight);
+            chartApexWeight.render();
+        } else {
+            console.error("Element #chart-weight-apex not found for ApexCharts.");
+        }
     });
 </script>
 <script>var $range = $(".js-range-slider");

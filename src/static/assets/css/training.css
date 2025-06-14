@@ -1,0 +1,245 @@
+/* Estilos para la página de entrenamiento */
+
+.exercise-card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+    position: relative;
+    border-left: 4px solid #5c80d1;
+}
+
+.exercise-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.exercise-card.completed {
+    border-left: 4px solid #42b983;
+    opacity: 0.85;
+}
+
+.exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.exercise-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.exercise-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: #5c80d1;
+}
+
+.exercise-badge.test {
+    background-color: #e74c3c;
+}
+
+.exercise-content {
+    padding: 20px;
+}
+
+.sets-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.set-box {
+    border-radius: 8px;
+    padding: 10px 15px;
+    text-align: center;
+    background-color: #f8f9fa;
+    min-width: 60px;
+    position: relative;
+    border: 2px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.set-box.active {
+    border-color: #5c80d1;
+    background-color: #eef2ff;
+}
+
+.set-box.completed {
+    border-color: #42b983;
+    background-color: #edfcf5;
+}
+
+.set-number {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.set-reps {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #343a40;
+}
+
+.set-box.completed .set-reps {
+    text-decoration: line-through;
+    color: #42b983;
+}
+
+.weight-info {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #343a40;
+    display: flex;
+    align-items: center;
+}
+
+.weight-icon {
+    margin-right: 8px;
+    color: #6c757d;
+}
+
+.timer-container {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.timer-display {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #343a40;
+    margin: 10px 0;
+    font-family: monospace;
+}
+
+.timer-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.timer-button {
+    border: none;
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-start {
+    background-color: #42b983;
+    color: white;
+}
+
+.btn-reset {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-add-30s {
+    background-color: #f39c12;
+    color: white;
+}
+
+.warmup-container {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #f39c12;
+}
+
+.warmup-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.warmup-icon {
+    margin-right: 8px;
+    color: #f39c12;
+}
+
+.warmup-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.warmup-set {
+    padding: 8px 15px;
+    border-radius: 8px;
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+}
+
+.warmup-checkbox {
+    margin-right: 10px;
+}
+
+.tooltip-icon {
+    margin-left: 5px;
+    color: #6c757d;
+    cursor: help;
+}
+
+.test-fields {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #fff8e1;
+    border: 1px solid #ffe082;
+}
+
+.action-buttons {
+    margin-top: 30px;
+}
+
+/* Animaciones */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sets-container {
+        justify-content: center;
+    }
+    
+    .set-box {
+        min-width: 50px;
+    }
+    
+    .timer-display {
+        font-size: 2rem;
+    }
+}

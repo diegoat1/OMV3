@@ -1,60 +1,602 @@
 {% extends 'base/base.html' %}
 
-{% block title %} {{ title }} {% endblock %}
+{% block title %} Calculadoras de Nutrición {% endblock %}
 
-{% block herotitle %} Calculadora de calorias {% endblock %}
-{% block herosubtitle %} Hola <a class="font-w600">{{ username }}</a>, vamos calcular las calorías que consume tu cuerpo habitualmente. {% endblock %}
-{% block contenttitle %} Completa los datos {% endblock %}
-{% block contentsubtitle %} Luego de presionar el boton enviar, aparecera el resultado con las calorías correspondientes. {% endblock %}
+{% block herotitle %} Calculadoras de Nutrición {% endblock %}
+{% block herosubtitle %} 
+    {% if username %}
+    Hola <a class="font-w600">{{ username }}</a>, utiliza estas herramientas para planificar tu ingesta calórica y de macronutrientes.
+    {% else %}
+    Utiliza estas herramientas para planificar tu ingesta calórica y de macronutrientes.
+    {% endif %}
+{% endblock %}
+{% block contenttitle %} Selecciona una Calculadora {% endblock %}
+{% block contentsubtitle %} {% endblock %}
 
 {% block content %}
+<div class="block block-rounded">
+    <div class="block-content block-content-full">
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs nav-tabs-block" id="calculatorTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="metabolic-tab" data-bs-toggle="tab" data-bs-target="#metabolic-calculator-pane" type="button" role="tab" aria-controls="metabolic-calculator-pane" aria-selected="true">Tasa Metabólica</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="loss-tab" data-bs-toggle="tab" data-bs-target="#loss-calculator-pane" type="button" role="tab" aria-controls="loss-calculator-pane" aria-selected="false">Pérdida de Peso</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="gain-tab" data-bs-toggle="tab" data-bs-target="#gain-calculator-pane" type="button" role="tab" aria-controls="gain-calculator-pane" aria-selected="false">Ganancia Muscular</button>
+            </li>
+        </ul>
 
-
-    <div class="block block-rounded">
-        <div class="block-content block-content-full">
-            <!-- Formulario -->
-            {% from "_macro.html" import render_field %}
-
-            <form name="sentMessage" id="recipeForm" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <div class="row push">
-                    <div class="col-lg-4">
-                        <label for="example-text-input">Calculos</label>
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            <div class="alert alert-danger alert-dismissable" role="alert">
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">×</span>
-                                </button>
-                                {% for category, message in messages %}
-                                <p class="{{ category }}">{{ message }}</p>
-                                {% endfor %}
+        <!-- Tabs Content -->
+        <div class="tab-content" id="calculatorTabsContent">
+            <!-- Metabolic Rate Calculator Pane -->
+            <div class="tab-pane fade show active" id="metabolic-calculator-pane" role="tabpanel" aria-labelledby="metabolic-tab">
+                <div class="py-3">
+                    <h4>Calculadora de Tasa Metabólica y Macronutrientes</h4>
+                    <p>Esta calculadora estima tus requerimientos calóricos diarios y macronutrientes basándose en la fórmula Katch-McArdle y tu nivel de actividad.</p>
+                    <form id="metabolicCalculatorForm">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="block block-rounded border">
+                                    <div class="block-header block-header-default">
+                                        <h3 class="block-title">Tus Datos</h3>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="mb-3">
+                                            <label class="form-label">Unidad de Peso:</label>
+                                            <div>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" class="form-check-input" id="metabolic_unit_lbs" name="metabolic_rme" value="lbs" checked>
+                                                    <label class="form-check-label" for="metabolic_unit_lbs">Libras (lbs)</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" class="form-check-input" id="metabolic_unit_kg" name="metabolic_rme" value="kg">
+                                                    <label class="form-check-label" for="metabolic_unit_kg">Kilogramos (kg)</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="metabolic_weight" class="form-label">Peso:</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="metabolic_weight" name="weight" placeholder="Peso" step="0.1">
+                                                <span class="input-group-text" id="metabolic_weight_unit_label">lbs</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="metabolic_lbm" class="form-label">Grasa Corporal Actual:</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="metabolic_lbm" name="lbm" placeholder="% Grasa" step="0.1">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="col-lg-8 col-xl-8">
-                        <div class="form-group">
-                            <label for="example-text-input">Momento del día</label>
-                            {{ render_field(form.menues, class='form-control form-control-lg') }}
-                        </div>
-                        <div class="form-group">
-                            <label for="example-text-input">Receta</label>
-                            {{ render_field(form.receta, class='form-control form-control-lg') }}  
-                        </div>
-
-                        <div id="success" class="form-group row justify-content-center mb-0">
-                            <div class="col-md-6 col-xl-5">
-                                <button type="submit" class="btn btn-block btn-primary">
-                                    <i class="fa fa-fw fa-sign-in-alt mr-1"></i> Enviar
-                                </button>
+                            <div class="col-md-7">
+                                <div class="block block-rounded border">
+                                    <div class="block-header block-header-default">
+                                        <h3 class="block-title">Nivel de Actividad</h3>
+                                    </div>
+                                    <div class="block-content">
+                                        <p>Selecciona tu nivel de actividad diario:</p>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="metabolic_sedentary" name="metabolic_activity" value="1.2" checked><label class="form-check-label" for="metabolic_sedentary"><strong>Sedentario</strong> (poco o nada)</label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="metabolic_light" name="metabolic_activity" value="1.375"><label class="form-check-label" for="metabolic_light"><strong>Ligero</strong> (1-3 días/sem)</label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="metabolic_moderate" name="metabolic_activity" value="1.55"><label class="form-check-label" for="metabolic_moderate"><strong>Moderado</strong> (3-5 días/sem)</label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="metabolic_heavy" name="metabolic_activity" value="1.725"><label class="form-check-label" for="metabolic_heavy"><strong>Intenso</strong> (6-7 días/sem)</label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="metabolic_extreme" name="metabolic_activity" value="1.9"><label class="form-check-label" for="metabolic_extreme"><strong>Muy Intenso</strong> (2x día / físico)</label></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button type="button" class="btn btn-primary me-1" onclick="calcmainMetabolic()"><i class="fa fa-calculator me-1"></i> Calcular</button>
+                                <button type="button" class="btn btn-secondary" onclick="clearMetabolicForm()"><i class="fa fa-redo me-1"></i> Limpiar</button>
+                            </div>
+                        </div>
+                        <div class="block block-rounded border mt-4" id="metabolic_results_block" style="display:none;">
+                            <div class="block-header block-header-default"><h3 class="block-title">Resultados (Tasa Metabólica)</h3></div>
+                            <div class="block-content">
+                                <div class="row mb-2"><label class="col-sm-8 col-form-label">Calorías diarias (mantenimiento):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="metabolic_MR" readonly></div></div>
+                                <div class="row mb-2"><label class="col-sm-8 col-form-label">Proteínas (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="metabolic_protein" readonly></div></div>
+                                <div class="row mb-2"><label class="col-sm-8 col-form-label">Grasas (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="metabolic_fat" readonly></div></div>
+                                <div class="row mb-2"><label class="col-sm-8 col-form-label">Carbohidratos (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="metabolic_carbs" readonly></div></div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            </form>
-            <!-- END Formulario -->
-        </div>
+            </div>
 
-    {% endblock %}
+            <!-- Weight Loss Calculator Pane -->
+            <div class="tab-pane fade" id="loss-calculator-pane" role="tabpanel" aria-labelledby="loss-tab">
+                <div class="py-3">
+                    <h4>Calculadora de Calorías para Pérdida de Peso</h4>
+                    <p>Estima tu ingesta calórica para perder peso y la máxima pérdida de grasa posible sin afectar tu masa muscular.</p>
+                    <form id="lossCalculatorForm">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="block block-rounded border">
+                                    <div class="block-header block-header-default"><h3 class="block-title">Tus Datos</h3></div>
+                                    <div class="block-content">
+                                        <div class="mb-3">
+                                            <label class="form-label">Unidades:</label>
+                                            <div>
+                                                <div class="form-check form-check-inline"><input type="radio" class="form-check-input" id="loss_unit_lbs" name="loss_rme" value="lbs" checked><label class="form-check-label" for="loss_unit_lbs">Libras (lbs)</label></div>
+                                                <div class="form-check form-check-inline"><input type="radio" class="form-check-input" id="loss_unit_kg" name="loss_rme" value="kg"><label class="form-check-label" for="loss_unit_kg">Kilogramos (kg)</label></div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="loss_weight" class="form-label">Peso Actual:</label>
+                                            <div class="input-group"><input type="number" class="form-control" id="loss_weight" name="weight" placeholder="Peso" step="0.1"><span class="input-group-text" id="loss_weight_unit_label">lbs</span></div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="loss_lbm" class="form-label">Grasa Corporal Actual:</label>
+                                            <div class="input-group"><input type="number" class="form-control" id="loss_lbm" name="lbm" placeholder="% Grasa" step="0.1"><span class="input-group-text">%</span></div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="loss_desired_weekly" class="form-label">Pérdida Semanal Deseada:</label>
+                                            <div class="input-group"><input type="number" class="form-control" id="loss_desired_weekly" name="loss" placeholder="Pérdida" step="0.1"><span class="input-group-text" id="loss_desired_weekly_unit_label">lbs/sem</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="block block-rounded border">
+                                    <div class="block-header block-header-default"><h3 class="block-title">Nivel de Actividad</h3></div>
+                                    <div class="block-content">
+                                        <p>Selecciona tu nivel de actividad diario:</p>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="loss_sedentary" name="loss_activity" value="1.2" checked><label class="form-check-label" for="loss_sedentary"><strong>Sedentario</strong></label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="loss_light" name="loss_activity" value="1.375"><label class="form-check-label" for="loss_light"><strong>Ligero</strong></label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="loss_moderate" name="loss_activity" value="1.55"><label class="form-check-label" for="loss_moderate"><strong>Moderado</strong></label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="loss_heavy" name="loss_activity" value="1.725"><label class="form-check-label" for="loss_heavy"><strong>Intenso</strong></label></div>
+                                        <div class="mb-2 form-check"><input type="radio" class="form-check-input" id="loss_extreme" name="loss_activity" value="1.9"><label class="form-check-label" for="loss_extreme"><strong>Muy Intenso</strong></label></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button type="button" class="btn btn-primary me-1" onclick="calcloss()"><i class="fa fa-calculator me-1"></i> Calcular Pérdida</button>
+                                <button type="button" class="btn btn-secondary" onclick="clearLossCalcForm()"><i class="fa fa-redo me-1"></i> Limpiar</button>
+                            </div>
+                        </div>
+                        <div id="loss_results_block" style="display:none;">
+                            <div class="block block-rounded border mt-4">
+                                <div class="block-header block-header-default"><h3 class="block-title">Resultados (Pérdida de Peso)</h3></div>
+                                <div class="block-content">
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">kcals/día (mantenimiento):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_MR_output" readonly></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Proteína dietética (mantener músculo):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_protein_output" readonly></div></div>
+                                    
+                                    <h5 class="mt-3">Dieta para Perder <input type="text" class="form-control d-inline-block" style="width: 60px;" id="loss_pace_output" readonly> <span id="loss_pace_unit_output">lbs</span>/semana:</h5>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">kcals/día:</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_losscals_output" readonly></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Grasa dietética (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_lossfat_output" readonly></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Carbohidratos dietéticos (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_losscarbs_output" readonly></div></div>
+
+                                    <h5 class="mt-3">Dieta de Máxima Pérdida de Grasa:</h5>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Máx. pérdida de grasa sin perder músculo:</label><div class="col-sm-4"><div class="input-group"><input type="text" class="form-control text-end" id="loss_maxpace_output" readonly><span class="input-group-text" id="loss_maxpace_unit_label">lbs/sem</span></div></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">kcals/día para esta tasa:</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_mincals_output" readonly></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Grasa dietética (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_maxlossfat_output" readonly></div></div>
+                                    <div class="row mb-2"><label class="col-sm-8 col-form-label">Carbohidratos dietéticos (g):</label><div class="col-sm-4"><input type="text" class="form-control text-end" id="loss_maxlosscarbs_output" readonly></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Muscle Gain Calculator Pane -->
+            <div class="tab-pane fade" id="gain-calculator-pane" role="tabpanel" aria-labelledby="gain-tab">
+                <div class="py-3">
+                    <h4>Calculadora de Calorías para Ganancia Muscular</h4>
+                    <p>Estima tus requerimientos calóricos para maximizar la ganancia muscular con mínima deposición de grasa corporal.</p>
+                    <form id="gainCalculatorForm">
+                                <div class="mb-3">
+            <label class="form-label">Unidad de Medida</label>
+            <div class="space-x-2">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="gain_unit_lbs" name="gain_unit" value="lbs" checked>
+                    <label class="form-check-label" for="gain_unit_lbs">Libras (lbs)</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" id="gain_unit_kg" name="gain_unit" value="kg">
+                    <label class="form-check-label" for="gain_unit_kg">Kilogramos (kg)</label>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="gain_current_weight" class="form-label">Peso Actual</label>
+            <input type="number" class="form-control" id="gain_current_weight" name="gain_current_weight" required>
+            <small class="form-text text-muted" id="gain_weight_unit_label">en libras (lbs)</small>
+        </div>
+        <div class="mb-3">
+            <label for="gain_body_fat" class="form-label">Porcentaje de Grasa Corporal (%)</label>
+            <input type="number" class="form-control" id="gain_body_fat" name="gain_body_fat" step="0.1" min="3" max="70" required>
+        </div>
+        <div class="mb-3">
+            <label for="gain_experience" class="form-label">Experiencia de Entrenamiento</label>
+            <select class="form-select" id="gain_experience" name="gain_experience" required>
+                <option value="less_than_6_months" selected>Menos de 6 meses</option>
+                <option value="more_than_6_months">6 meses o más</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="gain_activity_level" class="form-label">Nivel de Actividad Física</label>
+            <select class="form-select" id="gain_activity_level" name="gain_activity_level" required>
+                <option value="sedentary" selected>Sedentario (poco o nada de ejercicio)</option>
+                <option value="light">Ejercicio Ligero (1-3 días/semana)</option>
+                <option value="moderate">Ejercicio Moderado (3-5 días/semana)</option>
+                <option value="intense">Ejercicio Intenso (6-7 días/semana)</option>
+                <option value="very_intense">Ejercicio Muy Intenso (atletas, trabajos físicos)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary me-1"><i class="fa fa-calculator me-1"></i> Calcular Ganancia Muscular</button>
+        <button type="button" class="btn btn-secondary" id="clearGainButton"><i class="fa fa-redo me-1"></i> Limpiar</button>
+        <div class="block block-rounded border mt-4" id="gainCalculatorResults" style="display:none;">
+            <div class="block-header block-header-default"><h3 class="block-title">Resultados de Ganancia Muscular</h3></div>
+            <div class="block-content">
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Calorías de Mantenimiento (kcal/día):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_maintenance_calories_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Máxima Ganancia Semanal Sugerida:</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_max_weekly_gain_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Calorías para Ganancia Muscular (kcal/día):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_calories_for_gain_result" readonly></div>
+                </div>
+                <hr>
+                <h6 class="mt-3 mb-2 text-center">Desglose de Macronutrientes Sugerido:</h6>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Proteína (<span id="gain_protein_ratio_display_label">2.2g/kg</span> LBM) (g):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_protein_grams_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Proteína (kcal):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_protein_calories_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Grasa (25% de calorías de ganancia) (g):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_fat_grams_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Grasa (kcal):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_fat_calories_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Carbohidratos (resto) (g):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_carbs_grams_result" readonly></div>
+                </div>
+                <div class="row mb-2">
+                    <label class="col-sm-7 col-form-label">Carbohidratos (kcal):</label>
+                    <div class="col-sm-5"><input type="text" class="form-control text-end" id="gain_carbs_calories_result" readonly></div>
+                </div>
+            </div>
+        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block customscripts %}
+<script>
+// --- METABOLIC CALCULATOR SCRIPTS ---
+document.querySelectorAll('input[name="metabolic_rme"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.getElementById('metabolic_weight_unit_label').textContent = this.value;
+    });
+});
+// Initial label update for metabolic calculator
+if (document.getElementById('metabolic_unit_lbs').checked) { 
+    document.getElementById('metabolic_weight_unit_label').textContent = 'lbs';
+} else {
+    document.getElementById('metabolic_weight_unit_label').textContent = 'kg';
+}
+
+function calcmainMetabolic() {
+    const form = document.getElementById('metabolicCalculatorForm');
+    const unit = form.metabolic_rme.value;
+    let weight = parseFloat(document.getElementById('metabolic_weight').value);
+    const bodyfat = parseFloat(document.getElementById('metabolic_lbm').value);
+    const activityFactor = parseFloat(form.metabolic_activity.value);
+
+    if (isNaN(weight) || isNaN(bodyfat) || isNaN(activityFactor)) {
+        alert('Por favor, ingrese todos los valores para la calculadora metabólica.');
+        return;
+    }
+
+    if (unit === 'lbs') {
+        weight = weight / 2.20462; // Convert lbs to kg
+    }
+
+    const leanMass = weight * (1 - (bodyfat / 100));
+    const cals = (370 + (9.8 * leanMass)) * activityFactor; // Original formula from user's old script
+    const prot = 0.2 * cals / 4;
+    const fat = 0.3 * cals / 9;
+    const carbs = 0.5 * cals / 4;
+
+    document.getElementById('metabolic_MR').value = Math.round(cals);
+    document.getElementById('metabolic_protein').value = Math.round(prot);
+    document.getElementById('metabolic_fat').value = Math.round(fat);
+    document.getElementById('metabolic_carbs').value = Math.round(carbs);
+    document.getElementById('metabolic_results_block').style.display = 'block';
+}
+
+function clearMetabolicForm() {
+    document.getElementById('metabolicCalculatorForm').reset();
+    document.getElementById('metabolic_results_block').style.display = 'none';
+    document.getElementById('metabolic_unit_lbs').checked = true;
+    document.getElementById('metabolic_weight_unit_label').textContent = 'lbs';
+}
+
+// --- WEIGHT LOSS CALCULATOR SCRIPTS ---
+document.querySelectorAll('input[name="loss_rme"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const unitLabel = this.value === 'lbs' ? 'lbs' : 'kg';
+        document.getElementById('loss_weight_unit_label').textContent = unitLabel;
+        document.getElementById('loss_desired_weekly_unit_label').textContent = unitLabel + '/sem';
+        document.getElementById('loss_pace_unit_output').textContent = unitLabel;
+        document.getElementById('loss_maxpace_unit_label').textContent = unitLabel + '/sem';
+    });
+});
+// Initial label update for loss calculator
+if (document.getElementById('loss_unit_lbs').checked) {
+    document.getElementById('loss_weight_unit_label').textContent = 'lbs';
+    document.getElementById('loss_desired_weekly_unit_label').textContent = 'lbs/sem';
+    document.getElementById('loss_pace_unit_output').textContent = 'lbs';
+    document.getElementById('loss_maxpace_unit_label').textContent = 'lbs/sem';
+} else {
+    document.getElementById('loss_weight_unit_label').textContent = 'kg';
+    document.getElementById('loss_desired_weekly_unit_label').textContent = 'kg/sem';
+    document.getElementById('loss_pace_unit_output').textContent = 'kg';
+    document.getElementById('loss_maxpace_unit_label').textContent = 'kg/sem';
+}
+
+function calcloss() {
+    const form = document.getElementById('lossCalculatorForm');
+    var factor = parseFloat(form.loss_activity.value);
+    var weight, lbm_percent, desired_loss_weekly;
+
+    const unit_is_lbs = document.getElementById('loss_unit_lbs').checked;
+
+    weight = parseFloat(document.getElementById('loss_weight').value);
+    lbm_percent = parseFloat(document.getElementById('loss_lbm').value);
+    desired_loss_weekly = parseFloat(document.getElementById('loss_desired_weekly').value);
+
+    if (isNaN(weight) || isNaN(lbm_percent) || isNaN(desired_loss_weekly) || isNaN(factor)) {
+        alert('Por favor, ingrese todos los valores para la calculadora de pérdida de peso.');
+        return;
+    }
+    
+    let weight_lbs = weight;
+    let desired_loss_weekly_lbs = desired_loss_weekly;
+
+    if (!unit_is_lbs) { // if kg, convert to lbs for calculations
+        weight_lbs = weight * 2.20462;
+        desired_loss_weekly_lbs = desired_loss_weekly * 2.20462;
+    }
+
+    const lean_mass_lbs = ((100 - lbm_percent) / 100) * weight_lbs;
+    const fat_mass_lbs = ((lbm_percent) / 100) * weight_lbs;
+    
+    const protein_grams = 1.14 * lean_mass_lbs; // Protein in grams
+    const maintenance_kcals = (370 + (9.8 * lean_mass_lbs)) * factor;
+    const loss_kcals_target = maintenance_kcals - (desired_loss_weekly_lbs / 7 * 3500);
+
+    document.getElementById('loss_MR_output').value = Math.round(maintenance_kcals);
+    document.getElementById('loss_protein_output').value = Math.round(protein_grams);
+    
+    // Diet for desired loss
+    document.getElementById('loss_pace_output').value = desired_loss_weekly.toFixed(2);
+    document.getElementById('loss_losscals_output').value = Math.round(loss_kcals_target);
+    const loss_fat_grams = 0.3 * loss_kcals_target / 9;
+    const loss_carbs_grams = (loss_kcals_target - (0.3 * loss_kcals_target) - (4 * protein_grams)) / 4;
+    document.getElementById('loss_lossfat_output').value = Math.round(loss_fat_grams);
+    document.getElementById('loss_losscarbs_output').value = Math.round(loss_carbs_grams > 0 ? loss_carbs_grams : 0);
+
+    // Maximum fat loss diet
+    let max_fat_loss_kcals_day = fat_mass_lbs * 31;
+    let min_kcals_for_max_loss = maintenance_kcals - max_fat_loss_kcals_day;
+    
+    if (min_kcals_for_max_loss < 1200) {
+        min_kcals_for_max_loss = 1200;
+        max_fat_loss_kcals_day = maintenance_kcals - 1200;
+    }
+    
+    let max_pace_lbs_week = max_fat_loss_kcals_day * 7 / 3500;
+    let max_pace_display = unit_is_lbs ? max_pace_lbs_week : max_pace_lbs_week / 2.20462;
+
+    document.getElementById('loss_maxpace_output').value = max_pace_display.toFixed(2);
+    document.getElementById('loss_mincals_output').value = Math.round(min_kcals_for_max_loss);
+    const maxloss_fat_grams = 0.3 * min_kcals_for_max_loss / 9;
+    const maxloss_carbs_grams = (min_kcals_for_max_loss - (0.3 * min_kcals_for_max_loss) - (4 * protein_grams)) / 4;
+    document.getElementById('loss_maxlossfat_output').value = Math.round(maxloss_fat_grams);
+    document.getElementById('loss_maxlosscarbs_output').value = Math.round(maxloss_carbs_grams > 0 ? maxloss_carbs_grams : 0);
+    
+    document.getElementById('loss_results_block').style.display = 'block';
+}
+
+function clearLossCalcForm() {
+    document.getElementById('lossCalculatorForm').reset();
+    document.getElementById('loss_results_block').style.display = 'none';
+    document.getElementById('loss_unit_lbs').checked = true;
+    // Trigger change to reset labels
+    const event = new Event('change');
+    document.getElementById('loss_unit_lbs').dispatchEvent(event);
+}
+
+// --- MUSCLE GAIN CALCULATOR SCRIPTS ---
+
+// Unit toggle listener for Muscle Gain Calculator
+const gainUnitRadios = document.querySelectorAll('input[name="gain_unit"]');
+const gainWeightUnitLabel = document.getElementById('gain_weight_unit_label');
+
+if (gainUnitRadios.length && gainWeightUnitLabel) {
+    gainUnitRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'lbs') {
+                gainWeightUnitLabel.textContent = 'en libras (lbs)';
+            } else {
+                gainWeightUnitLabel.textContent = 'en kilogramos (kg)';
+            }
+        });
+    });
+    // Initial label update for gain calculator
+    if (document.getElementById('gain_unit_lbs').checked) {
+        gainWeightUnitLabel.textContent = 'en libras (lbs)';
+    } else if (document.getElementById('gain_unit_kg').checked) { 
+        gainWeightUnitLabel.textContent = 'en kilogramos (kg)';
+    }
+}
+
+// Form submission listener for Muscle Gain Calculator
+const gainCalculatorForm = document.getElementById('gainCalculatorForm');
+if (gainCalculatorForm) {
+    gainCalculatorForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        calculateMuscleGain();
+    });
+}
+
+function calculateMuscleGain() {
+    const unit = document.querySelector('input[name="gain_unit"]:checked').value;
+    let currentWeight = parseFloat(document.getElementById('gain_current_weight').value);
+    const bodyFatPercentage = parseFloat(document.getElementById('gain_body_fat').value);
+    const experience = document.getElementById('gain_experience').value;
+    const activityLevelKey = document.getElementById('gain_activity_level').value;
+
+    if (isNaN(currentWeight) || isNaN(bodyFatPercentage)) {
+        alert('Por favor, ingrese su peso actual y porcentaje de grasa corporal.');
+        return;
+    }
+    if (currentWeight <= 0 || bodyFatPercentage < 3 || bodyFatPercentage > 70) {
+        alert('Por favor, ingrese valores válidos para peso (mayor a 0) y grasa corporal (entre 3% y 70%).');
+        return;
+    }
+
+    let weightKg = currentWeight;
+    if (unit === 'lbs') {
+        weightKg = currentWeight / 2.20462;
+    }
+
+    const leanBodyMassKg = weightKg * (1 - (bodyFatPercentage / 100));
+    const leanBodyMassLbs = leanBodyMassKg * 2.20462;
+
+    const bmr = 370 + (9.8 * leanBodyMassLbs);
+
+    const activityMultipliers = {
+        'sedentary': 1.2,
+        'light': 1.375,
+        'moderate': 1.55,
+        'intense': 1.725,
+        'very_intense': 1.9
+    };
+    const activityMultiplier = activityMultipliers[activityLevelKey];
+    const maintenanceCalories = bmr * activityMultiplier;
+
+    let caloricSurplus;
+    let maxWeeklyGainText;
+
+    if (experience === 'less_than_6_months') {
+        caloricSurplus = 350; // kcal
+        if (unit === 'lbs') {
+            maxWeeklyGainText = "~0.25 - 0.5 lbs";
+        } else { // kg
+            maxWeeklyGainText = "~0.1 - 0.2 kg";
+        }
+    } else { // more_than_6_months
+        caloricSurplus = 250; // kcal
+        if (unit === 'lbs') {
+            maxWeeklyGainText = "~0.1 - 0.25 lbs";
+        } else { // kg
+            maxWeeklyGainText = "~0.05 - 0.1 kg";
+        }
+    }
+
+    const caloriesForGain = maintenanceCalories + caloricSurplus;
+
+    const proteinGrams = 2.2 * leanBodyMassKg;
+    const proteinCalories = proteinGrams * 4;
+
+    const fatPercentageOfGain = 0.25;
+    const fatCalories = caloriesForGain * fatPercentageOfGain;
+    const fatGrams = fatCalories / 9;
+
+    const carbCalories = caloriesForGain - proteinCalories - fatCalories;
+    const carbGrams = carbCalories < 0 ? 0 : carbCalories / 4;
+
+    document.getElementById('gain_maintenance_calories_result').value = Math.round(maintenanceCalories);
+    document.getElementById('gain_max_weekly_gain_result').value = maxWeeklyGainText;
+    document.getElementById('gain_calories_for_gain_result').value = Math.round(caloriesForGain);
+
+    document.getElementById('gain_protein_grams_result').value = Math.round(proteinGrams);
+    document.getElementById('gain_protein_calories_result').value = Math.round(proteinCalories);
+    document.getElementById('gain_fat_grams_result').value = Math.round(fatGrams);
+    document.getElementById('gain_fat_calories_result').value = Math.round(fatCalories);
+    document.getElementById('gain_carbs_grams_result').value = Math.round(carbGrams);
+    document.getElementById('gain_carbs_calories_result').value = Math.round(carbCalories < 0 ? 0 : carbCalories);
+    
+    document.getElementById('gain_protein_ratio_display_label').textContent = `~${(proteinGrams/leanBodyMassKg).toFixed(1)}g/kg`;
+
+    document.getElementById('gainCalculatorResults').style.display = 'block';
+}
+
+function clearGainCalculatorForm() { 
+    const form = document.getElementById('gainCalculatorForm');
+    if (form) {
+        form.reset();
+    }
+    const resultsDiv = document.getElementById('gainCalculatorResults');
+    if (resultsDiv) {
+        resultsDiv.style.display = 'none';
+    }
+    
+    const unitLbsRadio = document.getElementById('gain_unit_lbs');
+    if (unitLbsRadio) {
+        unitLbsRadio.checked = true;
+    }
+    const localGainWeightUnitLabel = document.getElementById('gain_weight_unit_label');
+    if (localGainWeightUnitLabel) {
+        localGainWeightUnitLabel.textContent = 'en libras (lbs)';
+    }
+
+    const resultInputIds = [
+        'gain_maintenance_calories_result', 'gain_max_weekly_gain_result', 'gain_calories_for_gain_result',
+        'gain_protein_grams_result', 'gain_protein_calories_result', 'gain_fat_grams_result', 'gain_fat_calories_result',
+        'gain_carbs_grams_result', 'gain_carbs_calories_result'
+    ];
+    resultInputIds.forEach(id => {
+        const inputField = document.getElementById(id);
+        if (inputField) inputField.value = '';
+    });
+    const proteinRatioLabel = document.getElementById('gain_protein_ratio_display_label');
+    if (proteinRatioLabel) proteinRatioLabel.textContent = `2.2g/kg`;
+}
+
+const clearGainButton = document.getElementById('clearGainButton');
+if (clearGainButton) {
+    clearGainButton.addEventListener('click', clearGainCalculatorForm);
+}
+
+// Activate Bootstrap tabs
+
+
+// Activate Bootstrap tabs
+var triggerTabList = [].slice.call(document.querySelectorAll('#calculatorTabs button'))
+triggerTabList.forEach(function (triggerEl) {
+  var tabTrigger = new bootstrap.Tab(triggerEl)
+
+  triggerEl.addEventListener('click', function (event) {
+    event.preventDefault()
+    tabTrigger.show()
+  })
+})
+
+</script>
+{% endblock %}

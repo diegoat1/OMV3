@@ -1,4 +1,4 @@
-from wtforms import (Form, StringField, TextField, PasswordField, HiddenField, IntegerField, FloatField, BooleanField, DateField, validators, TimeField, RadioField, FieldList, FormField, SelectField, FileField)
+from wtforms import (Form, StringField, PasswordField, HiddenField, IntegerField, FloatField, BooleanField, DateField, validators, TimeField, RadioField, FieldList, FormField, SelectField, FileField)
 from wtforms.widgets import ListWidget
 from wtforms.fields.html5 import (EmailField, DateField, TimeField, DateTimeField)
 from wtforms.validators import DataRequired, NumberRange
@@ -22,7 +22,7 @@ class CommentForm(Form):
     validators.Required(message='El nombre de usuario es requerido.')])
     email=EmailField('Correo Electronico: ',
     [validators.Required(message='El correo electronico es requerido.'), validators.Email(message='Ingrese un email valido.')])
-    comment=TextField('Comentario: ')
+    comment=StringField('Comentario: ')
 
 class CreatefoodForm(Form):
     namefood=StringField('Descripción del alimento: ', [validators.Required(message='La descripción del alimento es requerido.'), validators.length(min=4, max=50, message='Ingrese una descripción valida.')])

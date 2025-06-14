@@ -1,5 +1,102 @@
 input[type=number] {
-    -moz-appearance: textfield
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Card header background colors based on classification */
+.strength-card-header.untrained {
+    background-color: rgba(103, 58, 183, 0.15) !important;
+    border-left: 3px solid #673ab7;
+}
+
+/* === Diet Form Harmonized Styles === */
+.diet-card-header-alimentos {
+    background: linear-gradient(90deg, #d65151 0%, #e58f8f 100%);
+    color: #fff !important;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    border-bottom: 1px solid #f1c5c5;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.diet-card-header-nutrientes {
+    background: linear-gradient(90deg, #d65151 0%, #f1c5c5 100%);
+    color: #fff !important;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    border-bottom: 1px solid #f1c5c5;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.diet-card-alimentos {
+    border: 1.5px solid #d65151 !important;
+    background: #fafafa !important;
+}
+.diet-card-nutrientes {
+    border: 1.5px solid #d65151 !important;
+    background: #f2f2f2 !important;
+}
+/* === END Diet Form Harmonized Styles === */
+
+.strength-card-header.novice {
+    background-color: rgba(63, 81, 181, 0.15) !important;
+    border-left: 3px solid #3f51b5;
+}
+
+.strength-card-header.intermediate {
+    background-color: rgba(0, 150, 136, 0.15) !important;
+    border-left: 3px solid #009688;
+}
+
+.strength-card-header.advanced {
+    background-color: rgba(205, 220, 57, 0.15) !important;
+    border-left: 3px solid #cddc39;
+}
+
+.strength-card-header.proficient {
+    background-color: rgba(76, 175, 80, 0.15) !important;
+    border-left: 3px solid #4caf50;
+}
+
+.strength-card-header.exceptional {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+    border-left: 3px solid #ffc107;
+}
+
+.strength-card-header.untrained:hover {
+    background-color: rgba(103, 58, 183, 0.25) !important;
+}
+
+.strength-card-header.novice:hover {
+    background-color: rgba(63, 81, 181, 0.25) !important;
+}
+
+.strength-card-header.intermediate:hover {
+    background-color: rgba(0, 150, 136, 0.25) !important;
+}
+
+.strength-card-header.advanced:hover {
+    background-color: rgba(205, 220, 57, 0.25) !important;
+}
+
+.strength-card-header.proficient:hover {
+    background-color: rgba(76, 175, 80, 0.25) !important;
+}
+
+.strength-card-header.exceptional:hover {
+    background-color: rgba(255, 193, 7, 0.25) !important;
+}
+
+.strength-card-header.elite:hover {
+    background-color: rgba(255, 87, 34, 0.25) !important;
+}
+
+.strength-card-header.world-class:hover {
+    background-color: rgba(244, 67, 54, 0.25) !important;
+}
+
+.strength-card-header.default:hover {
+    background-color: rgba(158, 158, 158, 0.25) !important;
 }
 
 h2 small {
@@ -718,4 +815,360 @@ h5.lift-title {
 
 .animate-fade.ng-enter.ng-enter-active {
     opacity: 1
+}
+
+/* Strength Card Header Styles */
+.strength-card-header.subpar {
+    background-color: #e91e63 !important;
+    color: white !important;
+}
+.strength-card-header.subpar .date-info,
+.strength-card-header.subpar .date-info .text-muted,
+.strength-card-header.subpar .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.subpar .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.untrained {
+    background-color: #673ab7 !important;
+    color: white !important;
+}
+.strength-card-header.untrained .date-info,
+.strength-card-header.untrained .date-info .text-muted,
+.strength-card-header.untrained .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.untrained .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.novice {
+    background-color: #3f51b5 !important;
+    color: white !important;
+}
+.strength-card-header.novice .date-info,
+.strength-card-header.novice .date-info .text-muted,
+.strength-card-header.novice .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.novice .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.intermediate {
+    background-color: #009688 !important;
+    color: white !important;
+}
+.strength-card-header.intermediate .date-info,
+.strength-card-header.intermediate .date-info .text-muted,
+.strength-card-header.intermediate .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.intermediate .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.advanced {
+    background-color: #cddc39 !important;
+    color: black !important;
+}
+.strength-card-header.advanced .date-info,
+.strength-card-header.advanced .date-info .text-muted,
+.strength-card-header.advanced .strength-summary-score {
+    color: black !important;
+}
+.strength-card-header.advanced .strength-summary-class {
+    background-color: transparent !important;
+    color: black !important;
+    border: 1px solid black;
+    padding: .25em .4em;
+}
+
+.strength-card-header.proficient {
+    background-color: #4caf50 !important;
+    color: white !important;
+}
+.strength-card-header.proficient .date-info,
+.strength-card-header.proficient .date-info .text-muted,
+.strength-card-header.proficient .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.proficient .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.exceptional {
+    background-color: #ffc107 !important;
+    color: black !important;
+}
+.strength-card-header.exceptional .date-info,
+.strength-card-header.exceptional .date-info .text-muted,
+.strength-card-header.exceptional .strength-summary-score {
+    color: black !important;
+}
+.strength-card-header.exceptional .strength-summary-class {
+    background-color: transparent !important;
+    color: black !important;
+    border: 1px solid black;
+    padding: .25em .4em;
+}
+
+.strength-card-header.elite {
+    background-color: #ff5722 !important;
+    color: white !important;
+}
+.strength-card-header.elite .date-info,
+.strength-card-header.elite .date-info .text-muted,
+.strength-card-header.elite .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.elite .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+.strength-card-header.world-class {
+    background-color: #f44336 !important;
+    color: white !important;
+}
+.strength-card-header.world-class .date-info,
+.strength-card-header.world-class .date-info .text-muted,
+.strength-card-header.world-class .strength-summary-score {
+    color: white !important;
+}
+.strength-card-header.world-class .strength-summary-class {
+    background-color: transparent !important;
+    color: white !important;
+    border: 1px solid white;
+    padding: .25em .4em;
+}
+
+/* Ensure the icons within the date-info also adapt color */
+.strength-card-header .date-info .fa {
+    color: inherit !important; /* Inherit color from .date-info */
+}
+
+/* Strength Analysis Card - Aesthetic Design */
+.strength-analysis-card {
+    border-radius: 15px !important;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.strength-analysis-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    transform: translateY(-5px);
+}
+
+/* Custom styles for ONV2 */
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  font-size: 0.95em;
+}
+.autocomplete-suggestion {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+.autocomplete-suggestion:last-child {
+  border-bottom: none;
+}
+.autocomplete-suggestion:hover, .autocomplete-suggestion.active {
+  background: #e9ecef;
+}
+
+/* Base styles for the strength card body */
+.strength-analysis-card .card-body {
+    /* Default - Intermediate */
+    background: linear-gradient(135deg, #009688 0%, #00796b 100%);
+}
+
+/* Specific gradient backgrounds for each category */
+.strength-analysis-card.subpar .card-body {
+    background: linear-gradient(135deg, #e91e63 0%, #c2185b 100%);
+}
+
+.strength-analysis-card.untrained .card-body {
+    background: linear-gradient(135deg, #673ab7 0%, #512da8 100%);
+}
+
+.strength-analysis-card.novice .card-body {
+    background: linear-gradient(135deg, #3f51b5 0%, #303f9f 100%);
+}
+
+.strength-analysis-card.intermediate .card-body {
+    background: linear-gradient(135deg, #009688 0%, #00796b 100%);
+}
+
+.strength-analysis-card.advanced .card-body {
+    background: linear-gradient(135deg, #cddc39 0%, #afb42b 100%);
+    color: #333 !important;
+}
+
+.strength-analysis-card.proficient .card-body {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+}
+
+.strength-analysis-card.exceptional .card-body {
+    background: linear-gradient(135deg, #ffc107 0%, #ffa000 100%);
+    color: #333 !important;
+}
+
+.strength-analysis-card.elite .card-body {
+    background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+}
+
+.strength-analysis-card.world-class .card-body {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+}
+
+.strength-analysis-card .exercise-row {
+    position: relative;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.strength-analysis-card .exercise-row:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: translateX(5px);
+}
+
+.strength-analysis-card .exercise-name {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.strength-analysis-card .exercise-score {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.strength-analysis-card .classification-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    margin-top: 3px;
+}
+
+.strength-analysis-card .score-display {
+    position: relative;
+    padding: 15px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.1);
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.strength-analysis-card .total-score {
+    font-size: 3.5rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.strength-analysis-card .score-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.strength-analysis-card .score-classification {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Classification specific colors for badges */
+.classification-badge.novice {
+    background-color: rgba(63, 81, 181, 0.3);
+    border: 1px solid rgba(63, 81, 181, 0.5);
+}
+
+.classification-badge.intermediate {
+    background-color: rgba(0, 150, 136, 0.3);
+    border: 1px solid rgba(0, 150, 136, 0.5);
+}
+
+.classification-badge.advanced {
+    background-color: rgba(205, 220, 57, 0.3);
+    border: 1px solid rgba(205, 220, 57, 0.5);
+}
+
+.classification-badge.proficient {
+    background-color: rgba(76, 175, 80, 0.3);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+}
+
+.classification-badge.exceptional {
+    background-color: rgba(255, 193, 7, 0.3);
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.classification-badge.elite {
+    background-color: rgba(255, 87, 34, 0.3);
+    border: 1px solid rgba(255, 87, 34, 0.5);
+}
+
+.classification-badge.world-class {
+    background-color: rgba(244, 67, 54, 0.3);
+    border: 1px solid rgba(244, 67, 54, 0.5);
 }

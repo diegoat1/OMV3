@@ -1,1 +1,0 @@
-(function(module){})(angular.module("symmetricstrengthcalculator",["calculator","ngAnimate","mgcrea.ngStrap"]));

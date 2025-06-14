@@ -51,360 +51,6 @@ function getCsrfToken() {
     "use strict";
     return window.encodeURIComponent;
   });
-  module.controller("FriendsStatsController", [
-    "MainService",
-    "$scope",
-    "$alert",
-    "Restangular",
-    function (MainService, $scope, $alert, Restangular) {
-      "use strict";
-      var _this = this;
-      _this.lifts = Strength.lifts;
-      _this.liftIsSpecial = Strength.liftIsSpecial;
-      _this.displayLift = Strength.displayLift;
-      _this.displayWeight = MainService.displayWeight;
-      _this.friendDisplay = $scope.friendDisplay;
-      _this.selectedLifts = _.filter(
-        _.map(_.pairs($scope.lastSavedLiftFields), function (lf) {
-          return lf[1].checked ? lf[0] : null;
-        })
-      );
-      _this.state = {
-        error: false,
-        friendData: [],
-        newFriendUsername: null,
-        addFriendError: null,
-        loadingFriendData: true,
-      };
-      var handleFriendData = function (response) {
-        var getOneRM = function (weight, reps, convF) {
-          if (!weight || !reps) {
-            return null;
-          } else {
-            if (convF) {
-              return convF(Strength.oneRepMax(weight, reps));
-            } else {
-              return Strength.oneRepMax(weight, reps);
-            }
-          }
-        };
-        var friendData = [];
-        _.forEach(response, function (r) {
-          if (r.lastLoggedLifts) {
-            var convF = null;
-            if (
-              $scope.unitSystem &&
-              r.lastLoggedLifts.unitSystem !== $scope.unitSystem
-            ) {
-              if ($scope.unitSystem === "Imperial") {
-                convF = Strength.kgToLb;
-              } else {
-                convF = Strength.lbToKg;
-              }
-            }
-            var liftStats = {};
-            var bodyweight = convF
-              ? convF(r.lastLoggedLifts.bodyweight)
-              : r.lastLoggedLifts.bodyweight;
-            var displayBodyweight = r.hideBodyweight
-              ? "--"
-              : Strength.mround(bodyweight, 1) +
-              " " +
-              Strength.displayUnits($scope.unitSystem, false);
-            var bodyweightComparison = "eq";
-            _.forEach(_this.lifts, function (lift) {
-              liftStats[lift] = {};
-              liftStats[lift].oneRM = getOneRM(
-                r.lastLoggedLifts[lift + "Weight"],
-                r.lastLoggedLifts[lift + "Reps"],
-                convF
-              );
-              liftStats[lift].score =
-                Math.round(
-                  Strength.singleLiftStrengthScore(
-                    $scope.unitSystem,
-                    r.lastLoggedLifts.sex,
-                    r.lastLoggedLifts.age,
-                    bodyweight,
-                    Strength.displayLift(lift),
-                    liftStats[lift].oneRM
-                  ) * 10
-                ) / 10;
-              liftStats[lift].displayOneRM = liftStats[lift].oneRM
-                ? _this.displayWeight(
-                  _this.displayLift(lift),
-                  liftStats[lift].oneRM,
-                  bodyweight,
-                  convF ? 1 : r.lastLoggedLifts.roundTo,
-                  false
-                ) +
-                " " +
-                Strength.displayUnits($scope.unitSystem, false)
-                : "--";
-            });
-            var catScores = {};
-            catScores.squat = _.max([
-              liftStats.backSquat.score,
-              liftStats.frontSquat.score,
-            ]);
-            catScores.floorPull = _.max([
-              liftStats.deadlift.score,
-              liftStats.sumoDeadlift.score,
-              liftStats.powerClean.score,
-            ]);
-            catScores.horizontalPress = _.max([
-              liftStats.benchPress.score,
-              liftStats.inclineBenchPress.score,
-              liftStats.dip.score,
-            ]);
-            catScores.verticalPress = _.max([
-              liftStats.overheadPress.score,
-              liftStats.pushPress.score,
-              liftStats.snatchPress.score,
-            ]);
-            catScores.pullup = _.max([
-              liftStats.chinup.score,
-              liftStats.pullup.score,
-              liftStats.pendlayRow.score,
-            ]);
-            var knownCatScores = _.filter([
-              catScores.squat,
-              catScores.floorPull,
-              catScores.horizontalPress,
-              catScores.verticalPress,
-              catScores.pullup,
-            ]);
-            var totalScore =
-              Math.round(
-                (_.sum(knownCatScores) / _.size(knownCatScores)) * 10
-              ) / 10;
-            var liftStatComparisons = {};
-            var catScoreComparisons = {
-              squat: "eq",
-              floorPull: "eq",
-              horizontalPress: "eq",
-              verticalPress: "eq",
-              pullup: "eq",
-            };
-            var totalScoreComparison = "eq";
-            _.forEach(_this.lifts, function (lift) {
-              liftStatComparisons[lift] = { score: "eq", oneRM: "eq" };
-            });
-            if (r.lastSeenLifts) {
-              convF = null;
-              if (
-                $scope.unitSystem &&
-                r.lastSeenLifts.unitSystem !== $scope.unitSystem
-              ) {
-                if ($scope.unitSystem === "Imperial") {
-                  convF = Strength.kgToLb;
-                } else {
-                  convF = Strength.lbToKg;
-                }
-              }
-              var liftStatsOld = {};
-              var bodyweightOld = convF
-                ? convF(r.lastSeenLifts.bodyweight)
-                : r.lastSeenLifts.bodyweight;
-              _.forEach(_this.lifts, function (lift) {
-                liftStatsOld[lift] = {};
-                liftStatsOld[lift].oneRM = getOneRM(
-                  r.lastSeenLifts[lift + "Weight"],
-                  r.lastSeenLifts[lift + "Reps"],
-                  convF
-                );
-                liftStatsOld[lift].score =
-                  Math.round(
-                    Strength.singleLiftStrengthScore(
-                      $scope.unitSystem,
-                      r.lastSeenLifts.sex,
-                      r.lastSeenLifts.age,
-                      bodyweightOld,
-                      Strength.displayLift(lift),
-                      liftStatsOld[lift].oneRM
-                    ) * 10
-                  ) / 10;
-                if (liftStats[lift].oneRM && liftStatsOld[lift].oneRM) {
-                  if (liftStats[lift].oneRM > liftStatsOld[lift].oneRM) {
-                    liftStatComparisons[lift].oneRM = "gt";
-                  } else if (liftStats[lift].oneRM < liftStatsOld[lift].oneRM) {
-                    liftStatComparisons[lift].oneRM = "lt";
-                  }
-                }
-                if (liftStats[lift].score && liftStatsOld[lift].score) {
-                  if (liftStats[lift].score > liftStatsOld[lift].score) {
-                    liftStatComparisons[lift].score = "gt";
-                  } else if (liftStats[lift].score < liftStatsOld[lift].score) {
-                    liftStatComparisons[lift].score = "lt";
-                  }
-                }
-              });
-              var catScoresOld = {};
-              catScoresOld.squat = _.max([
-                liftStatsOld.backSquat.score,
-                liftStatsOld.frontSquat.score,
-              ]);
-              catScoresOld.floorPull = _.max([
-                liftStatsOld.deadlift.score,
-                liftStatsOld.sumoDeadlift.score,
-                liftStatsOld.powerClean.score,
-              ]);
-              catScoresOld.horizontalPress = _.max([
-                liftStatsOld.benchPress.score,
-                liftStatsOld.inclineBenchPress.score,
-                liftStatsOld.dip.score,
-              ]);
-              catScoresOld.verticalPress = _.max([
-                liftStatsOld.overheadPress.score,
-                liftStatsOld.pushPress.score,
-                liftStatsOld.snatchPress.score,
-              ]);
-              catScoresOld.pullup = _.max([
-                liftStatsOld.chinup.score,
-                liftStatsOld.pullup.score,
-                liftStatsOld.pendlayRow.score,
-              ]);
-              _.forEach(
-                [
-                  "squat",
-                  "floorPull",
-                  "horizontalPress",
-                  "verticalPress",
-                  "pullup",
-                ],
-                function (c) {
-                  if (catScores[c] && catScoresOld[c]) {
-                    if (catScores[c] > catScoresOld[c]) {
-                      catScoreComparisons[c] = "gt";
-                    } else if (catScores[c] < catScoresOld[c]) {
-                      catScoreComparisons[c] = "lt";
-                    }
-                  }
-                }
-              );
-              var knownCatScoresOld = _.filter([
-                catScoresOld.squat,
-                catScoresOld.floorPull,
-                catScoresOld.horizontalPress,
-                catScoresOld.verticalPress,
-                catScoresOld.pullup,
-              ]);
-              var totalScoreOld =
-                Math.round(
-                  (_.sum(knownCatScoresOld) / _.size(knownCatScoresOld)) * 10
-                ) / 10;
-              if (totalScore > totalScoreOld) {
-                totalScoreComparison = "gt";
-              } else if (totalScore < totalScoreOld) {
-                totalScoreComparison = "lt";
-              }
-              if (!r.hideBodyweight) {
-                if (bodyweight > bodyweightOld) {
-                  bodyweightComparison = "gt";
-                } else if (bodyweight < bodyweightOld) {
-                  bodyweightComparison = "lt";
-                }
-              }
-            }
-            friendData.push({
-              username: r.username,
-              liftStats: liftStats,
-              catScores: catScores,
-              totalScore: totalScore,
-              bodyweight: displayBodyweight,
-              liftStatComparisons: liftStatComparisons,
-              catScoreComparisons: catScoreComparisons,
-              totalScoreComparison: totalScoreComparison,
-              bodyweightComparison: bodyweightComparison,
-            });
-          }
-        });
-        _this.state.friendData = _.sortBy(friendData, function (fd) {
-          return -fd.totalScore;
-        });
-        _this.state.loadingFriendData = false;
-      };
-      _this.handleFriendDisplayChanged = function () {
-        var updatedDisplayPreferenceF = Restangular.one("/api/friend_display");
-        updatedDisplayPreferenceF.friendDisplay = _this.friendDisplay;
-        updatedDisplayPreferenceF.put();
-      };
-      var getFriendData = function () {
-        Restangular.all("/api/friend")
-          .getList()
-          .then(
-            function (response) {
-              handleFriendData(response);
-            },
-            function (response) {
-              _this.error = response.data || response;
-            }
-          );
-      };
-      _this.addNewFriend = function () {
-        _this.state.addFriendError = null;
-        Restangular.all("/api/friend")
-          .post({ username: _this.state.newFriendUsername })
-          .then(
-            function () {
-              _this.state.friendData = [];
-              _this.state.loadingFriendData = true;
-              getFriendData();
-              $alert({
-                title:
-                  "Added " + _this.state.newFriendUsername + " as a friend!",
-                placement: "top-right",
-                container: "#wrapper",
-                type: "success",
-                show: true,
-                duration: 3,
-              });
-              _this.state.newFriendUsername = null;
-            },
-            function () {
-              _this.state.addFriendError =
-                "Oops! There was a problem adding " +
-                _this.state.newFriendUsername +
-                " as a friend. Make sure you spelled the username correctly.";
-            }
-          );
-      };
-      getFriendData();
-    },
-  ]);
-  module.directive("friendsStats", function () {
-    "use strict";
-    return {
-      restrict: "E",
-      templateUrl: "friends-stats",
-      scope: { unitSystem: "@", friendDisplay: "@", lastSavedLiftFields: "=" },
-      controller: "FriendsStatsController",
-      controllerAs: "friendsStatsCtrl",
-    };
-  });
-  module.directive("googleAdsense", [
-    "$window",
-    "$compile",
-    function ($window, $compile) {
-      "use strict";
-      var adSenseTpl =
-        '<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7045305996532700" data-ad-slot="1781348279" data-ad-format="auto"></ins>';
-      return {
-        restrict: "A",
-        transclude: true,
-        template: adSenseTpl,
-        replace: false,
-        link: function postLink(scope, element) {
-          element.html("");
-          element.append(angular.element($compile(adSenseTpl)(scope)));
-          if (!$window.adsbygoogle) {
-            $window.adsbygoogle = [];
-          }
-          $window.adsbygoogle.push({});
-        },
-      };
-    },
-  ]);
   module.directive("liftsForm", function () {
     "use strict";
     return { restrict: "E", templateUrl: "lifts-form" };
@@ -435,23 +81,61 @@ function getCsrfToken() {
       MainService.initState($scope.username);
       _this.state = MainService.state;
       _this.sendResultsToServer = function() {
-        var resultsData = _this.state.results; // Capturar los datos de resultados
+        if (!_this.state.results) {
+          console.error('No hay resultados para guardar. Por favor, calcula los resultados primero.');
+          $alert({
+            title: 'Atención',
+            content: 'No hay resultados para guardar. Por favor, calcula los resultados primero.',
+            placement: 'top-right',
+            type: 'warning',
+            duration: 5
+          });
+          return;
+        }
+        // Leer el nombre del paciente seleccionado y la fecha de análisis
+        var selectedPatientName = document.getElementById('patientName') ? document.getElementById('patientName').value : null;
+        var analysisDate = document.getElementById('analysisDate') ? document.getElementById('analysisDate').value : null;
+
+        // Preparar los datos para enviar
+        var resultsData = {
+            results: _this.state.results,
+            rawData: {
+                age: _this.state.age,
+                bodyweight: _this.state.bodyweight,
+                sex: _this.state.sex,
+                unitSystem: _this.state.unitSystem,
+                roundTo: _this.state.roundCalculationsTo,
+                liftFields: _this.state.liftFields
+            },
+            calculatedData: _this.state.results,
+            selectedPatient: selectedPatientName,
+            customAnalysisDate: analysisDate
+        };
         
-        // Obtener el token CSRF utilizando la función correcta
+        // Obtener el token CSRF
         var csrfToken = getCsrfToken();
     
         // Enviar datos al backend usando $http.post
         $http.post('/api/submit-strength-results', resultsData, {
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken // Añadir el token CSRF en los encabezados
+                'X-CSRFToken': csrfToken
             }
         })
         .then(function(response) {
             console.log('Datos enviados exitosamente al servidor', response.data);
+            // Mensaje de éxito eliminado a petición del usuario
         })
         .catch(function(error) {
             console.error('Error al enviar datos al servidor', error);
+            // Mostrar mensaje de error
+            $alert({
+              title: 'Error',
+              content: 'Error al guardar los datos. Por favor, inténtalo de nuevo. Detalles: ' + (error.data && error.data.message ? error.data.message : 'Error desconocido'),
+              placement: 'top-right',
+              type: 'danger',
+              duration: 5
+            });
         });
     };
     
@@ -851,7 +535,6 @@ function getCsrfToken() {
       _this.calculateResults = function () {
         if (MainService.calculateResults()) {
           _this.displayCharts();
-          _this.sendResultsToServer();
 
               if (window.location.href.match(/symmetricstrength\.com/)) {
                   ga("send", "event", "button", "click", "analyze_strength");
@@ -880,130 +563,14 @@ function getCsrfToken() {
         return false;
       };
       _this.saveLifts = function () {
-        // Obtener el token CSRF utilizando la función correcta
-        var csrfToken = getCsrfToken();
-    
-        // Preparar los datos para enviar
-        var data = {
-            unitSystem: _this.state.unitSystem,
-            roundTo: _this.state.roundCalculationsTo,
-            sex: _this.state.sex,
-            age: _this.state.age || null,
-            bodyweight: _this.state.bodyweight,
-            backSquatWeight: _this.state.liftFields.backSquat.checked
-              ? _this.state.liftFields.backSquat.weight
-              : null,
-            backSquatReps: _this.state.liftFields.backSquat.checked
-              ? _this.state.liftFields.backSquat.reps
-              : null,
-            frontSquatWeight: _this.state.liftFields.frontSquat.checked
-              ? _this.state.liftFields.frontSquat.weight
-              : null,
-            frontSquatReps: _this.state.liftFields.frontSquat.checked
-              ? _this.state.liftFields.frontSquat.reps
-              : null,
-            deadliftWeight: _this.state.liftFields.deadlift.checked
-              ? _this.state.liftFields.deadlift.weight
-              : null,
-            deadliftReps: _this.state.liftFields.deadlift.checked
-              ? _this.state.liftFields.deadlift.reps
-              : null,
-            sumoDeadliftWeight: _this.state.liftFields.sumoDeadlift.checked
-              ? _this.state.liftFields.sumoDeadlift.weight
-              : null,
-            sumoDeadliftReps: _this.state.liftFields.sumoDeadlift.checked
-              ? _this.state.liftFields.sumoDeadlift.reps
-              : null,
-            powerCleanWeight: _this.state.liftFields.powerClean.checked
-              ? _this.state.liftFields.powerClean.weight
-              : null,
-            powerCleanReps: _this.state.liftFields.powerClean.checked
-              ? _this.state.liftFields.powerClean.reps
-              : null,
-            benchPressWeight: _this.state.liftFields.benchPress.checked
-              ? _this.state.liftFields.benchPress.weight
-              : null,
-            benchPressReps: _this.state.liftFields.benchPress.checked
-              ? _this.state.liftFields.benchPress.reps
-              : null,
-            inclineBenchPressWeight: _this.state.liftFields.inclineBenchPress.checked
-              ? _this.state.liftFields.inclineBenchPress.weight
-              : null,
-            inclineBenchPressReps: _this.state.liftFields.inclineBenchPress.checked
-              ? _this.state.liftFields.inclineBenchPress.reps
-              : null,
-            dipWeight: _this.state.liftFields.dip.checked
-              ? _this.state.liftFields.dip.weight
-              : null,
-            dipReps: _this.state.liftFields.dip.checked
-              ? _this.state.liftFields.dip.reps
-              : null,
-            overheadPressWeight: _this.state.liftFields.overheadPress.checked
-              ? _this.state.liftFields.overheadPress.weight
-              : null,
-            overheadPressReps: _this.state.liftFields.overheadPress.checked
-              ? _this.state.liftFields.overheadPress.reps
-              : null,
-            pushPressWeight: _this.state.liftFields.pushPress.checked
-              ? _this.state.liftFields.pushPress.weight
-              : null,
-            pushPressReps: _this.state.liftFields.pushPress.checked
-              ? _this.state.liftFields.pushPress.reps
-              : null,
-            snatchPressWeight: _this.state.liftFields.snatchPress.checked
-              ? _this.state.liftFields.snatchPress.weight
-              : null,
-            snatchPressReps: _this.state.liftFields.snatchPress.checked
-              ? _this.state.liftFields.snatchPress.reps
-              : null,
-            chinupWeight: _this.state.liftFields.chinup.checked
-              ? _this.state.liftFields.chinup.weight
-              : null,
-            chinupReps: _this.state.liftFields.chinup.checked
-              ? _this.state.liftFields.chinup.reps
-              : null,
-            pullupWeight: _this.state.liftFields.pullup.checked
-              ? _this.state.liftFields.pullup.weight
-              : null,
-            pullupReps: _this.state.liftFields.pullup.checked
-              ? _this.state.liftFields.pullup.reps
-              : null,
-            pendlayRowWeight: _this.state.liftFields.pendlayRow.checked
-              ? _this.state.liftFields.pendlayRow.weight
-              : null,
-            pendlayRowReps: _this.state.liftFields.pendlayRow.checked
-              ? _this.state.liftFields.pendlayRow.reps
-              : null,
-            timeLogged: new Date()  // Usamos formato ISO para garantizar compatibilidad
-        };
-    
-        // Enviar datos al backend usando $http.post con encabezados
-        $http.post('/api/lifts', data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken // Añadir el token CSRF en los encabezados
-            }
-        })
-        .then(function(response) {
-            console.log('Lifts saved successfully', response.data);
-            $alert({
-                title: "Lifts saved!",
-                placement: "top-right",
-                container: "#wrapper",
-                type: "success",
-                show: true,
-                duration: 3,
-            });
-            _this.state.lastSavedLiftFields = _.cloneDeep(
-              _this.state.liftFields
-            );
-            _this.state.lastSavedLiftFields.timeLogged = new Date();
-        })
-        .catch(function(error) {
-            console.error('Error saving lifts', error);
-        });
-    
-        return true;
+        // Primero calculamos los resultados
+        _this.calculateResults();
+        
+        // Luego enviamos los resultados al servidor
+        _this.sendResultsToServer();
+        
+        // Mostrar mensaje de que se están guardando los datos (opcional, ya que sendResultsToServer dará feedback)
+        console.log('Procesando guardado de datos...');
       };
       _this.loadLifts = function () {
         preFillFromServer().then(function () {
@@ -1696,8 +1263,8 @@ function getCsrfToken() {
         publicUrl: username
           ? "https://" + window.location.host + "/lifter/" + username
           : "",
-        unitSystem: "Imperial",
-        roundCalculationsTo: 5,
+        unitSystem: "Metric",
+        roundCalculationsTo: 1,
         sex: "Male",
         age: null,
         bodyweight: null,
@@ -3210,7 +2777,6 @@ function getCsrfToken() {
     "use strict";
     return {
       restrict: "E",
-      templateUrl: "strength-progress",
       controller: "StrengthProgressController",
       controllerAs: "strengthProgressCtrl",
     };
@@ -3232,7 +2798,7 @@ function getCsrfToken() {
       );
       $templateCache.put(
         "main",
-        '<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script></script>\n<div class="page-container"><div class="page-head"></div>\n<div class="page-content"><div class="container"><div class="row" ng-if="pageType === \'defaultPublic\' || pageType === \'loggedInPublic\'"><div class="col-md-12"><div class="alert alert-info" ng-if="mainCtrl.state.unitsConverted"><strong>Note:</strong>\nAll weights on this page have been converted to {{mainCtrl.state.unitSystem}} and rounded to the nearest {{mainCtrl.displayUnits(true)}}.</div>\n</div>\n</div>\n<div class="row" ng-if="pageType === \'defaultPublic\'"><div class="col-md-12"><div class="alert alert-info"><a href="/auth/login">Log in</a> to create your own strength profile and add {{username}} as a friend!</a>\n</div>\n</div>\n</div>\n<div class="row" ng-if="(pageType === \'defaultPublic\' && mainCtrl.state.lastSavedLiftFields) || (pageType === \'loggedInPublic\' && mainCtrl.state.lastSavedLiftFields) || pageType === \'loggedIn\'"><div class="col-md-12"><strength-progress></strength-progress>\n</div>\n<div ng-class="{\'col-md-12\': pageType === \'defaultPublic\' || pageType === \'loggedInPublic\', \'col-md-4\': pageType === \'loggedIn\'}"><div class="portlet light"><div class="portlet-title"><div class="caption caption-md"><span class="caption-subject theme-font bold uppercase">Latest saved lifts</span>\n</div>\n</div>\n<div class="portlet-body" ng-if="mainCtrl.state.lastSavedLiftFields && !mainCtrl.state.waitingForLastSaved"><p><em>Logged on {{mainCtrl.state.lastSavedLiftFields.timeLogged.toLocaleDateString()}}:</em>\n</p>\n<ul class="list-unstyled"><li ng-if="!mainCtrl.hideWeight"><span class="boldish">Bodyweight:</span>\n{{mainCtrl.state.bodyweight}} {{mainCtrl.displayUnits()}}</li>\n<li ng-if="!mainCtrl.hideWeight && mainCtrl.state.age"><span class="boldish">Age:</span>\n{{mainCtrl.state.age}}</li>\n<li ng-repeat="lift in mainCtrl.lifts" ng-if="mainCtrl.state.lastSavedLiftFields[lift].weight && mainCtrl.state.lastSavedLiftFields[lift].reps"><span class="boldish">{{mainCtrl.displayLift(lift)}}:</span>\n{{mainCtrl.displayWeight(mainCtrl.displayLift(lift), mainCtrl.state.lastSavedLiftFields[lift].weight, mainCtrl.state.bodyweight, mainCtrl.state.roundCalculationsTo)}} {{mainCtrl.displayUnits()}} x {{mainCtrl.state.lastSavedLiftFields[lift].reps}}</li>\n</ul>\n</div>\n<p class="loading-indicator" ng-if="mainCtrl.state.waitingForLastSaved"><i class="fa fa-spinner fa-spin"></i>\n</p>\n<div class="portlet-body" ng-if="!mainCtrl.state.lastSavedLiftFields && !mainCtrl.state.waitingForLastSaved"><div class="alert alert-info">You haven\'t saved any lifts yet! Enter your lifts below, then click "Analyze and Log Lifts".</div>\n</div>\n</div>\n</div>\n<div class="col-md-8" ng-if="pageType === \'loggedIn\' && mainCtrl.state.lastSavedLiftFields"><friends-stats unit-system="{{mainCtrl.state.unitSystem}}" last-saved-lift-fields="mainCtrl.state.lastSavedLiftFields" friend-display="{{friendDisplay}}"></friends-stats>\n</div>\n</div>\n<div class="row" ng-if="pageType === \'default\' || pageType === \'loggedIn\'"><div class="col-md-12"><lifts-form></lifts-form>\n</div>\n</div>\n<div ng-show="mainCtrl.state.resultsShown"><div class="row" ng-if="pageType === \'loggedIn\' && mainCtrl.pageIsPublic"><div class="col-md-12"><div class="portlet light"><div class="portlet-title"><div class="caption caption-md"><span class="caption-subject theme-font bold uppercase">Share your results</span>\n</div>\n</div>\n<div class="portlet-body"><p>Use your public profile link or the social media buttons below to share your last saved results:</p>\n<p><a href="{{mainCtrl.state.publicUrl}}" ng-bind="mainCtrl.state.publicUrl"></a>\n</p>\n<p><a class="social-icon social-icon-color facebook" href="https://www.facebook.com/sharer/sharer.php?u={{mainCtrl.state.publicUrl|escape}}" data-original-title="facebook"></a>\n<a class="social-icon social-icon-color googleplus" href="https://plus.google.com/share?url={{mainCtrl.state.publicUrl|escape}}" data-original-title="google plus"></a>\n<a class="social-icon social-icon-color pintrest" href="http://pinterest.com/pin/create/button/?url={{mainCtrl.state.publicUrl|escape}}&amp;media=https://symmetricstrength.com/static/res/img/fbimage.png&amp;description=My%20symmetric%20strength%20profile." data-original-title="pintrest"></a>\n<a class="social-icon social-icon-color twitter" href="https://twitter.com/intent/tweet?text={{\'My symmetric strength profile: \' + mainCtrl.state.publicUrl + \' #symmetricstrength\'|escape}}" data-original-title="twitter"></a>\n</p>\n</div>\n</div>\n</div>\n</div>\n<div class="row"><div class="col-md-4"><main-stats></main-stats>\n<one-rep-maxes></one-rep-maxes>\n</div>\n<div class="col-md-8"><strengths-weaknesses-chart></strengths-weaknesses-chart>\n</div>\n</div>\n<div class="row"><div class="col-md-12"><muscle-figure></muscle-figure>\n</div>\n</div>\n<div class="row"><div class="col-md-12"><more-stats></more-stats>\n</div>\n<div class="row" ng-if="mainCtrl.state.resultsShown && !mainCtrl.hideWeight"><div class="col-md-12"><standards sex="mainCtrl.state.sex" age="mainCtrl.state.age" bodyweight="mainCtrl.state.bodyweight" unit-system="mainCtrl.state.unitSystem" round-calculations-to="mainCtrl.state.roundCalculationsTo" standards-page="false"></standards>\n</div>\n</div>\n</div>\n<div ng-if="mainCtrl.state.noLiftingDataError"><div class="alert alert-block alert-warning"><p>{{username}} has not logged any lifts yet!</p>\n</div>\n</div>\n</div>\n</div>\n</div>\n'
+        '<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script></script>\n<div class="page-container"><div class="page-head"></div>\n<div class="page-content"><div class="container"><div class="row" ng-if="pageType === \'defaultPublic\' || pageType === \'loggedInPublic\'"><div class="col-md-12"><div class="alert alert-info" ng-if="mainCtrl.state.unitsConverted"><strong>Note:</strong>\nAll weights on this page have been converted to {{mainCtrl.state.unitSystem}} and rounded to the nearest {{mainCtrl.displayUnits(true)}}.</div>\n</div>\n</div>\n<div class="row" ng-if="pageType === \'defaultPublic\'"><div class="col-md-12"><div class="alert alert-info"><a href="/auth/login">Log in</a> to create your own strength profile and add {{username}} as a friend!</a>\n</div>\n</div>\n</div>\n<div class="row" ng-if="(pageType === \'defaultPublic\' && mainCtrl.state.lastSavedLiftFields) || (pageType === \'loggedInPublic\' && mainCtrl.state.lastSavedLiftFields) || pageType === \'loggedIn\'"><div class="col-md-12"><strength-progress></strength-progress>\n</div>\n<div ng-class="{\'col-md-12\': pageType === \'defaultPublic\' || pageType === \'loggedInPublic\', \'col-md-4\': pageType === \'loggedIn\'}">\n<p class="loading-indicator" ng-if="mainCtrl.state.waitingForLastSaved"><i class="fa fa-spinner fa-spin"></i>\n</p>\n<div class="portlet-body" ng-if="!mainCtrl.state.lastSavedLiftFields && !mainCtrl.state.waitingForLastSaved">\n</div>\n</div>\n</div>\n<div class="col-md-8" ng-if="pageType === \'loggedIn\' && mainCtrl.state.lastSavedLiftFields"><friends-stats unit-system="{{mainCtrl.state.unitSystem}}" last-saved-lift-fields="mainCtrl.state.lastSavedLiftFields" friend-display="{{friendDisplay}}"></friends-stats>\n</div>\n</div>\n<div class="row" ng-if="pageType === \'default\' || pageType === \'loggedIn\'"><div class="col-md-12"><lifts-form></lifts-form>\n</div>\n</div>\n<div ng-show="mainCtrl.state.resultsShown"><div class="row" ng-if="pageType === \'loggedIn\' && mainCtrl.pageIsPublic"><div class="col-md-12"><div class="portlet light"><div class="portlet-title"><div class="caption caption-md"><span class="caption-subject theme-font bold uppercase">Share your results</span>\n</div>\n</div>\n<div class="portlet-body"><p>Use your public profile link or the social media buttons below to share your last saved results:</p>\n<p><a href="{{mainCtrl.state.publicUrl}}" ng-bind="mainCtrl.state.publicUrl"></a>\n</p>\n<p><a class="social-icon social-icon-color facebook" href="https://www.facebook.com/sharer/sharer.php?u={{mainCtrl.state.publicUrl|escape}}" data-original-title="facebook"></a>\n<a class="social-icon social-icon-color googleplus" href="https://plus.google.com/share?url={{mainCtrl.state.publicUrl|escape}}" data-original-title="google plus"></a>\n<a class="social-icon social-icon-color pintrest" href="http://pinterest.com/pin/create/button/?url={{mainCtrl.state.publicUrl|escape}}&amp;media=https://symmetricstrength.com/static/res/img/fbimage.png&amp;description=My%20symmetric%20strength%20profile." data-original-title="pintrest"></a>\n<a class="social-icon social-icon-color twitter" href="https://twitter.com/intent/tweet?text={{\'My symmetric strength profile: \' + mainCtrl.state.publicUrl + \' #symmetricstrength\'|escape}}" data-original-title="twitter"></a>\n</p>\n</div>\n</div>\n</div>\n</div>\n<div class="row"><div class="col-md-4"><main-stats></main-stats>\n<one-rep-maxes></one-rep-maxes>\n</div>\n<div class="col-md-8"><strengths-weaknesses-chart></strengths-weaknesses-chart>\n</div>\n</div>\n<div class="row"><div class="col-md-12"><muscle-figure></muscle-figure>\n</div>\n</div>\n<div class="row"><div class="col-md-12"><more-stats></more-stats>\n</div>\n<div class="row" ng-if="mainCtrl.state.resultsShown && !mainCtrl.hideWeight"><div class="col-md-12"><standards sex="mainCtrl.state.sex" age="mainCtrl.state.age" bodyweight="mainCtrl.state.bodyweight" unit-system="mainCtrl.state.unitSystem" round-calculations-to="mainCtrl.state.roundCalculationsTo" standards-page="false"></standards>\n</div>\n</div>\n</div>\n<div ng-if="mainCtrl.state.noLiftingDataError"><div class="alert alert-block alert-warning"><p>{{username}} has not logged any lifts yet!</p>\n</div>\n</div>\n</div>\n</div>\n</div>\n'
       );
       $templateCache.put(
         "more-stats",

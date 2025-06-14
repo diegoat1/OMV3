@@ -1,0 +1,165 @@
+{% extends "base/base.html" %}
+{% block title %}{{ title }} | OmegaNutrición{% endblock %}
+
+{% block extra_head %}
+<!-- Incluir CSS personalizado para entrenamiento -->
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/training.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <!-- Título de la página -->
+    <div class="block block-rounded">
+        <div class="block-header block-header-default">
+            <h3 class="block-title"><i class="fa fa-dumbbell mr-2"></i>{{ titulo_entrenamiento }}</h3>
+            <div class="block-options">
+                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
+            </div>
+        </div>
+
+        <div class="block-content">
+            {% if ejercicios %}
+                <!-- Timer compartido para todos los ejercicios -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mx-auto">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h4 class="mb-3"><i class="fa fa-clock mr-2"></i>Timer de descanso</h4>
+                                <div class="timer-display" id="timer-display">00:00</div>
+                                <div class="timer-buttons">
+                                    <button class="btn btn-success btn-sm mr-2" id="timer-start">
+                                        <i class="fa fa-play mr-1"></i>Iniciar
+                                    </button>
+                                    <button class="btn btn-danger btn-sm mr-2" id="timer-reset">
+                                        <i class="fa fa-undo mr-1"></i>Reiniciar
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" id="timer-add-30s">
+                                        <i class="fa fa-plus mr-1"></i>30s
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contenedor para los ejercicios -->
+                <div class="row">
+                    {% for ejercicio in ejercicios %}
+                    {% set nombre_ejercicio = ejercicio.split(':')[0].strip() %}
+                    {% set es_test = 'TEST' in ejercicio %}
+                    {% set info_ejercicio = ejercicio.split(':')[1] if ':' in ejercicio else '' %}
+                    {% set partes_info = info_ejercicio.split('-') if '-' in info_ejercicio else [] %}
+                    {% set sesion_info = partes_info[0].strip() if partes_info|length > 0 else '' %}
+                    {% set peso_info = partes_info[1].strip() if partes_info|length > 1 else '' %}
+                    {% set series_info = partes_info[2].strip().split('.') if partes_info|length > 2 else [] %}
+                    {% set peso_valor = peso_info.replace('kg', '').strip() if 'kg' in peso_info else '0' %}
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="exercise-card" id="ejercicio-card-{{ loop.index }}">
+                            <div class="exercise-header">
+                                <h4 class="exercise-name">{{ nombre_ejercicio }}</h4>
+                                <span class="exercise-badge {% if es_test %}test{% endif %}">
+                                    {% if es_test %}
+                                        TEST
+                                    {% else %}
+                                        Sesión {{ sesion_info.replace('Sesión ', '') }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="exercise-content">
+                                <!-- Indicador de peso -->
+                                <div class="weight-info" data-weight="{{ peso_valor }}">
+                                    <i class="fa fa-weight-hanging weight-icon"></i> {{ peso_info }}
+                                </div>
+                                
+                                <!-- Para ejercicios normales, mostrar series y reps -->
+                                {% if not es_test %}
+                                    <div class="sets-container">
+                                        {% for serie in series_info %}
+                                            <div class="set-box" data-serie="{{ loop.index }}">
+                                                <div class="set-number">Serie {{ loop.index }}</div>
+                                                <div class="set-reps">{{ serie }} reps</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="warmup-container" style="display: none;"></div>
+                                    <button class="btn btn-sm btn-outline-warning generate-warmup">
+                                        <i class="fa fa-fire mr-1"></i>Generar series de calentamiento
+                                    </button>
+                                {% endif %}
+                                
+                                <!-- Para ejercicios de TEST -->
+                                {% if es_test %}
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-info-circle mr-2"></i>Realiza UNA SOLA SERIE al fallo
+                                </div>
+                                <div class="test-fields" data-ejercicio="{{ nombre_ejercicio }}">
+                                    <div class="form-group">
+                                        <label>
+                                            Repeticiones logradas:
+                                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
+                                               title="Indica cuántas repeticiones pudiste realizar en tu serie al fallo"></i>
+                                        </label>
+                                        <select class="form-control form-control-sm test-reps">
+                                            {% for i in range(1, 11) %}
+                                            <option value="{{ i }}" {% if i == 5 %}selected{% endif %}>{{ i }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group mt-1 incremento-peso-container" style="display: none;">
+                                        <label>
+                                            Incremento de peso (kg):
+                                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
+                                               title="Si lograste 10 repeticiones, puedes incrementar el peso para el próximo ciclo"></i>
+                                        </label>
+                                        <select class="form-control form-control-sm test-peso-incremento">
+                                            <option value="0" selected>Sin cambio</option>
+                                            <option value="2.5">+2.5 kg</option>
+                                            <option value="5">+5 kg</option>
+                                            <option value="7.5">+7.5 kg</option>
+                                            <option value="10">+10 kg</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Checkbox para marcar ejercicio como completado -->
+                                <div class="form-check mt-3">
+                                    <input class="form-check-input ejercicio-checkbox" type="checkbox" 
+                                           id="ejercicio-{{ loop.index }}" data-ejercicio="{{ ejercicio }}">
+                                    <label class="form-check-label" for="ejercicio-{{ loop.index }}">
+                                        Marcar ejercicio como completado
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <button id="btn-avanzar-dia" class="btn btn-lg btn-primary btn-block">
+                            <i class="fa fa-check-circle mr-2"></i> Completar y Avanzar al Siguiente Día
+                        </button>
+                        <div class="text-center text-muted mt-2">
+                            <small>
+                                <i class="fa fa-info-circle mr-1"></i>
+                                Al hacer clic en este botón, se registrará tu progreso y avanzarás al siguiente día de entrenamiento
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <p>No tienes un entrenamiento programado para hoy. Asegúrate de tener un plan de entrenamiento activo.</p>
+                    <a href="/trainingplanner" class="btn btn-info">Ir al Planificador</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Incluir el script JS personalizado para el entrenamiento -->
+<script src="{{ url_for('static', filename='assets/js/training.js') }}"></script>
+{% endblock %}

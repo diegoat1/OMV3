@@ -2,6 +2,40 @@ import numpy as np
 from scipy.optimize import *
 from pulp import *
 import sqlite3
+import json
+from datetime import datetime
+
+DATABASE_PATH = "src/Basededatos"
+
+def decode_json_data(json_string):
+    if json_string:
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError:
+            # print(f"Error decoding JSON: {json_string}") # Optional: for debugging
+            return None
+    return None
+
+def get_all_strength_data_admin():
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    query = """
+        SELECT F.*, PE.NOMBRE_APELLIDO 
+        FROM FUERZA F 
+        INNER JOIN PERFILESTATICO PE ON F.NOMBRE_APELLIDO = PE.NOMBRE_APELLIDO
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        decoded_row = list(row)
+        for i, field in enumerate(decoded_row):
+            if isinstance(field, str) and field.startswith('{'):
+                decoded_row[i] = decode_json_data(field)
+        data.append(decoded_row)
+    conn.close()
+    return data
+
 from io import *
 import os
 from datetime import datetime
@@ -723,6 +757,257 @@ def actualizarperfildin(perfil):
     
     success_message = 'El usuario {} ha sido actualizado.'.format(nameuser)
     flash(success_message)
+
+### FUNCIÓN PARA LA BASE DE DATOS Y GUARDAR LOS LEVANTAMIENTOS ###
+
+def crear_tabla_analisis_fuerza_detallado():
+    """Crea la tabla FUERZA si no existe."""
+    basededatos = None
+    try:
+        basededatos = sqlite3.connect("src/Basededatos")
+        cursor = basededatos.cursor()
+        
+        # Primero eliminamos la tabla antigua si existe
+        # Creamos la nueva tabla FUERZA
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS FUERZA (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                fecha_analisis DATETIME DEFAULT CURRENT_TIMESTAMP,
+                age INTEGER,
+                bodyweight REAL,
+                sex TEXT,
+                unit_system TEXT,
+                round_calculations_to REAL,
+                lift_fields_json TEXT, -- JSON con los inputs del usuario para cada levantamiento (ej: {backSquat: {weight:100, reps:5}, ...})
+                total_score REAL,
+                score_class TEXT,
+                symmetry_score REAL,
+                powerlifting_wilks REAL,
+                powerlifting_total REAL,
+                strongest_lift_name TEXT,
+                weakest_lift_name TEXT,
+                strongest_muscle_groups_names TEXT, -- JSON array de nombres
+                weakest_muscle_groups_names TEXT, -- JSON array de nombres
+                lifts_results_json TEXT, -- JSON con todos los resultados por levantamiento
+                categories_results_json TEXT, -- JSON con todos los resultados por categoría
+                muscle_groups_results_json TEXT, -- JSON con todos los resultados por grupo muscular
+                standards_results_json TEXT, -- JSON con los estándares (si se incluyen)
+                FOREIGN KEY (user_id) REFERENCES PERFILESTATICO(DNI) 
+            )
+        """)
+        basededatos.commit()
+        return True
+    except sqlite3.Error:
+        return False
+    finally:
+        if basededatos:
+            basededatos.close()
+
+def guardar_historia_levantamiento_completa(data_calculado, data_crudo, username, custom_analysis_date_str=None):
+    """
+    Guarda los datos de levantamiento en la tabla FUERZA.
+    """
+    basededatos = None
+    try:
+        basededatos = sqlite3.connect("src/Basededatos")
+        cursor = basededatos.cursor()
+        
+        # Obtener el ID del usuario
+        cursor.execute("SELECT DNI FROM PERFILESTATICO WHERE NOMBRE_APELLIDO = ?", (username,))
+        user_row = cursor.fetchone()
+        
+        if not user_row:
+            print(f"Advertencia: Usuario {username} no encontrado en PERFILESTATICO. No se guardarán datos.")
+            return False
+            
+        user_id_val = user_row[0]
+
+        # Datos de data_crudo
+        age_val = data_crudo.get('age')
+        bodyweight_val = data_crudo.get('bodyweight')
+        sex_val = data_crudo.get('sex')
+        unit_system_val = data_crudo.get('unitSystem')
+        round_calculations_to_val = data_crudo.get('roundTo')
+
+        # Procesar campos de levantamiento
+        lift_fields_input = data_crudo.get('liftFields', {})
+        active_lift_fields = {}
+        if isinstance(lift_fields_input, dict):
+            for lift_key, lift_data in lift_fields_input.items():
+                if isinstance(lift_data, dict) and lift_data.get('checked'):
+                    active_lift_fields[lift_key] = {
+                        'weight': lift_data.get('weight'),
+                        'reps': lift_data.get('reps')
+                    }
+        lift_fields_json_val = json.dumps(active_lift_fields) if active_lift_fields else None
+
+        # Datos de data_calculado
+        total_score_val = data_calculado.get('totalScore')
+        score_class_val = data_calculado.get('scoreClass')
+        symmetry_score_val = data_calculado.get('symmetryScore')
+        powerlifting_wilks_val = data_calculado.get('powerliftingWilks')
+        powerlifting_total_val = data_calculado.get('powerliftingTotal')
+        
+        # Direct extraction for lift names and muscle group strings
+        strongest_lift_name_val = data_calculado.get('strongestLift')
+        weakest_lift_name_val = data_calculado.get('weakestLift')
+        
+        strongest_mg_str = data_calculado.get('strongestMuscleGroups')
+        strongest_muscle_groups_names_val = json.dumps(strongest_mg_str.split(', ')) if isinstance(strongest_mg_str, str) and strongest_mg_str else None
+        
+        weakest_mg_str = data_calculado.get('weakestMuscleGroups')
+        weakest_muscle_groups_names_val = json.dumps(weakest_mg_str.split(', ')) if isinstance(weakest_mg_str, str) and weakest_mg_str else None
+        
+        lifts_results_json_val = json.dumps(data_calculado.get('lifts', []))
+        categories_results_json_val = json.dumps(data_calculado.get('categories', []))
+        muscle_groups_results_json_val = json.dumps(data_calculado.get('muscleGroups', []))
+        standards_results_json_val = json.dumps(data_calculado.get('standards', {}))
+
+        # Insertar en la tabla FUERZA
+        sql = """
+            INSERT INTO FUERZA (
+                user_id, fecha_analisis, age, bodyweight, sex, unit_system, round_calculations_to,
+                lift_fields_json, total_score, score_class, symmetry_score, powerlifting_wilks,
+                powerlifting_total, strongest_lift_name, weakest_lift_name,
+                strongest_muscle_groups_names, weakest_muscle_groups_names,
+                lifts_results_json, categories_results_json, muscle_groups_results_json,
+                standards_results_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        # Determine fecha_analisis_val
+        fecha_analisis_val = custom_analysis_date_str
+        if not fecha_analisis_val or not fecha_analisis_val.strip():
+            # If no custom date, or it's an empty string, use current server time for SQLite
+            fecha_analisis_val = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Ensure custom_analysis_date_str (if provided from HTML date input 'YYYY-MM-DD') 
+        # is compatible or formatted if time is also desired. 
+        # For now, 'YYYY-MM-DD' will store as YYYY-MM-DD 00:00:00.
+
+        params = (
+            user_id_val, fecha_analisis_val, age_val, bodyweight_val, sex_val, unit_system_val, round_calculations_to_val,
+            lift_fields_json_val, total_score_val, score_class_val, symmetry_score_val, powerlifting_wilks_val,
+            powerlifting_total_val, strongest_lift_name_val, weakest_lift_name_val,
+            strongest_muscle_groups_names_val, weakest_muscle_groups_names_val,
+            lifts_results_json_val, categories_results_json_val, muscle_groups_results_json_val,
+            standards_results_json_val
+        )
+        
+        cursor.execute(sql, params)
+        basededatos.commit()
+        
+        return True
+        
+    except sqlite3.Error as e:
+        print(f"Error de SQLite al guardar datos de fuerza: {e}")
+        if basededatos:
+            basededatos.rollback()
+        return False
+    except json.JSONDecodeError as e:
+        print(f"Error de JSON al procesar los datos: {e}")
+        return False
+    except Exception as e:
+        print(f"Error inesperado al guardar datos de fuerza: {e}")
+        if basededatos and getattr(basededatos, 'in_transaction', False):
+            basededatos.rollback()
+        return False
+    finally:
+        if basededatos:
+            basededatos.close()
+
+
+def get_all_strength_data_admin():
+    conn = None
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row # To access columns by name
+        cursor = conn.cursor()
+        
+        query = """
+            SELECT 
+                f.id, f.user_id, ps.NOMBRE_APELLIDO as username, f.fecha_analisis, f.age, f.bodyweight, 
+                f.sex, f.unit_system, f.round_calculations_to, f.lift_fields_json, 
+                f.total_score, f.score_class, f.symmetry_score, f.powerlifting_wilks, 
+                f.powerlifting_total, f.strongest_lift_name, f.weakest_lift_name, 
+                f.strongest_muscle_groups_names, f.weakest_muscle_groups_names, 
+                f.lifts_results_json, f.categories_results_json, 
+                f.muscle_groups_results_json, f.standards_results_json
+            FROM FUERZA f
+            JOIN PERFILESTATICO ps ON f.user_id = ps.DNI
+            ORDER BY f.fecha_analisis DESC
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        data = []
+        for row_obj in rows:
+            item = dict(row_obj) 
+            item['lift_fields_json'] = decode_json_data(item.get('lift_fields_json'))
+            item['strongest_muscle_groups_names'] = decode_json_data(item.get('strongest_muscle_groups_names'))
+            item['weakest_muscle_groups_names'] = decode_json_data(item.get('weakest_muscle_groups_names'))
+            item['lifts_results_json'] = decode_json_data(item.get('lifts_results_json'))
+            item['categories_results_json'] = decode_json_data(item.get('categories_results_json'))
+            item['muscle_groups_results_json'] = decode_json_data(item.get('muscle_groups_results_json'))
+            item['standards_results_json'] = decode_json_data(item.get('standards_results_json'))
+            data.append(item)
+            
+        return data
+    except sqlite3.Error as e:
+        print(f"Error al obtener todos los datos de análisis de fuerza para admin: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+
+
+def get_user_strength_history(user_dni, limite=10):
+    conn = None
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row # To access columns by name
+        cursor = conn.cursor()
+        
+        query = """
+            SELECT 
+                f.id, f.user_id, ps.NOMBRE_APELLIDO as username, f.fecha_analisis, f.age, f.bodyweight, 
+                f.sex, f.unit_system, f.round_calculations_to, f.lift_fields_json, 
+                f.total_score, f.score_class, f.symmetry_score, f.powerlifting_wilks, 
+                f.powerlifting_total, f.strongest_lift_name, f.weakest_lift_name, 
+                f.strongest_muscle_groups_names, f.weakest_muscle_groups_names, 
+                f.lifts_results_json, f.categories_results_json, 
+                f.muscle_groups_results_json, f.standards_results_json
+            FROM FUERZA f
+            JOIN PERFILESTATICO ps ON f.user_id = ps.DNI
+            WHERE f.user_id = ?
+            ORDER BY f.fecha_analisis DESC
+            LIMIT ?
+        """
+        cursor.execute(query, (user_dni, limite))
+        rows = cursor.fetchall()
+        
+        data = []
+        for row_obj in rows:
+            item = dict(row_obj) 
+            item['lift_fields_json'] = decode_json_data(item.get('lift_fields_json'))
+            item['strongest_muscle_groups_names'] = decode_json_data(item.get('strongest_muscle_groups_names'))
+            item['weakest_muscle_groups_names'] = decode_json_data(item.get('weakest_muscle_groups_names'))
+            item['lifts_results_json'] = decode_json_data(item.get('lifts_results_json'))
+            item['categories_results_json'] = decode_json_data(item.get('categories_results_json'))
+            item['muscle_groups_results_json'] = decode_json_data(item.get('muscle_groups_results_json'))
+            item['standards_results_json'] = decode_json_data(item.get('standards_results_json'))
+            data.append(item)
+            
+        return data
+    except sqlite3.Error as e:
+        print(f"Error al obtener el historial de fuerza del usuario {user_dni}: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
 
 ### CREA UNA LISTA CON TODOS LOS USUARIOS ###
 

@@ -15,9 +15,9 @@
 
         <form name="sentMessage" id="dietForm" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <div class="row push">
+            <div class="row push mb-4">
                 <div class="col-lg-12">
-                    <label for="example-text-input">Dieta Semanal</label>
+                    <label class="h4 mb-2" for="example-text-input">Dieta Semanal</label>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         <div class="alert alert-danger alert-dismissable" role="alert">
@@ -33,52 +33,71 @@
                     {% endwith %}
                 </div>
             </div>
-            <div class="row push">
-                <div class="col-lg-12">
-                    <h3>Seleccionar Alimentos y sus cantidades</h3>
-                    <div class="form-group row">
-                        {% for group_name_tuple in form.all_food_groups %}
-                            {% set group_name = group_name_tuple[0] %}
-                            <!-- Columna para incluir alimentos -->
-                            <div class="col-2">
-                                <div class="custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="alimento_{{ group_name }}-incluir" name="alimento_{{ group_name }}_incluir" {{ 'checked' if form['alimento_' + group_name + '_incluir'].data else '' }}>
-                                    <label class="custom-control-label" for="alimento_{{ group_name }}-incluir">Incluir {{ group_name }}</label>
-                                </div>
-                            </div>
-                            <!-- Columna para las porciones semanales -->
-                            <div class="col-2">
-                                <div class="form-group">
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text">{{ group_name }}</span>
+
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card shadow-sm mb-4 diet-card-alimentos">
+                        <div class="card-header diet-card-header-alimentos">
+                            <h4 class="mb-0"><i class="fa fa-utensils mr-2"></i> Seleccionar alimentos y sus cantidades</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-end">
+                                {% for group_name_tuple in form.all_food_groups %}
+                                    {% set group_name = group_name_tuple[0] %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 diet-card-alimentos">
+                                            <div class="card-body py-2 px-2">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="custom-control custom-switch mr-2">
+                                                        <input type="checkbox" class="custom-control-input" id="alimento_{{ group_name }}-incluir" name="alimento_{{ group_name }}_incluir" {{ 'checked' if form['alimento_' + group_name + '_incluir'].data else '' }}>
+                                                        <label class="custom-control-label font-weight-bold" for="alimento_{{ group_name }}-incluir" data-toggle="tooltip" title="Marca para incluir este grupo de alimentos en tu dieta.">
+                                                            {{ group_name }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group mb-0">
+                                                    <label for="alimento_{{ group_name }}-porciones" class="small text-muted">Porciones semanales</label>
+                                                    {{ render_field(form['alimento_' + group_name + '_porciones_semanales'], class='form-control', id='alimento_' + group_name + '-porciones', placeholder='Ej: 7') }}
+                                                    <small class="form-text text-muted">Ejemplo: 7 para una porción diaria</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                        {{ render_field(form['alimento_' + group_name + '_porciones_semanales'], class='form-control', id='alimento_' + group_name + '-porciones') }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm mb-4 diet-card-nutrientes">
+                        <div class="card-header diet-card-header-nutrientes">
+                            <h4 class="mb-0"><i class="fa fa-apple-alt mr-2"></i> Seleccionar nutrientes</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for nutrient in form.nutrients %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100 diet-card-nutrientes">
+                                        <div class="card-body py-2 px-2">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="nutriente_{{ nutrient }}-incluir" name="nutriente_{{ nutrient }}_incluir" {{ 'checked' if form['nutriente_' + nutrient + '_incluir'].data else '' }}>
+                                                <label class="custom-control-label font-weight-bold" for="nutriente_{{ nutrient }}-incluir" data-toggle="tooltip" title="Marca para incluir este nutriente en tu seguimiento.">
+                                                    {{ nutrient }}
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+                                {% endfor %}
                             </div>
-                        {% endfor %}
+                        </div>
                     </div>
-                     <!-- Aquí comienza la sección de nutrientes -->
-                     <h3>Seleccionar Nutrientes</h3>
-                     <div class="form-group row">
-                         {% for nutrient in form.nutrients %}
-                         <div class="col-4">
-                             <div class="form-group">
-                                 <div class="custom-control custom-switch">
-                                     <input type="checkbox" class="custom-control-input" id="nutriente_{{ nutrient }}-incluir" name="nutriente_{{ nutrient }}_incluir" {{ 'checked' if form['nutriente_' + nutrient + '_incluir'].data else '' }}>
-                                     <label class="custom-control-label" for="nutriente_{{ nutrient }}-incluir">Incluir {{ nutrient }}</label>
-                                 </div>
-                             </div>
-                         </div>
-                         {% endfor %}
-                     </div>
-                    </div>
-                    <!-- Botón de envío -->
-                    <div class="col-xl-12">
-                        <button type="submit" class="btn btn-block btn-primary">
-                            <i class="fa fa-fw fa-sign-in-alt mr-1"></i> Enviar
-                        </button>
+
+                    <div class="row mb-3">
+                        <div class="col-xl-12">
+                            <button type="submit" class="btn btn-block btn-lg btn-primary shadow">
+                                <i class="fa fa-fw fa-sign-in-alt mr-1"></i> Enviar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
