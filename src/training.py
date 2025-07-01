@@ -284,17 +284,27 @@ def obtener_entrenamiento_del_dia(user_id):
                 entrenamiento_formateado.append(f"  {ejercicio_nombre}: Estado no encontrado (error)")
                 continue
             
-            col = estado_ejercicio['current_columna'] - 1  # 0-indexed
             sesion = estado_ejercicio['current_sesion']
+            reps_test_fallo = estado_ejercicio['current_columna']
             peso = estado_ejercicio['current_peso']
+
+            # Lógica de selección de la prescripción:
+            # - La 'sesion' (1, 2, o 3) determina la FILA de la matriz (índice 0, 1, o 2).
+            # - Las repeticiones del último test ('reps_test_fallo') determinan la COLUMNA de la matriz.
+            fila_idx = sesion - 1
+            col_idx = reps_test_fallo - 1 # El valor en la BD es 1-indexed
+
+            # Verificación de límites para la fila (sesión)
+            if not (0 <= fila_idx < len(matriz_progresion)):
+                entrenamiento_formateado.append(f"  {ejercicio_nombre}: Sesión ({sesion}) fuera de rango para la matriz.")
+                continue
             
-            # Ya no usamos fila_matriz, siempre usamos la fila 0 de la matriz de progresión
-            fila_matriz = 0  # Valor por defecto para todos los ejercicios
-            if not (0 <= col < len(matriz_progresion[fila_matriz])):
-                entrenamiento_formateado.append(f"  {ejercicio_nombre}: Columna ({col+1}) fuera de rango para la matriz.")
+            # Verificación de límites para la columna (reps al fallo)
+            if not (0 <= col_idx < len(matriz_progresion[fila_idx])):
+                entrenamiento_formateado.append(f"  {ejercicio_nombre}: Reps al fallo ({reps_test_fallo}) fuera de rango para la matriz.")
                 continue
 
-            prescripcion_str = matriz_progresion[fila_matriz][col]
+            prescripcion_str = matriz_progresion[fila_idx][col_idx]
             
             # Para sesión de TEST mostramos instrucciones diferentes
             if sesion == TEST_SESSION_NUMBER:
