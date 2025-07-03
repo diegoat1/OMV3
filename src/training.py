@@ -291,34 +291,35 @@ def obtener_entrenamiento_del_dia(user_id):
             # Lógica de selección de la prescripción:
             # - La 'sesion' (1, 2, o 3) determina la FILA de la matriz (índice 0, 1, o 2).
             # - Las repeticiones del último test ('reps_test_fallo') determinan la COLUMNA de la matriz.
-            fila_idx = sesion - 1
-            col_idx = reps_test_fallo - 1 # El valor en la BD es 1-indexed
-
-            # Verificación de límites para la fila (sesión)
-            if not (0 <= fila_idx < len(matriz_progresion)):
-                entrenamiento_formateado.append(f"  {ejercicio_nombre}: Sesión ({sesion}) fuera de rango para la matriz.")
-                continue
-            
-            # Verificación de límites para la columna (reps al fallo)
-            if not (0 <= col_idx < len(matriz_progresion[fila_idx])):
-                entrenamiento_formateado.append(f"  {ejercicio_nombre}: Reps al fallo ({reps_test_fallo}) fuera de rango para la matriz.")
-                continue
-
-            prescripcion_str = matriz_progresion[fila_idx][col_idx]
-            
-            # Para sesión de TEST mostramos instrucciones diferentes
+            # Primero, manejar el caso especial de la sesión de TEST
             if sesion == TEST_SESSION_NUMBER:
-                # Usar current_columna para mostrar como objetivo de repeticiones
                 columna_actual = estado_ejercicio['current_columna']
                 
                 # Calcular y mostrar el peso ajustado para ejercicios de calistenia
                 if ejercicio_nombre.lower() in ejercicios_peso_corporal:
                     peso_mostrado = peso - peso_corporal if (peso - peso_corporal) > 0 else 0
                     mensaje_peso = f"+{peso_mostrado:.1f} kg" if peso_mostrado > 0 else "Peso corporal"
-                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - Realizar UNA SOLA SERIE al fallo con {mensaje_peso} (Último test: {columna_actual} reps)")
+                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - 1 serie al fallo con {mensaje_peso} (Último test: {columna_actual} reps)")
                 else:
-                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - Realizar UNA SOLA SERIE al fallo con {peso:.1f} kg (Último test: {columna_actual} reps)")
+                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - 1 serie al fallo con {peso:.1f} kg (Último test: {columna_actual} reps)")
+            
+            # Si no es sesión de test, proceder con la lógica de la matriz
             else:
+                fila_idx = sesion - 1
+                col_idx = reps_test_fallo - 1 # El valor en la BD es 1-indexed
+
+                # Verificación de límites para la fila (sesión)
+                if not (0 <= fila_idx < len(matriz_progresion)):
+                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: Sesión ({sesion}) fuera de rango para la matriz.")
+                    continue
+                
+                # Verificación de límites para la columna (reps al fallo)
+                if not (0 <= col_idx < len(matriz_progresion[fila_idx])):
+                    entrenamiento_formateado.append(f"  {ejercicio_nombre}: Reps al fallo ({reps_test_fallo}) fuera de rango para la matriz.")
+                    continue
+
+                prescripcion_str = matriz_progresion[fila_idx][col_idx]
+                
                 # Calcular y mostrar el peso ajustado para ejercicios de calistenia
                 if ejercicio_nombre.lower() in ejercicios_peso_corporal:
                     peso_mostrado = peso - peso_corporal if (peso - peso_corporal) > 0 else 0

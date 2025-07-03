@@ -46,41 +46,83 @@
                 <!-- Contenedor para los ejercicios -->
                 <div class="row">
                     {% for ejercicio in ejercicios %}
+                    {# --- Lógica de parseo robusta --- #}
                     {% set nombre_ejercicio = ejercicio.split(':')[0].strip() %}
                     {% set es_test = 'TEST' in ejercicio %}
-                    {% set info_ejercicio = ejercicio.split(':')[1] if ':' in ejercicio else '' %}
-                    {% set partes_info = info_ejercicio.split('-') if '-' in info_ejercicio else [] %}
-                    {% set sesion_info = partes_info[0].strip() if partes_info|length > 0 else '' %}
-                    {% set peso_info = partes_info[1].strip() if partes_info|length > 1 else '' %}
-                    {% set series_info = partes_info[2].strip().split('.') if partes_info|length > 2 else [] %}
-                    {% set peso_valor = peso_info.replace('kg', '').strip() if 'kg' in peso_info else '0' %}
-                    
+                    {% set es_error = 'error' in ejercicio or 'fuera de rango' in ejercicio %}
+                    {% set info_ejercicio = ejercicio.split(':', 1)[1].strip() if ':' in ejercicio else '' %}
+
                     <div class="col-md-6 mb-4">
                         <div class="exercise-card" id="ejercicio-card-{{ loop.index }}">
                             <div class="exercise-header">
                                 <h4 class="exercise-name">{{ nombre_ejercicio }}</h4>
-                                <span class="exercise-badge {% if es_test %}test{% endif %}">
+                                <span class="exercise-badge {% if es_test %}test{% elif es_error %}error{% endif %}">
                                     {% if es_test %}
                                         TEST
+                                    {% elif es_error %}
+                                        Error
                                     {% else %}
+                                        {% set sesion_info = info_ejercicio.split('-')[0].strip() %}
                                         Sesión {{ sesion_info.replace('Sesión ', '') }}
                                     {% endif %}
                                 </span>
                             </div>
                             <div class="exercise-content">
-                                <!-- Indicador de peso -->
-                                <div class="weight-info" data-weight="{{ peso_valor }}">
-                                    <i class="fa fa-weight-hanging weight-icon"></i> {{ peso_info }}
-                                </div>
-                                
-                                <!-- Para ejercicios normales, mostrar series y reps -->
-                                {% if not es_test %}
+                                {% if es_test %}
+                                    <!-- === VISTA PARA EJERCICIOS DE TEST === -->
+                                    <div class="weight-info mb-3">
+                                        <i class="fa fa-weight-hanging weight-icon mr-2"></i>{{ info_ejercicio.replace('TEST -', '').strip() }}
+                                    </div>
+                                    <div class="test-fields" data-ejercicio="{{ nombre_ejercicio }}">
+                                        <div class="form-group">
+                                            <label>
+                                                Repeticiones logradas:
+                                                <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" title="Indica cuántas repeticiones pudiste realizar en tu serie al fallo"></i>
+                                            </label>
+                                            <select class="form-control form-control-sm test-reps">
+                                                {% for i in range(1, 11) %}
+                                                <option value="{{ i }}" {% if i == 5 %}selected{% endif %}>{{ i }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group mt-1 incremento-peso-container" style="display: none;">
+                                            <label>
+                                                Incremento de peso (kg):
+                                                <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" title="Si lograste 10 repeticiones, puedes incrementar el peso para el próximo ciclo"></i>
+                                            </label>
+                                            <select class="form-control form-control-sm test-peso-incremento">
+                                                <option value="0" selected>Sin cambio</option>
+                                                <option value="2.5">+2.5 kg</option>
+                                                <option value="5">+5 kg</option>
+                                                <option value="7.5">+7.5 kg</option>
+                                                <option value="10">+10 kg</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                {% elif es_error %}
+                                    <!-- === VISTA PARA ERRORES === -->
+                                    <div class="alert alert-danger"><i class="fa fa-exclamation-triangle mr-2"></i>{{ info_ejercicio }}</div>
+
+                                {% else %}
+                                    <!-- === VISTA PARA SESIONES NORMALES === -->
+                                    {% set partes_info = info_ejercicio.split('-') %}
+                                    {% set peso_info = partes_info[1].strip() if partes_info|length > 1 else '' %}
+                                    {% set series_info_str = partes_info[2].strip() if partes_info|length > 2 else '' %}
+                                    {% set series_info = series_info_str.split('.') %}
+                                    {% set peso_valor = peso_info.replace('kg', '').replace('+', '').strip() if 'kg' in peso_info else '0' %}
+
+                                    <div class="weight-info" data-weight="{{ peso_valor }}">
+                                        <i class="fa fa-weight-hanging weight-icon"></i> {{ peso_info }}
+                                    </div>
                                     <div class="sets-container">
                                         {% for serie in series_info %}
+                                            {% if serie %}
                                             <div class="set-box" data-serie="{{ loop.index }}">
                                                 <div class="set-number">Serie {{ loop.index }}</div>
                                                 <div class="set-reps">{{ serie }} reps</div>
                                             </div>
+                                            {% endif %}
                                         {% endfor %}
                                     </div>
                                     <div class="warmup-container" style="display: none;"></div>
@@ -88,43 +130,8 @@
                                         <i class="fa fa-fire mr-1"></i>Generar series de calentamiento
                                     </button>
                                 {% endif %}
-                                
-                                <!-- Para ejercicios de TEST -->
-                                {% if es_test %}
-                                <div class="alert alert-warning">
-                                    <i class="fa fa-info-circle mr-2"></i>Realiza UNA SOLA SERIE al fallo
-                                </div>
-                                <div class="test-fields" data-ejercicio="{{ nombre_ejercicio }}">
-                                    <div class="form-group">
-                                        <label>
-                                            Repeticiones logradas:
-                                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
-                                               title="Indica cuántas repeticiones pudiste realizar en tu serie al fallo"></i>
-                                        </label>
-                                        <select class="form-control form-control-sm test-reps">
-                                            {% for i in range(1, 11) %}
-                                            <option value="{{ i }}" {% if i == 5 %}selected{% endif %}>{{ i }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="form-group mt-1 incremento-peso-container" style="display: none;">
-                                        <label>
-                                            Incremento de peso (kg):
-                                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
-                                               title="Si lograste 10 repeticiones, puedes incrementar el peso para el próximo ciclo"></i>
-                                        </label>
-                                        <select class="form-control form-control-sm test-peso-incremento">
-                                            <option value="0" selected>Sin cambio</option>
-                                            <option value="2.5">+2.5 kg</option>
-                                            <option value="5">+5 kg</option>
-                                            <option value="7.5">+7.5 kg</option>
-                                            <option value="10">+10 kg</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                <!-- Checkbox para marcar ejercicio como completado -->
+
+                                <!-- Checkbox para marcar ejercicio como completado (común a todos) -->
                                 <div class="form-check mt-3">
                                     <input class="form-check-input ejercicio-checkbox" type="checkbox" 
                                            id="ejercicio-{{ loop.index }}" data-ejercicio="{{ ejercicio }}">
