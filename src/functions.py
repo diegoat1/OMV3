@@ -1508,6 +1508,20 @@ def recipe(recipeform, nameuser):
         flash(error_message)
         redirect ( url_for('recipe') )
 
+def get_training_plan(user_id):
+    conn = sqlite3.connect('src/Basededatos')
+    cursor = conn.cursor()
+    cursor.execute("SELECT plan_json FROM Planes_Entrenamiento WHERE user_id = ? AND active = 1", (user_id,))
+    plan_data = cursor.fetchone()
+    conn.close()
+
+    if plan_data and plan_data[0]:
+        try:
+            return json.loads(plan_data[0])
+        except json.JSONDecodeError:
+            return None
+    return None
+
 def process_diet(diet_form, nameuser):
     # Imprimir datos del formulario
     # for field in diet_form:

@@ -1,0 +1,33 @@
+{% extends "base/base.html" %}
+
+{% block title %}Plan de Entrenamiento{% endblock %}
+
+{% block herotitle %}Tu Plan de Entrenamiento{% endblock %}
+{% block herosubtitle %}Aquí puedes ver tu rutina semanal.{% endblock %}
+
+{% block content %}
+    <div class="block block-rounded">
+        <div class="block-content">
+            {% if training_plan and training_plan.dias %}
+                <div class="row items-push">
+                    {% for dia in training_plan.dias %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card mb-3">
+                                <div class="card-header"><strong>Día {{ dia.dia }}</strong></div>
+                                <ul class="list-group list-group-flush">
+                                    {% for ejercicio in dia.ejercicios %}
+                                        <li class="list-group-item">{{ ejercicio }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <p class="mb-0">No tienes un plan de entrenamiento activo.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

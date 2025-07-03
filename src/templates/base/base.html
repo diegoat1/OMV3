@@ -63,6 +63,12 @@
             #page-footer.fixed-bottom {
                 transition: left .25s ease-out;
             }
+
+            /* Custom hover effect for sidebar links */
+            .nav-main-link:hover,
+            .nav-main-link:focus {
+                background-color: rgba(255, 255, 255, 0.05);
+            }
         </style>
  
     </head>
@@ -160,13 +166,13 @@
                     <div class="content-side">
                         <ul class="nav-main">
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/dashboard">
+                                <a class="nav-main-link" href="/dashboard">
                                     <i class="nav-main-link-icon si si-speedometer"></i>
                                     <span class="nav-main-link-name">Vista principal</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/resume">
+                                <a class="nav-main-link" href="/resume">
                                     <i class="nav-main-link-icon si si-bubbles"></i>
                                     <span class="nav-main-link-name">Resumen</span>
                                 </a>
@@ -229,31 +235,37 @@
 
                             <li class="nav-main-heading">Funciones</li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/historial-fuerza">
+                                <a class="nav-main-link" href="/historial-fuerza">
                                     <i class="nav-main-link-icon fa fa-chart-line"></i>
                                     <span class="nav-main-link-name">Historial de Fuerza</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/caloriescal">
+                                <a class="nav-main-link" href="/plan_entrenamiento">
+                                    <i class="nav-main-link-icon fa fa-calendar-alt"></i>
+                                    <span class="nav-main-link-name">Plan de Entrenamiento</span>
+                                </a>
+                            </li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/caloriescal">
                                     <i class="nav-main-link-icon fa fa-calculator"></i>
                                     <span class="nav-main-link-name">Calculadora de calorías</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/recipe">
+                                <a class="nav-main-link" href="/recipe">
                                     <i class="nav-main-link-icon fa fa-blender"></i>
                                     <span class="nav-main-link-name">Recetas</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/diet">
+                                <a class="nav-main-link" href="/diet">
                                     <i class="nav-main-link-icon fa fa-apple-alt"></i>
                                     <span class="nav-main-link-name">Dieta</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link active" href="/entrenamiento_actual">
+                                <a class="nav-main-link" href="/entrenamiento_actual">
                                     <i class="nav-main-link-icon fa fa-dumbbell"></i>
                                     <span class="nav-main-link-name">Entrenamiento</span>
                                 </a>
@@ -474,7 +486,9 @@
             </div>
             <!-- END Apps Modal -->
         </div>
-        <!-- END Page Container -->
+
+
+<!-- END Page Container -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
         
         <!-- Core Scripts -->
