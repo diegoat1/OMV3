@@ -45,6 +45,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- Campo oculto para el token CSRF -->
+<input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token() }}">
+
 <div class="content">
     <div class="block block-rounded">
         <div class="block-header block-header-default d-flex flex-column flex-md-row justify-content-between align-items-center">
@@ -668,12 +671,17 @@ function procesarOptimizacion() {
 // --- Eliminar registro ---
 function eliminarRegistro(id) {
     if (confirm('¿Estás seguro de que deseas eliminar este registro de análisis de fuerza? Esta acción no se puede deshacer.')) {
+        // Obtenemos el token CSRF
+        const token = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        
         fetch('/eliminar_registro_fuerza/' + id, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : ''
-            }
+                'X-CSRFToken': token
+            },
+            // Añadimos un cuerpo vacío para evitar problemas con algunas implementaciones de Flask
+            body: JSON.stringify({})
         })
         .then(response => {
             if (response.ok) {

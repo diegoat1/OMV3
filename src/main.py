@@ -133,6 +133,10 @@ def caloriescal():
 
 @app.route('/dashboard')
 def dashboard():
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+
+    user_dni = session['DNI']
     username = session['username']
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
@@ -144,9 +148,13 @@ def dashboard():
     estaticodata=cursor.fetchall()
     cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
     objetivodata=cursor.fetchall()
+    basededatos.close()
+
+    if not dinamicodata or not estaticodata:
+        flash("No se encontraron datos de perfil. Por favor, actualice su perfil.")
+        return redirect(url_for('update'))
 
     # CALCULOS EXTRAS PARA MOSTRAR
-
     agua=round(dinamicodata[-1][6]/25,1)
     sexo=estaticodata[0][4]
     abdomen=int(dinamicodata[-1][5])
@@ -353,7 +361,10 @@ def dashboard():
     for i in range(lendata):
         listabf.append(dinamicodata[-lendata+i][7])
 
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat, solver_category=solver_category)
+    # Obtener el plan de entrenamiento
+    training_plan = functions.get_training_plan(user_dni)
+
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat, solver_category=solver_category, training_plan=training_plan)
 
 ### FUNCIÓN DE MANTENIMIENTO ###
 
@@ -973,7 +984,7 @@ def recipe():
     return render_template('recipe.html', title='Tu plan nutricional', form=recipe_form, username=session['username'])
 
 # Endpoint para eliminar registros de fuerza detallados (solo admin)
-@app.route('/admin/strengthdata/delete/<int:id>', methods=['DELETE'])
+@app.route('/eliminar_registro_fuerza/<int:id>', methods=['DELETE', 'POST'])
 def eliminar_strengthdata_admin(id):
     if 'username' not in session or session['username'] != 'Toffaletti, Diego Alejandro':
         return jsonify({'success': False, 'message': 'Permiso denegado: solo el administrador puede eliminar registros.'}), 403
@@ -1344,37 +1355,52 @@ def cooking():
 def login():
     login_form = forms.LoginForm(request.form)
     if request.method == 'POST' and login_form.validate():
-        try:
-            email=login_form.email.data
-            basededatos = sqlite3.connect('src/Basededatos')
-            cursor = basededatos.cursor()
-            cursor.execute(
-                'SELECT NOMBRE_APELLIDO, DNI FROM PERFILESTATICO WHERE EMAIL=?', [email])
-            datos = cursor.fetchone()
-            username = datos[0]
-            password = datos[1]
-            if str(password) == str(login_form.password.data):
-                success_message = 'Bienvenido {} !'.format(username)
-                flash(success_message)
+        email = login_form.email.data
+        password_form = login_form.password.data # This is actually the DNI
+        
+        conn = sqlite3.connect('src/Basededatos')
+        cursor = conn.cursor()
+        # La contraseña es el DNI del usuario.
+        cursor.execute("SELECT DNI, NOMBRE_APELLIDO FROM PERFILESTATICO WHERE EMAIL = ?", (email,))
+        user_data = cursor.fetchone()
+        conn.close()
+
+        if user_data:
+            dni, username = user_data
+            # La contraseña introducida en el formulario debe coincidir con el DNI.
+            if str(dni) == str(password_form):
+                session['DNI'] = dni
                 session['username'] = username
+                flash(f'Bienvenido {username}!')
                 return redirect(url_for('dashboard'))
             else:
-                error_message = 'Ingrese su numero de documento.'
-                flash(error_message)
-        except:
-            error_message = 'El correo ingresado no se encuentra registrado. Hablar con el Administrador.'
-            flash(error_message)
-            return render_template('login.html', title='Ingrese su usuario', form=login_form)        
-    return render_template('login.html', title='Ingrese su usuario', form=login_form)
+                flash('Email o contraseña (DNI) incorrectos.', 'danger')
+        else:
+            flash('Email o contraseña (DNI) incorrectos.', 'danger')
+            
+    return render_template('login.html', title='Login', form=login_form)
 
 ### FUNCIÓN PARA DESLOGUEARSE ###
 
 @app.route('/logout')
 def logout():
-    if 'username' in session:
-        session.pop('username')
-    return redirect(url_for('home'))
+    session.pop('username', None)
+    session.pop('DNI', None)
+    flash("Has cerrado sesión.")
+    return redirect(url_for('login'))
+
+@app.route('/plan_entrenamiento')
+def plan_entrenamiento():
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
     
+    user_id = session['DNI']
+    training_plan = functions.get_training_plan(user_id)
+    
+    return render_template('plan_entrenamiento.html', 
+                             username=session.get('username'),
+                             training_plan=training_plan)
+
 ### FUNCIÓN PARA MOSTRAR LA BASE DE DATOS COMPLETA ###
 
 @app.route('/databasemanager')
