@@ -625,6 +625,37 @@ def entrenamiento_actual():
     # Obtener el entrenamiento del día usando la función de training.py
     entrenamiento = obtener_entrenamiento_del_dia(user_id)
     
+    # Obtener datos adicionales del último test para cada ejercicio
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    
+    # Obtener matriz de progresión para calcular target reps
+    cursor.execute("SELECT matriz_json FROM MATRIZ_ENTRENAMIENTO ORDER BY id DESC LIMIT 1")
+    matriz_row = cursor.fetchone()
+    matriz = json.loads(matriz_row[0]) if matriz_row else []
+    
+    # Obtener información del último test de cada ejercicio
+    cursor.execute("""
+        SELECT ejercicio_nombre, last_test_reps, current_columna 
+        FROM ESTADO_EJERCICIO_USUARIO 
+        WHERE user_id = ?
+    """, (user_id,))
+    estados_ejercicios = cursor.fetchall()
+    basededatos.close()
+    
+    # Crear diccionario con información del último test
+    ultimo_test_info = {}
+    for estado in estados_ejercicios:
+        ejercicio_nombre, last_test_reps, current_columna = estado
+        
+        # La meta a superar es directamente el valor de current_columna
+        target_reps = current_columna if current_columna else 1
+        
+        ultimo_test_info[ejercicio_nombre] = {
+            'last_reps': last_test_reps if last_test_reps else 0,
+            'target_reps': target_reps if target_reps else 1
+        }
+    
     # Convertimos las líneas de texto a una estructura de datos
     # para poder procesarlas mejor en el template
     if isinstance(entrenamiento, str):
@@ -645,7 +676,8 @@ def entrenamiento_actual():
                            title='Entrenamiento del día', 
                            username=username,
                            titulo_entrenamiento=titulo,
-                           ejercicios=ejercicios)
+                           ejercicios=ejercicios,
+                           ultimo_test_info=ultimo_test_info)
 
 ### FUNCIÓN PARA REGISTRAR SESIÓN COMPLETADA ###
 @app.route('/registrar_sesion', methods=['POST'])
@@ -687,6 +719,7 @@ def registrar_sesion():
         repeticiones_test = {}
         incrementos_peso = {}
         sesiones_completadas = {}
+        sesiones_convertidas_test = {}
         
         for ejercicio_completo in ejercicios_completados:
             # Extraer solo el nombre del ejercicio (antes de los dos puntos)
@@ -702,7 +735,13 @@ def registrar_sesion():
                 test_data = datos_test[nombre_ejercicio]
                 repeticiones_test[nombre_ejercicio] = test_data.get('repeticiones', 0)
                 incrementos_peso[nombre_ejercicio] = test_data.get('incrementoPeso', 2.5)
-                print(f"Datos TEST para {nombre_ejercicio}: {repeticiones_test[nombre_ejercicio]} reps, incremento {incrementos_peso[nombre_ejercicio]} kg")
+                
+                # Verificar si fue convertida a TEST
+                if test_data.get('convertedToTest', False):
+                    sesiones_convertidas_test[nombre_ejercicio] = True
+                    print(f"Ejercicio {nombre_ejercicio} fue CONVERTIDO A TEST: {repeticiones_test[nombre_ejercicio]} reps, incremento {incrementos_peso[nombre_ejercicio]} kg")
+                else:
+                    print(f"Datos TEST para {nombre_ejercicio}: {repeticiones_test[nombre_ejercicio]} reps, incremento {incrementos_peso[nombre_ejercicio]} kg")
             
             # Verificar si el ejercicio tiene información de completado/no completado
             if nombre_ejercicio in sesiones_completadas_data:
@@ -710,7 +749,7 @@ def registrar_sesion():
                 print(f"Ejercicio {nombre_ejercicio}: {'Completado' if sesiones_completadas[nombre_ejercicio] else 'No completado'}")
         
         # Registrar la sesión como completada o no completada
-        registrar_sesion_completada(user_id, ejercicios_nombres, repeticiones_test, incrementos_peso, sesiones_completadas)
+        registrar_sesion_completada(user_id, ejercicios_nombres, repeticiones_test, incrementos_peso, sesiones_completadas, sesiones_convertidas_test)
         
         return jsonify({"success": True, "message": "Sesión registrada correctamente"})
         

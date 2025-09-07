@@ -338,7 +338,7 @@ def obtener_entrenamiento_del_dia(user_id):
         print(f"Error general en obtener_entrenamiento_del_dia: {e}")  # Log error general
         return f"Error al obtener entrenamiento: {str(e)}"
 
-def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incrementos_peso={}, sesiones_completadas={}):
+def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incrementos_peso={}, sesiones_completadas={}, sesiones_convertidas_test={}):
     """Registra la sesión completada para uno o varios ejercicios
     
     Args:
@@ -347,6 +347,7 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
         repeticiones_test (dict): Diccionario con {ejercicio: repeticiones} para sesiones de test
         incrementos_peso (dict): Diccionario con {ejercicio: incremento} para ajuste personalizado de peso
         sesiones_completadas (dict): Diccionario con {ejercicio: completada} donde completada es True o False
+        sesiones_convertidas_test (dict): Diccionario con {ejercicio: convertida} donde convertida es True si fue convertida a TEST
     
     Returns:
         dict: Resultados del registro de cada ejercicio
@@ -375,12 +376,15 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
 
         # Verificar si el ejercicio está marcado como no completado
         sesion_completada = sesiones_completadas.get(ejercicio_nombre, True)  # Por defecto es completada
+        
+        # Verificar si la sesión fue convertida a TEST
+        fue_convertida_test = sesiones_convertidas_test.get(ejercicio_nombre, False)
 
-        if estado['current_sesion'] == TEST_SESSION_NUMBER: # Es día de test
+        if estado['current_sesion'] == TEST_SESSION_NUMBER or fue_convertida_test: # Es día de test O fue convertida a test
             # Obtener las repeticiones para este ejercicio del diccionario
             if ejercicio_nombre in repeticiones_test:
                 reps_test = repeticiones_test[ejercicio_nombre]
-                print(f"Procesando TEST para {ejercicio_nombre}: {reps_test} repeticiones")
+                print(f"Procesando {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} para {ejercicio_nombre}: {reps_test} repeticiones")
                 
                 # Establecer la nueva columna según las repeticiones del test
                 nueva_columna = min(reps_test, 9)  # Limitar a máximo 9
@@ -402,13 +406,13 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
                     nueva_columna = 1 # Reiniciar a la columna 1 con más peso
                     # Reiniciar también last_test_reps a 1 ya que empezamos un nuevo ciclo con más peso
                     reps_test = 1
-                    mensaje_extra = f"Peso incrementado a {nuevo_peso:.1f} kg (+{incremento} kg). Reiniciando ciclo."
+                    mensaje_extra = f"Peso incrementado a {nuevo_peso:.1f} kg (+{incremento} kg). {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
                 else:
-                    mensaje_extra = f"Repeticiones registradas: {reps_test}. Reiniciando ciclo."
+                    mensaje_extra = f"Repeticiones registradas: {reps_test}. {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
             else:
                 # Si no hay datos de TEST para este ejercicio, simplemente avanzamos al siguiente día
                 nueva_sesion = 1 # Resetear a la primera sesión
-                mensaje_extra = "Sesión de TEST completada sin datos específicos. Reiniciando ciclo."
+                mensaje_extra = f"Sesión de {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} completada sin datos específicos. Reiniciando ciclo."
 
         else: # Sesión normal
             if sesion_completada:

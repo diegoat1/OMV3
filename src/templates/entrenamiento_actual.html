@@ -110,10 +110,30 @@
                                     {% set peso_info = partes_info[1].strip() if partes_info|length > 1 else '' %}
                                     {% set series_info_str = partes_info[2].strip() if partes_info|length > 2 else '' %}
                                     {% set series_info = series_info_str.split('.') %}
-                                    {% set peso_valor = peso_info.replace('kg', '').replace('+', '').strip() if 'kg' in peso_info else '0' %}
+                                    {% set peso_parts = peso_info.split() %}
+                                    {% set peso_valor = '0' %}
+                                    {% for i in range(peso_parts|length) %}
+                                        {% if peso_parts[i] == 'kg' and i > 0 and peso_valor == '0' %}
+                                            {% set peso_valor = peso_parts[i-1] %}
+                                        {% endif %}
+                                    {% endfor %}
 
-                                    <div class="weight-info" data-weight="{{ peso_valor }}">
+                                    <div class="weight-info" data-weight="{{ peso_valor }}" data-peso-info="{{ peso_info }}">
                                         <i class="fa fa-weight-hanging weight-icon"></i> {{ peso_info }}
+                                        <button class="btn btn-sm btn-outline-danger convert-to-test-btn" data-ejercicio="{{ nombre_ejercicio }}" title="Convertir a TEST (serie al fallo)">
+                                            <i class="fa fa-bolt"></i> TEST
+                                        </button>
+                                    </div>
+                                    <!-- Meta a superar (siempre visible) -->
+                                    <div class="last-test-info mb-2" data-ejercicio="{{ nombre_ejercicio }}">
+                                        <small class="text-info">
+                                            {% if ultimo_test_info and ultimo_test_info.get(nombre_ejercicio) %}
+                                                {% set test_info = ultimo_test_info[nombre_ejercicio] %}
+                                                <i class="fa fa-target mr-1"></i>Meta: superar <span class="target-reps">{{ test_info.target_reps }}</span> reps
+                                            {% else %}
+                                                <i class="fa fa-target mr-1"></i>Meta: superar <span class="target-reps">-</span> reps
+                                            {% endif %}
+                                        </small>
                                     </div>
                                     <div class="sets-container">
                                         {% for serie in series_info %}

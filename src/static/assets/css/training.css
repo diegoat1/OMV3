@@ -1,5 +1,63 @@
 /* Estilos para la página de entrenamiento */
 
+/* ----- ESTILOS PARA CONVERSIÓN A TEST ----- */
+.convert-to-test-btn {
+    margin-left: 10px;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.convert-to-test-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: scale(1.05);
+}
+
+.converted-test-area {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #ffc107;
+    border-radius: 8px;
+    background-color: #fff8e1;
+}
+
+.exercise-card.converted-to-test {
+    border-left: 4px solid #ffc107;
+    background-color: #fffbf0;
+}
+
+.exercise-badge.test {
+    background-color: #ffc107;
+    color: #212529;
+    font-weight: bold;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.revert-test-btn {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+.converted-test-area .alert-warning {
+    margin-bottom: 15px;
+    border-color: #ffc107;
+}
+
+.converted-test-area .test-fields {
+    background-color: white;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
 .exercise-card {
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
