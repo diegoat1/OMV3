@@ -34,6 +34,31 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Ventana de ejercicios del usuario seleccionado -->
+                <div id="userExercisesContainer" class="col-md-12" style="display: none; margin-top: 15px;">
+                    <div class="portlet light bordered" style="border-color: #d65151;">
+                        <div class="portlet-title" style="background-color: #d65151; color: white;">
+                            <div class="caption">
+                                <i class="fa fa-dumbbell"></i>
+                                <span class="caption-subject bold uppercase">Ejercicios Actuales del Usuario</span>
+                            </div>
+                            <div class="actions">
+                                <a href="javascript:void(0)" class="btn btn-circle btn-icon-only" style="background-color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);" onclick="closeUserExercises()">
+                                    <i class="fa fa-times" style="color: white;"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="portlet-body">
+                            <div id="userExercisesContent">
+                                <div class="text-center">
+                                    <i class="fa fa-spinner fa-spin fa-2x" style="color: #d65151;"></i>
+                                    <p class="margin-top-10" style="color: #4b4b4b;">Cargando ejercicios...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
         </div>
     </div>
 </form>
@@ -47,5 +72,705 @@
 
 <script>if (window.location.href.match(/symmetricstrength\.com/)) { (function (i, s, o, g, r, a, m) { i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () { (i[r].q = i[r].q || []).push(arguments) }, i[r].l = 1 * new Date(); a = s.createElement(o), m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m) })(window, document, 'script', '../www.google-analytics.com/analytics.js', 'ga'); ga('create', 'UA-29825048-6', 'auto'); ga('require', 'displayfeatures'); ga('send', 'pageview'); }</script>
 <script>if (jQuery) { jQuery(document).ready(function () { Metronic.init(); Layout.init(); }); }</script>
+
+<!-- Script para cargar ejercicios del usuario seleccionado -->
+<script>
+let currentUserExercises = [];
+
+function getSymmetricStrengthName(exerciseName) {
+    // Lista de ejercicios válidos en SymmetricStrength
+    const validExercises = [
+        'backSquat', 'benchPress', 'deadlift', 'overheadPress', 'pullup', 
+        'bentOverRow', 'frontSquat', 'inclineBenchPress', 'sumoDeadlift', 
+        'pushup', 'chinup', 'dips', 'shoulderPress', 'militaryPress'
+    ];
+
+    // Si ya está en formato correcto, devolverlo directamente
+    if (validExercises.includes(exerciseName)) {
+        console.log(`✓ Ejercicio ya en formato correcto: ${exerciseName}`);
+        return exerciseName;
+    }
+
+    // Mapeo de nombres de la BD a SymmetricStrength
+    const exerciseMapping = {
+        'Sentadilla': 'backSquat',
+        'Sentadilla trasera': 'backSquat',
+        'Back Squat': 'backSquat',
+        'Sentadilla frontal': 'frontSquat',
+        'Front Squat': 'frontSquat',
+        'Peso Muerto': 'deadlift',
+        'Deadlift': 'deadlift',
+        'Peso muerto': 'deadlift',
+        'Press Banca': 'benchPress',
+        'Press de Banca': 'benchPress',
+        'Bench Press': 'benchPress',
+        'Press banca': 'benchPress',
+        'Press Militar': 'overheadPress',
+        'Dominadas': 'pullup',
+        'Remo': 'bentOverRow',
+        'Press Inclinado': 'inclineBenchPress',
+        'Peso Muerto Sumo': 'sumoDeadlift',
+        'Flexiones': 'pushup'
+    };
+
+    // Buscar coincidencia exacta
+    if (exerciseMapping[exerciseName]) {
+        console.log(`✓ Mapeo encontrado: ${exerciseName} → ${exerciseMapping[exerciseName]}`);
+        return exerciseMapping[exerciseName];
+    }
+
+    // Buscar coincidencia parcial (case insensitive)
+    const lowerName = exerciseName.toLowerCase();
+    for (const [key, value] of Object.entries(exerciseMapping)) {
+        if (key.toLowerCase().includes(lowerName) || lowerName.includes(key.toLowerCase())) {
+            console.log(`✓ Mapeo parcial: ${exerciseName} → ${value}`);
+            return value;
+        }
+    }
+    
+    console.log(`⚠ No se encontró mapeo para: ${exerciseName}`);
+    return null;
+}
+
+// Agregar event listener cuando la página cargue
+document.addEventListener('DOMContentLoaded', function() {
+    const userSelect = document.getElementById('patientName');
+    if (userSelect) {
+        console.log('Event listener agregado al select de usuario');
+        userSelect.addEventListener('change', loadUserExercises);
+    } else {
+        console.error('No se encontró el select #patientName');
+        // Buscar por nombre si el ID no funciona
+        const selectByName = document.querySelector('select[name="nameuser"]');
+        if (selectByName) {
+            console.log('Event listener agregado usando selector por name');
+            selectByName.addEventListener('change', loadUserExercises);
+        }
+    }
+});
+
+function loadUserExercises() {
+    console.log('loadUserExercises ejecutado');
+    
+    const userSelect = document.getElementById('patientName') || document.querySelector('select[name="nameuser"]');
+    
+    if (!userSelect) {
+        console.error('No se encontró el elemento select');
+        return;
+    }
+    
+    const selectedUser = userSelect.value;
+    console.log('Usuario seleccionado:', selectedUser);
+    
+    if (!selectedUser || selectedUser === '') {
+        console.log('Usuario vacío, cerrando ventana');
+        closeUserExercises();
+        return;
+    }
+    
+    console.log('Iniciando fetch para obtener datos del usuario');
+    
+    // Mostrar la ventana con estado de carga
+    const container = document.getElementById('userExercisesContainer');
+    const content = document.getElementById('userExercisesContent');
+    
+    container.style.display = 'block';
+    content.innerHTML = `
+        <div class="text-center">
+            <i class="fa fa-spinner fa-spin fa-2x"></i>
+            <p class="margin-top-10">Cargando ejercicios para ${selectedUser}...</p>
+        </div>
+    `;
+    
+    // Realizar petición AJAX
+    fetch(`/api/user-exercises/${encodeURIComponent(selectedUser)}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.getElementById('csrf_token').value
+        }
+    })
+    .then(response => {
+        console.log('Respuesta recibida:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Datos recibidos:', data);
+        if (data.error) {
+            console.error('Error del servidor:', data.error);
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-circle"></i> ${data.error}
+                </div>
+            `;
+        } else {
+            currentUserExercises = data.exercises || [];
+            displayUserExercises(data);
+            
+            // ¡Cargar automáticamente los datos en SymmetricStrength!
+            loadDataIntoSymmetricStrength(data);
+        }
+    })
+        .catch(error => {
+            console.error('Error:', error);
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-circle"></i> Error al cargar los ejercicios. Intenta nuevamente.
+                </div>
+            `;
+        });
+}
+
+function displayUserExercises(data) {
+    const content = document.getElementById('userExercisesContent');
+    
+    if (!data.exercises || data.exercises.length === 0) {
+        content.innerHTML = `
+            <div class="alert alert-info" style="border-color: #d65151; background-color: #f1c5c5; color: #9c2525;">
+                <i class="fa fa-info-circle"></i> No se encontraron ejercicios para este usuario.
+            </div>
+        `;
+        return;
+    }
+    
+    let exercisesHtml = `
+        <div class="row">
+            <div class="col-md-12">
+                <p style="color: #4b4b4b;"><strong>Usuario:</strong> ${data.user_name} <span class="label" style="background-color: #d65151; color: white;">DNI: ${data.user_dni}</span></p>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead style="background-color: #f2f2f2;">
+                            <tr>
+                                <th style="color: #2b3035; border-bottom: 2px solid #d65151;">Ejercicio</th>
+                                <th style="color: #2b3035; border-bottom: 2px solid #d65151;">Peso Actual (kg)</th>
+                                <th style="color: #2b3035; border-bottom: 2px solid #d65151;">Reps Máximas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+    
+    data.exercises.forEach((exercise, index) => {
+        const rowColor = index % 2 === 0 ? '#fafafa' : 'white';
+        exercisesHtml += `
+            <tr style="background-color: ${rowColor};">
+                <td><strong style="color: #2b3035;">${exercise.name}</strong></td>
+                <td style="color: #4b4b4b;">${exercise.weight} kg</td>
+                <td style="color: #4b4b4b;">${exercise.reps}</td>
+            </tr>
+        `;
+    });
+    
+    exercisesHtml += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="margin-top-10 text-center">
+                    <button class="btn" style="background-color: #d65151; color: white; border: none;" onclick="closeUserExercises()">
+                        <i class="fa fa-times"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = exercisesHtml;
+}
+
+function loadDataIntoSymmetricStrength(userData) {
+    console.log('Iniciando carga automática en SymmetricStrength (4 fases)...');
+    
+    // Fase 0: Configurar unidades y datos personales primero
+    setTimeout(() => {
+        fillPersonalDataAndSettings(userData);
+    }, 500);
+    
+    if (!userData.exercises || userData.exercises.length === 0) {
+        showAutoLoadWarning('No hay ejercicios para cargar');
+        return;
+    }
+    
+    // Fase 1: Esperar a que aparezcan los checkboxes
+    setTimeout(() => {
+        waitForCheckboxes(userData);
+    }, 1000); // Dar tiempo a que se configuren datos personales
+}
+
+function waitForCheckboxes(userData) {
+    console.log('Fase 1: Esperando checkboxes de ejercicios...');
+    
+    const observer = new MutationObserver((mutations, obs) => {
+        // Buscar checkboxes de ejercicios específicos
+        const foundCheckboxes = checkForExerciseCheckboxes(userData);
+        
+        if (foundCheckboxes.length > 0) {
+            console.log(`✓ Encontrados ${foundCheckboxes.length} checkboxes, activando...`);
+            obs.disconnect();
+            
+            // Activar checkboxes y esperar campos de peso/reps
+            activateCheckboxesAndWaitForFields(userData, foundCheckboxes);
+        }
+    });
+    
+    const angularContainer = document.querySelector('main[page-type="loggedIn"]');
+    if (angularContainer) {
+        observer.observe(angularContainer, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Timeout de seguridad
+        setTimeout(() => {
+            observer.disconnect();
+            console.log('⚠ Timeout: No se encontraron checkboxes');
+            showAutoLoadWarning('No se encontraron los checkboxes de ejercicios');
+        }, 8000);
+    }
+}
+
+function checkForExerciseCheckboxes(userData) {
+    const foundCheckboxes = [];
+    
+    userData.exercises.forEach(exercise => {
+        const mappedName = getSymmetricStrengthName(exercise.name);
+        if (mappedName) {
+            // Buscar checkbox específico para este ejercicio
+            const checkbox = document.querySelector(`input[type="checkbox"][ng-model*="${mappedName}"]`);
+            if (checkbox) {
+                foundCheckboxes.push({
+                    exercise: exercise,
+                    mappedName: mappedName,
+                    checkbox: checkbox
+                });
+                console.log(`✓ Checkbox encontrado: ${exercise.name} → ${mappedName}`);
+            }
+        }
+    });
+    
+    return foundCheckboxes;
+}
+
+function activateCheckboxesAndWaitForFields(userData, foundCheckboxes) {
+    console.log('Fase 2: Simulando clicks reales en checkboxes...');
+    
+    // Simular clicks reales para que Angular detecte los cambios
+    foundCheckboxes.forEach((item, index) => {
+        if (!item.checkbox.checked) {
+            setTimeout(() => {
+                // Simular click real
+                item.checkbox.click();
+                console.log(`✓ Click simulado: ${item.exercise.name}`);
+                
+                // Forzar digest de Angular si es posible
+                try {
+                    const angularElement = document.querySelector('[ng-app="symmetricstrength"]');
+                    if (angularElement && angular) {
+                        const scope = angular.element(angularElement).scope();
+                        if (scope) {
+                            scope.$apply();
+                        }
+                    }
+                } catch (e) {
+                    // Ignorar errores de Angular
+                }
+            }, index * 200); // Más tiempo entre clicks
+        }
+    });
+    
+    // Fase 3: Esperar con MutationObserver a que aparezcan los campos
+    console.log('Fase 3: Esperando campos de peso y repeticiones...');
+    
+    // Usar MutationObserver para detectar cuando aparecen los campos
+    const observer = new MutationObserver((mutations, obs) => {
+        // Verificar si aparecieron campos de peso/reps
+        const hasWeightFields = foundCheckboxes.some(item => {
+            const weightInput = document.querySelector(`input[type="number"][ng-model*="${item.mappedName}"][ng-model*="weight"]`);
+            return weightInput !== null;
+        });
+        
+        if (mutations.some(mutation => mutation.addedNodes.length > 0)) {
+            console.log('✓ Campos detectados por MutationObserver');
+            observer.disconnect();
+            fillWeightAndRepsFields(foundCheckboxes, userData);
+        }
+    });
+    
+    const angularContainer = document.querySelector('main[page-type="loggedIn"]');
+    if (angularContainer) {
+        observer.observe(angularContainer, { 
+            childList: true, 
+            subtree: true,
+            attributes: true
+        });
+    }
+    
+    // Timeout de seguridad más largo
+    setTimeout(() => {
+        observer.disconnect();
+        console.log('⚠ Timeout: Intentando llenar campos aunque no se detectaron cambios');
+        fillWeightAndRepsFields(foundCheckboxes, userData);
+    }, 5000); // 5 segundos para que Angular procese
+}
+
+function fillPersonalDataAndSettings(userData) {
+    console.log('Fase 0: Configurando datos personales y unidades...');
+    
+    // Configurar unidades métricas usando ID exacto
+    const unitSystemSelect = document.getElementById('form-unit-system');
+    if (unitSystemSelect) {
+        unitSystemSelect.value = 'Metric';
+        unitSystemSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('✓ Unidades configuradas: Métrico');
+        
+        // Forzar digest de Angular para que aparezcan las opciones de redondeo
+        const scope = angular.element(unitSystemSelect).scope();
+        if (scope) {
+            scope.$apply();
+        }
+        
+        // Esperar un poco para que aparezca el selector de redondeo
+        setTimeout(() => {
+            // Configurar redondeo a 1kg usando ID exacto
+            const roundingSelect = document.getElementById('form-round-to');
+            if (roundingSelect) {
+                roundingSelect.value = '1';
+                roundingSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                console.log('✓ Redondeo configurado: 1kg');
+                
+                // Forzar digest de Angular
+                const roundScope = angular.element(roundingSelect).scope();
+                if (roundScope) {
+                    roundScope.$apply();
+                }
+            } else {
+                console.log('⚠ No se encontró selector de redondeo form-round-to');
+            }
+        }, 500);
+    } else {
+        console.log('⚠ No se encontró selector de unidades form-unit-system');
+    }
+    
+    // Configurar sexo
+    if (userData.sexo) {
+        const genderSelect = document.querySelector('select[ng-model*="sex"], select[ng-model*="gender"]');
+        if (genderSelect) {
+            const genderValue = userData.sexo.toLowerCase() === 'masculino' ? 'male' : 'female';
+            genderSelect.value = genderValue;
+            genderSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log(`✓ Sexo configurado: ${userData.sexo}`);
+        }
+    }
+    
+    // Configurar peso corporal
+    if (userData.peso_corporal) {
+        const weightInput = document.querySelector('input[ng-model*="bodyweight"], input[ng-model*="bodyWeight"]');
+        if (weightInput) {
+            weightInput.value = userData.peso_corporal;
+            weightInput.dispatchEvent(new Event('input', { bubbles: true }));
+            console.log(`✓ Peso corporal: ${userData.peso_corporal}kg`);
+        }
+    }
+    
+    // Configurar edad
+    if (userData.edad) {
+        const ageInput = document.querySelector('input[ng-model*="age"], input[ng-model*="edad"]');
+        if (ageInput) {
+            ageInput.value = userData.edad;
+            ageInput.dispatchEvent(new Event('input', { bubbles: true }));
+            console.log(`✓ Edad configurada: ${userData.edad} años`);
+        }
+    }
+}
+
+function fillWeightAndRepsFields(foundCheckboxes, userData) {
+    console.log('Fase 4: Completando campos de peso y repeticiones...');
+    
+    // Primero, analizar toda la estructura DOM para entender los patrones
+    console.log('🔍 Analizando estructura DOM de campos generados...');
+    const allNumberInputs = document.querySelectorAll('input[type="number"]');
+    console.log(`📊 Total campos numéricos encontrados: ${allNumberInputs.length}`);
+    
+    allNumberInputs.forEach((input, index) => {
+        if (input.getAttribute('ng-model')) {
+            console.log(`Campo ${index}: ng-model="${input.getAttribute('ng-model')}" id="${input.id}" name="${input.name}"`);
+        }
+    });
+    
+    let loadedExercises = 0;
+    
+    foundCheckboxes.forEach(item => {
+        console.log(`\n🎯 Buscando campos para: ${item.mappedName}`);
+        console.log(`   Datos: peso=${item.exercise.weight}kg, reps=${item.exercise.reps}, bodyweight=${userData.bodyweight}kg`);
+        
+        // Usar IDs directos que vemos en la consola: form-[exercise]-weight/reps
+        let weightInput = document.getElementById(`form-${item.mappedName}-weight`);
+        let repsInput = document.getElementById(`form-${item.mappedName}-reps`);
+        
+        if (weightInput) {
+            console.log(`✓ Weight encontrado por ID: form-${item.mappedName}-weight`);
+        }
+        if (repsInput) {
+            console.log(`✓ Reps encontrado por ID: form-${item.mappedName}-reps`);
+        }
+        
+        // Si no se encuentra por ID, intentar patrones alternativos
+        if (!weightInput || !repsInput) {
+            console.log('🔍 Intentando búsqueda alternativa...');
+            
+            // Buscar por ng-model que contenga el ejercicio
+            allNumberInputs.forEach(input => {
+                const ngModel = input.getAttribute('ng-model') || '';
+                const inputId = input.id || '';
+                
+                // Verificar si el ID contiene el nombre del ejercicio
+                if (inputId.includes(item.mappedName)) {
+                    if (inputId.includes('weight') && !weightInput) {
+                        weightInput = input;
+                        console.log(`✓ Weight encontrado por ID alternativo: ${inputId}`);
+                    }
+                    if (inputId.includes('reps') && !repsInput) {
+                        repsInput = input;
+                        console.log(`✓ Reps encontrado por ID alternativo: ${inputId}`);
+                    }
+                }
+            });
+        }
+        
+        // Para ejercicios de peso corporal, manejar lógica especial
+        const bodyweightExercises = ['pullup', 'chinup', 'dip'];
+        const isBodyweightExercise = bodyweightExercises.includes(item.mappedName.toLowerCase());
+        
+        if (repsInput) {
+            // Siempre completar repeticiones
+            repsInput.value = item.exercise.reps;
+            repsInput.dispatchEvent(new Event('input', { bubbles: true }));
+            repsInput.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Forzar digest de Angular
+            const repsScope = angular.element(repsInput).scope();
+            if (repsScope) {
+                repsScope.$apply();
+            }
+        }
+        
+        if (isBodyweightExercise && userData.bodyweight) {
+            // Configurar tipo para ejercicios de peso corporal
+            console.log(`🏋️ Ejercicio de peso corporal detectado: ${item.mappedName}`);
+            const typeSelectId = `form-${item.mappedName.toLowerCase()}-type`;
+            const typeSelect = document.getElementById(typeSelectId);
+            
+            if (typeSelect) {
+                const exerciseWeight = parseFloat(item.exercise.weight);
+                const bodyweight = parseFloat(userData.bodyweight);
+                
+                let exerciseType = 'Standard';
+                let specialWeight = 0;
+                
+                if (exerciseWeight > bodyweight) {
+                    exerciseType = 'Weighted'; // Con peso/lastre
+                    specialWeight = exerciseWeight - bodyweight; // Diferencia = lastre
+                } else if (exerciseWeight < bodyweight) {
+                    exerciseType = 'Assisted'; // Asistidas
+                    specialWeight = bodyweight - exerciseWeight; // Diferencia = asistencia
+                }
+                
+                typeSelect.value = exerciseType;
+                typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                console.log(`✓ Tipo configurado: ${item.mappedName} → ${exerciseType} (peso: ${exerciseWeight}kg vs bodyweight: ${bodyweight}kg)`);
+                
+                // Forzar digest de Angular y esperar que aparezca campo specialWeight
+                const typeScope = angular.element(typeSelect).scope();
+                if (typeScope) {
+                    typeScope.$apply();
+                }
+                
+                // Si NO es Standard, completar el campo specialWeight
+                if (exerciseType !== 'Standard') {
+                    setTimeout(() => {
+                        const specialWeightInput = document.getElementById(`form-${item.mappedName.toLowerCase()}-weight`);
+                        if (specialWeightInput) {
+                            specialWeightInput.value = specialWeight;
+                            specialWeightInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            specialWeightInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            
+                            const specialScope = angular.element(specialWeightInput).scope();
+                            if (specialScope) {
+                                specialScope.$apply();
+                            }
+                            
+                            console.log(`✓ Peso especial configurado: ${item.mappedName} → ${specialWeight}kg (${exerciseType})`);
+                        }
+                    }, 300); // Esperar que Angular genere el campo
+                }
+            }
+            
+            console.log(`✓ Completado: ${item.mappedName} (${item.exercise.weight}kg x ${item.exercise.reps}) → Bodyweight Exercise`);
+            loadedExercises++;
+            
+        } else if (weightInput && repsInput) {
+            // Ejercicios normales (no de peso corporal)
+            weightInput.value = item.exercise.weight;
+            weightInput.dispatchEvent(new Event('input', { bubbles: true }));
+            weightInput.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Forzar digest de Angular
+            const weightScope = angular.element(weightInput).scope();
+            if (weightScope) {
+                weightScope.$apply();
+            }
+            
+            console.log(`✓ Completado: ${item.mappedName} (${item.exercise.weight}kg x ${item.exercise.reps})`);
+            loadedExercises++;
+            
+        } else {
+            console.log(`⚠ No se encontraron campos para: ${item.mappedName}`);
+            if (!weightInput && !isBodyweightExercise) console.log('  - Campo de peso no encontrado');
+            if (!repsInput) console.log('  - Campo de repeticiones no encontrado');
+        }
+    });
+    
+    // Activar recálculo
+    setTimeout(() => {
+        // Buscar botón de análisis
+        const calcButton = document.querySelector('button[ng-click*="recalculate"]') || 
+                          document.querySelector('.btn[ng-click*="calculate"]') ||
+                          Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('Analizar'));
+        
+        if (calcButton) {
+            calcButton.click();
+            console.log('✓ Recálculo activado');
+        } else {
+            console.log('⚠ No se encontró botón de recálculo');
+        }
+        
+        // Mostrar resultado
+        if (loadedExercises > 0) {
+            showAutoLoadSuccess(loadedExercises, foundCheckboxes[0].exercise.user_name || 'Usuario');
+        } else {
+            showAutoLoadWarning('No se pudieron completar los campos de peso y repeticiones');
+        }
+    }, 500);
+}
+
+function injectDataIntoAngularFields(userData) {
+    console.log('Inyectando datos en campos generados por Angular');
+    let loadedExercises = 0;
+    
+    userData.exercises.forEach(exercise => {
+        const mappedName = getSymmetricStrengthName(exercise.name);
+        console.log(`Procesando: ${exercise.name} → ${mappedName}`);
+        
+        if (mappedName) {
+            // Buscar campos generados por Angular usando ng-model
+            const checkbox = document.querySelector(`input[type="checkbox"][ng-model*="liftFields.${mappedName}"], input[type="checkbox"][ng-model*="liftFields['${mappedName}']"]`);
+            const weightInput = document.querySelector(`input[type="number"][ng-model*="liftFields.${mappedName}.weight"], input[type="number"][ng-model*="liftFields['${mappedName}'].weight"]`);
+            const repsInput = document.querySelector(`input[type="number"][ng-model*="liftFields.${mappedName}.reps"], input[type="number"][ng-model*="liftFields['${mappedName}'].reps"]`);
+            
+            if (checkbox && weightInput && repsInput) {
+                // Activar checkbox
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Establecer peso
+                weightInput.value = exercise.weight;
+                weightInput.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Establecer repeticiones  
+                repsInput.value = exercise.reps;
+                repsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                loadedExercises++;
+                console.log(`✓ Cargado: ${exercise.name} → ${mappedName} (${exercise.weight}kg x ${exercise.reps})`);
+            } else {
+                console.log(`⚠ Campos Angular no encontrados para: ${mappedName}`);
+                
+                // Buscar patrones alternativos
+                const allInputs = document.querySelectorAll(`input[ng-model*="${mappedName}"]`);
+                console.log(`Campos encontrados para ${mappedName}:`, allInputs.length);
+            }
+        } else {
+            console.log(`⚠ No mapeado: ${exercise.name}`);
+        }
+    });
+    
+    // Disparar recálculos
+    setTimeout(() => {
+        // Buscar botón de recálculo de Angular
+        const calcButton = document.querySelector('button[ng-click*="recalculate"], .btn[ng-click*="calculate"]');
+        if (calcButton) {
+            calcButton.click();
+            console.log('✓ Recálculo de Angular activado');
+        }
+        
+        // Mostrar resultado
+        if (loadedExercises > 0) {
+            showAutoLoadSuccess(loadedExercises, userData.user_name);
+        } else {
+            showAutoLoadWarning('No se pudieron cargar ejercicios en los campos de Angular');
+        }
+    }, 200);
+}
+
+function showAutoLoadSuccess(count, userName) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible';
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '350px';
+    alertDiv.style.backgroundColor = '#d4edda';
+    alertDiv.style.borderColor = '#d65151';
+    alertDiv.innerHTML = `
+        <i class="fa fa-check-circle" style="color: #155724;"></i> 
+        <strong>¡Datos Cargados Automáticamente!</strong><br>
+        Se cargaron ${count} ejercicios de <strong>${userName}</strong> en SymmetricStrength.
+        <button type="button" class="close" onclick="this.parentElement.remove()" style="color: #155724;">
+            <span>&times;</span>
+        </button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function showAutoLoadWarning(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning alert-dismissible';
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '350px';
+    alertDiv.style.backgroundColor = '#f1c5c5';
+    alertDiv.style.borderColor = '#d65151';
+    alertDiv.innerHTML = `
+        <i class="fa fa-exclamation-triangle" style="color: #9c2525;"></i> 
+        <strong>Carga Automática</strong><br>
+        ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()" style="color: #9c2525;">
+            <span>&times;</span>
+        </button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 4000);
+}
+
+function closeUserExercises() {
+    const container = document.getElementById('userExercisesContainer');
+    container.style.display = 'none';
+    currentUserExercises = [];
+}
+</script>
 
 {% endblock %}

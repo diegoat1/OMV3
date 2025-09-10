@@ -379,6 +379,157 @@ def strengthstandard():
     update_form = forms.UpdateForm(request.form)
     return render_template('strength.html', title='Strength Standard', form=update_form, username=session['username'], value=0)
 
+# Endpoint API para obtener ejercicios de un usuario
+@app.route('/api/user-exercises/<user_name>')
+def get_user_exercises(user_name):
+    """Obtiene los ejercicios actuales y datos personales de un usuario para el strength standard."""
+    if 'username' not in session:
+        return jsonify({"error": "No autorizado"}), 401
+    
+    try:
+        # Obtener el DNI del usuario por su nombre
+        basededatos = sqlite3.connect("src/Basededatos")
+        cursor = basededatos.cursor()
+        
+        # Verificar estructura de la tabla
+        cursor.execute("PRAGMA table_info(PERFILESTATICO)")
+        columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de PERFILESTATICO: {columns}")
+        
+        if not columns:
+            return jsonify({'error': 'Tabla PERFILESTATICO no existe'}), 500
+        
+        # Verificar si existen las columnas necesarias
+        column_names = [col[1] for col in columns]
+        print(f"DEBUG - Nombres de columnas: {column_names}")
+        
+        # Obtener datos del perfil estático usando índices directos para evitar problemas con nombres
+        try:
+            cursor.execute("SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO = ?", (user_name,))
+            user_record = cursor.fetchone()
+            print(f"DEBUG - Fila encontrada: {user_record}")
+            
+            if not user_record:
+                return jsonify({'exercises': [], 'user_name': user_name})
+            
+            # Usar índices directos según PRAGMA table_info: DNI(1), SEXO(4), FECHA_NACIMIENTO(5) 
+            user_dni, sexo, fecha_nacimiento = user_record[1], user_record[4], user_record[5]
+            print(f"DEBUG - Datos extraídos: DNI={user_dni}, SEXO={sexo}, FECHA={fecha_nacimiento}")
+            
+        except Exception as e:
+            print(f"DEBUG - Error SQL: {e}")
+            return jsonify({'error': f'Error en consulta SQL: {str(e)}'}), 500
+        
+        # Calcular edad si hay fecha de nacimiento
+        edad = None
+        if fecha_nacimiento:
+            try:
+                from datetime import datetime
+                nacimiento = datetime.strptime(fecha_nacimiento, '%Y-%m-%d')
+                hoy = datetime.now()
+                edad = hoy.year - nacimiento.year - ((hoy.month, hoy.day) < (nacimiento.month, nacimiento.day))
+            except:
+                edad = None
+        
+        # Obtener último peso corporal del perfil dinámico
+        # PERFILDINAMICO usa NOMBRE_APELLIDO, no DNI
+        cursor.execute("""
+            SELECT PESO FROM PERFILDINAMICO 
+            WHERE NOMBRE_APELLIDO = ? 
+            ORDER BY FECHA_REGISTRO DESC 
+            LIMIT 1
+        """, (user_name,))
+        
+        peso_record = cursor.fetchone()
+        peso_corporal = peso_record[0] if peso_record else None
+        
+        # Verificar estructura de tabla ESTADO_EJERCICIO_USUARIO
+        cursor.execute("PRAGMA table_info(ESTADO_EJERCICIO_USUARIO)")
+        ejercicio_columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de ESTADO_EJERCICIO_USUARIO: {ejercicio_columns}")
+        
+        # Obtener ejercicios actuales del usuario usando columnas correctas
+        # Usar current_columna que es la columna de repeticiones actuales
+        cursor.execute("""
+            SELECT ejercicio_nombre, current_peso, current_columna
+            FROM ESTADO_EJERCICIO_USUARIO 
+            WHERE user_id = ?
+        """, (user_dni,))
+        
+        exercises = []
+        for row in cursor.fetchall():
+            exercises.append({
+                'name': row[0],
+                'weight': row[1],
+                'reps': row[2]
+            })
+        
+        # Verificar estructura de tabla FUERZA
+        cursor.execute("PRAGMA table_info(FUERZA)")
+        fuerza_columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de FUERZA: {fuerza_columns}")
+        
+        # Obtener último bodyweight de la tabla FUERZA para ejercicios de peso corporal
+        if fuerza_columns:
+            # Usar la columna de fecha correcta (puede ser fecha_registro, fecha, timestamp, etc.)
+            fuerza_column_names = [col[1] for col in fuerza_columns]
+            date_column = None
+            for col in ['fecha', 'fecha_registro', 'timestamp', 'date']:
+                if col in fuerza_column_names:
+                    date_column = col
+                    break
+            
+            if date_column and 'bodyweight' in fuerza_column_names:
+                cursor.execute(f"""
+                    SELECT bodyweight FROM FUERZA 
+                    WHERE user_id = ? 
+                    ORDER BY {date_column} DESC 
+                    LIMIT 1
+                """, (user_dni,))
+                bodyweight_record = cursor.fetchone()
+            else:
+                # Si no hay columna de fecha, obtener cualquier registro
+                cursor.execute("SELECT bodyweight FROM FUERZA WHERE user_id = ? LIMIT 1", (user_dni,))
+                bodyweight_record = cursor.fetchone()
+        else:
+            bodyweight_record = None
+        
+        bodyweight = bodyweight_record[0] if bodyweight_record else peso_corporal
+        
+        return jsonify({
+            'exercises': exercises,
+            'user_name': user_name,
+            'user_dni': user_dni,
+            'sexo': sexo,
+            'edad': edad,
+            'peso_corporal': peso_corporal,
+            'bodyweight': bodyweight  # Para comparar con ejercicios de peso corporal
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Endpoints requeridos por SymmetricStrength para inicializar correctamente
+@app.route('/api/lifts', methods=['GET', 'POST'])
+def api_lifts():
+    """Endpoint para compatibilidad con SymmetricStrength - devuelve datos vacíos"""
+    return jsonify({})
+
+@app.route('/api/lifts/<username>', methods=['GET'])
+def api_lifts_user(username):
+    """Endpoint para compatibilidad con SymmetricStrength - devuelve datos vacíos"""
+    return jsonify({})
+
+@app.route('/api/past_lifts', methods=['GET'])
+def api_past_lifts():
+    """Endpoint para compatibilidad con SymmetricStrength - devuelve datos vacíos"""
+    return jsonify([])
+
+@app.route('/api/past_lifts/<username>', methods=['GET'])
+def api_past_lifts_user(username):
+    """Endpoint para compatibilidad con SymmetricStrength - devuelve datos vacíos"""
+    return jsonify([])
+
 # Crear la tabla de análisis de fuerza detallado si no existe
 functions.crear_tabla_analisis_fuerza_detallado()
 
