@@ -451,17 +451,29 @@ def get_user_exercises(user_name):
         # Obtener ejercicios actuales del usuario usando columnas correctas
         # Usar current_columna que es la columna de repeticiones actuales
         cursor.execute("""
-            SELECT ejercicio_nombre, current_peso, current_columna
+            SELECT ejercicio_nombre, current_peso, current_columna, lastre_adicional
             FROM ESTADO_EJERCICIO_USUARIO 
             WHERE user_id = ?
         """, (user_dni,))
         
         exercises = []
+        ejercicios_peso_corporal = ['dip', 'chinup', 'pullup']
         for row in cursor.fetchall():
+            ejercicio_nombre = row[0]
+            current_peso = row[1]
+            current_columna = row[2]
+            lastre_adicional = row[3] if len(row) > 3 else 0
+            
+            # Para ejercicios de peso corporal, usar peso corporal + lastre
+            if ejercicio_nombre.lower() in ejercicios_peso_corporal:
+                weight_final = current_peso + lastre_adicional
+            else:
+                weight_final = current_peso
+                
             exercises.append({
-                'name': row[0],
-                'weight': row[1],
-                'reps': row[2]
+                'name': ejercicio_nombre,
+                'weight': weight_final,
+                'reps': current_columna
             })
         
         # Verificar estructura de tabla FUERZA
@@ -787,7 +799,7 @@ def entrenamiento_actual():
     
     # Obtener información del último test de cada ejercicio
     cursor.execute("""
-        SELECT ejercicio_nombre, last_test_reps, current_columna 
+        SELECT ejercicio_nombre, last_test_reps, current_columna, lastre_adicional
         FROM ESTADO_EJERCICIO_USUARIO 
         WHERE user_id = ?
     """, (user_id,))
@@ -797,7 +809,7 @@ def entrenamiento_actual():
     # Crear diccionario con información del último test
     ultimo_test_info = {}
     for estado in estados_ejercicios:
-        ejercicio_nombre, last_test_reps, current_columna = estado
+        ejercicio_nombre, last_test_reps, current_columna, lastre_adicional = estado
         
         # La meta a superar es directamente el valor de current_columna
         target_reps = current_columna if current_columna else 1

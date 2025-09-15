@@ -41,7 +41,8 @@ def crear_tablas():
         ejercicio_nombre TEXT NOT NULL,
         current_columna INTEGER NOT NULL,
         current_sesion INTEGER NOT NULL, -- 1-3 son sesiones normales, 4 es test
-        current_peso FLOAT NOT NULL,
+        current_peso FLOAT NOT NULL, -- Peso corporal del usuario para ejercicios calisténicos, peso directo para otros
+        lastre_adicional FLOAT DEFAULT 0, -- Lastre extra para ejercicios de peso corporal
         last_test_reps INTEGER,
         last_test_date DATETIME,
         fila_matriz INTEGER NOT NULL, -- Fila (0, 1, o 2) a usar en la MATRIZ_ENTRENAMIENTO
@@ -147,11 +148,25 @@ def guardar_plan_optimizado(user_id, plan_optimizado_dias, datos_fuerza_actual):
             # Limitamos a máximo 9 columnas
             columna_inicial = min(reps_iniciales, 9)
 
+            # Determinar si es ejercicio de peso corporal y calcular lastre
+            ejercicios_peso_corporal = ['dip', 'chinup', 'pullup']
+            if ejercicio_nombre.lower() in ejercicios_peso_corporal:
+                # Para ejercicios de peso corporal: separar peso corporal y lastre
+                peso_corporal_usuario = datos_fuerza_actual.get(ejercicio_nombre, {}).get('bodyweight', 60)
+                peso_total = datos_fuerza_actual.get(ejercicio_nombre, {}).get('weight', peso_corporal_usuario)
+                lastre = max(0, peso_total - peso_corporal_usuario)
+                current_peso_bd = peso_corporal_usuario
+                lastre_adicional_bd = lastre
+            else:
+                # Para ejercicios normales: usar peso directamente
+                current_peso_bd = peso_inicial
+                lastre_adicional_bd = 0
+            
             cursor.execute('''
             INSERT INTO ESTADO_EJERCICIO_USUARIO 
-                (user_id, ejercicio_nombre, current_columna, current_sesion, current_peso, last_test_reps)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ''', (user_id, ejercicio_nombre, columna_inicial, 1, peso_inicial, reps_iniciales))
+                (user_id, ejercicio_nombre, current_columna, current_sesion, current_peso, lastre_adicional, last_test_reps)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, ejercicio_nombre, columna_inicial, 1, current_peso_bd, lastre_adicional_bd, reps_iniciales))
 
     conn.commit()
     conn.close()
@@ -297,8 +312,8 @@ def obtener_entrenamiento_del_dia(user_id):
                 
                 # Calcular y mostrar el peso ajustado para ejercicios de calistenia
                 if ejercicio_nombre.lower() in ejercicios_peso_corporal:
-                    peso_mostrado = peso - peso_corporal if (peso - peso_corporal) > 0 else 0
-                    mensaje_peso = f"+{peso_mostrado:.1f} kg" if peso_mostrado > 0 else "Peso corporal"
+                    lastre = estado_ejercicio['lastre_adicional']
+                    mensaje_peso = f"+{lastre:.1f} kg" if lastre > 0 else "Peso corporal"
                     entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - 1 serie al fallo con {mensaje_peso} (Último test: {columna_actual} reps)")
                 else:
                     entrenamiento_formateado.append(f"  {ejercicio_nombre}: TEST - 1 serie al fallo con {peso:.1f} kg (Último test: {columna_actual} reps)")
@@ -322,8 +337,8 @@ def obtener_entrenamiento_del_dia(user_id):
                 
                 # Calcular y mostrar el peso ajustado para ejercicios de calistenia
                 if ejercicio_nombre.lower() in ejercicios_peso_corporal:
-                    peso_mostrado = peso - peso_corporal if (peso - peso_corporal) > 0 else 0
-                    mensaje_peso = f"+{peso_mostrado:.1f} kg" if peso_mostrado > 0 else "Peso corporal"
+                    lastre = estado_ejercicio['lastre_adicional']
+                    mensaje_peso = f"+{lastre:.1f} kg" if lastre > 0 else "Peso corporal"
                     detalle_sesion = _parse_prescription(prescripcion_str, peso, True, mensaje_peso)
                 else:
                     detalle_sesion = _parse_prescription(prescripcion_str, peso)
@@ -443,8 +458,22 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
                     else:
                         mensaje_extra = "No se pudo completar el ciclo actual. Se necesita un test con peso reducido."
 
-        cursor.execute("UPDATE ESTADO_EJERCICIO_USUARIO SET current_columna = ?, current_sesion = ?, current_peso = ? WHERE id = ?",
-                    (nueva_columna, nueva_sesion, nuevo_peso, estado['id']))
+        # Manejar lastre para ejercicios de peso corporal
+        ejercicios_peso_corporal = ['dip', 'chinup', 'pullup']
+        if ejercicio_nombre.lower() in ejercicios_peso_corporal:
+            # Para ejercicios de peso corporal, mantener lastre y actualizar peso corporal si es necesario
+            nuevo_lastre = estado.get('lastre_adicional', 0)  # Mantener lastre actual
+            if ejercicio_nombre in incrementos_peso:
+                # Si hay incremento de peso, ajustar el lastre
+                incremento = incrementos_peso[ejercicio_nombre]
+                nuevo_lastre = max(0, nuevo_lastre + incremento)
+            
+            cursor.execute("UPDATE ESTADO_EJERCICIO_USUARIO SET current_columna = ?, current_sesion = ?, current_peso = ?, lastre_adicional = ? WHERE id = ?",
+                        (nueva_columna, nueva_sesion, nuevo_peso, nuevo_lastre, estado['id']))
+        else:
+            # Para ejercicios normales, mantener lógica actual
+            cursor.execute("UPDATE ESTADO_EJERCICIO_USUARIO SET current_columna = ?, current_sesion = ?, current_peso = ?, lastre_adicional = 0 WHERE id = ?",
+                        (nueva_columna, nueva_sesion, nuevo_peso, estado['id']))
         
         resultados[ejercicio_nombre] = f"Progreso actualizado. {mensaje_extra}"
     
