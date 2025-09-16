@@ -1560,13 +1560,26 @@ def predict_next_workouts(user_id, num_predictions=5):
         plan_data = json.loads(plan_json)
         
         # Obtener estado actual de todos los ejercicios
-        cursor.execute("""
-            SELECT ejercicio_nombre, current_columna, current_sesion, current_peso, 
-                   lastre_adicional, fila_matriz
-            FROM ESTADO_EJERCICIO_USUARIO 
-            WHERE user_id = ?
-        """, (user_id,))
-        estados_ejercicios = cursor.fetchall()
+        # Primero intentar con fila_matriz, si no existe usar valor por defecto
+        try:
+            cursor.execute("""
+                SELECT ejercicio_nombre, current_columna, current_sesion, current_peso, 
+                       lastre_adicional, fila_matriz
+                FROM ESTADO_EJERCICIO_USUARIO 
+                WHERE user_id = ?
+            """, (user_id,))
+            estados_ejercicios = cursor.fetchall()
+            tiene_fila_matriz = True
+        except Exception as e:
+            # Si falla, intentar sin fila_matriz
+            cursor.execute("""
+                SELECT ejercicio_nombre, current_columna, current_sesion, current_peso, 
+                       lastre_adicional
+                FROM ESTADO_EJERCICIO_USUARIO 
+                WHERE user_id = ?
+            """, (user_id,))
+            estados_ejercicios = cursor.fetchall()
+            tiene_fila_matriz = False
         
         # Obtener peso corporal
         cursor.execute("""
@@ -1585,7 +1598,12 @@ def predict_next_workouts(user_id, num_predictions=5):
         # Crear diccionario de estados actuales
         estado_dict = {}
         for estado in estados_ejercicios:
-            ejercicio, columna, sesion, peso, lastre, fila = estado
+            if tiene_fila_matriz:
+                ejercicio, columna, sesion, peso, lastre, fila = estado
+            else:
+                ejercicio, columna, sesion, peso, lastre = estado
+                fila = 0  # Valor por defecto para fila_matriz
+            
             estado_dict[ejercicio] = {
                 'current_columna': columna,
                 'current_sesion': sesion,
@@ -1636,9 +1654,19 @@ def predict_next_workouts(user_id, num_predictions=5):
                 # Obtener prescripción de la matriz
                 prescripcion = matriz[fila][columna]
                 
+                # Determinar cómo mostrar el peso
+                if ejercicio_nombre.lower() in ejercicios_peso_corporal:
+                    if lastre > 0:
+                        peso_mostrado = f"Peso corporal + {lastre:.1f}kg"
+                    elif lastre < 0:
+                        peso_mostrado = f"Asistencia {abs(lastre):.1f}kg"
+                    else:
+                        peso_mostrado = "Peso corporal"
+                else:
+                    peso_mostrado = f"{peso:.1f}kg"
+                
                 if sesion == 4:  # Sesión de test
                     descripcion = f"TEST - Máximo de repeticiones"
-                    peso_mostrado = f"{peso + lastre:.1f}kg" if ejercicio_nombre.lower() in ejercicios_peso_corporal else f"{peso:.1f}kg"
                 else:
                     # Parsear prescripción (formato: "series.reps.reps.reps.reps")
                     partes = prescripcion.split('.')
@@ -1647,10 +1675,8 @@ def predict_next_workouts(user_id, num_predictions=5):
                         reps_por_serie = [partes[i] for i in range(1, min(len(partes), num_series + 1))]
                         
                         descripcion = f"{num_series} series ({', '.join(reps_por_serie)} reps)"
-                        peso_mostrado = f"{peso + lastre:.1f}kg" if ejercicio_nombre.lower() in ejercicios_peso_corporal else f"{peso:.1f}kg"
                     else:
                         descripcion = "Prescripción no válida"
-                        peso_mostrado = f"{peso:.1f}kg"
                 
                 ejercicios_prediccion.append({
                     'nombre': ejercicio_nombre,
