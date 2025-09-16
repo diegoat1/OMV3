@@ -462,7 +462,7 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
         ejercicios_peso_corporal = ['dip', 'chinup', 'pullup']
         if ejercicio_nombre.lower() in ejercicios_peso_corporal:
             # Para ejercicios de peso corporal, mantener lastre y actualizar peso corporal si es necesario
-            nuevo_lastre = estado.get('lastre_adicional', 0)  # Mantener lastre actual
+            nuevo_lastre = estado['lastre_adicional'] if estado['lastre_adicional'] is not None else 0
             if ejercicio_nombre in incrementos_peso:
                 # Si hay incremento de peso, ajustar el lastre
                 incremento = incrementos_peso[ejercicio_nombre]
@@ -484,43 +484,52 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
 def avanzar_dia_plan(user_id):
     conn = obtener_conexion_db()
     cursor = conn.cursor()
+    resultado = ""
     
-    # Obtener datos del plan activo
-    cursor.execute("SELECT id, current_dia, total_dias, plan_json FROM PLANES_ENTRENAMIENTO WHERE user_id = ? AND active = 1", (user_id,))
-    plan_activo = cursor.fetchone()
-
-    if not plan_activo:
-        conn.close()
-        return "No hay plan activo para avanzar."
-
-    nuevo_dia_num = plan_activo['current_dia'] + 1
-    if nuevo_dia_num > plan_activo['total_dias']:
-        nuevo_dia_num = 1 # Reiniciar ciclo
-    
-    # Actualizar el día actual en la tabla de planes
-    cursor.execute("UPDATE PLANES_ENTRENAMIENTO SET current_dia = ? WHERE id = ?", (nuevo_dia_num, plan_activo['id']))
-    
-    # Obtener los ejercicios del nuevo día para log (pero no actualizamos las sesiones)
     try:
-        plan_data = json.loads(plan_activo['plan_json'])
-        ejercicios_nuevo_dia = []
+        # Obtener datos del plan activo
+        cursor.execute("SELECT id, current_dia, total_dias, plan_json FROM PLANES_ENTRENAMIENTO WHERE user_id = ? AND active = 1", (user_id,))
+        plan_activo = cursor.fetchone()
+
+        if not plan_activo:
+            return "No hay plan activo para avanzar."
+
+        nuevo_dia_num = plan_activo['current_dia'] + 1
+        if nuevo_dia_num > plan_activo['total_dias']:
+            nuevo_dia_num = 1 # Reiniciar ciclo
         
-        # Buscar los ejercicios del nuevo día
-        for dia_info in plan_data.get('dias', []):
-            if dia_info.get('dia') == nuevo_dia_num:
-                ejercicios_nuevo_dia = dia_info.get('ejercicios', [])
-                break
+        # Actualizar el día actual en la tabla de planes
+        cursor.execute("UPDATE PLANES_ENTRENAMIENTO SET current_dia = ? WHERE id = ?", (nuevo_dia_num, plan_activo['id']))
         
-        print(f"Avanzando a día {nuevo_dia_num}, ejercicios: {ejercicios_nuevo_dia}")
-        # Ya no incrementamos el current_sesion aquí, esto se hace solo al completar una sesión
-    
+        # Obtener los ejercicios del nuevo día para log (pero no actualizamos las sesiones)
+        try:
+            plan_data = json.loads(plan_activo['plan_json'])
+            ejercicios_nuevo_dia = []
+            
+            # Buscar los ejercicios del nuevo día
+            for dia_info in plan_data.get('dias', []):
+                if dia_info.get('dia') == nuevo_dia_num:
+                    ejercicios_nuevo_dia = dia_info.get('ejercicios', [])
+                    break
+            
+            print(f"Avanzando a día {nuevo_dia_num}, ejercicios: {ejercicios_nuevo_dia}")
+            # Ya no incrementamos el current_sesion aquí, esto se hace solo al completar una sesión
+        
+        except Exception as e:
+            print(f"Error al procesar plan: {e}")
+            # Continuamos para al menos actualizar el día del plan
+        
+        conn.commit()
+        resultado = f"Plan avanzado al día {nuevo_dia_num}."
+        
     except Exception as e:
-        print(f"Error al procesar plan: {e}")
-        # Continuamos para al menos actualizar el día del plan
+        print(f"Error en avanzar_dia_plan: {e}")
+        conn.rollback()
+        resultado = f"Error al avanzar día del plan: {str(e)}"
+    finally:
+        conn.close()
     
-    conn.commit()
-    conn.close()
-    return f"Plan avanzado al día {nuevo_dia_num}."
+    return resultado
 
 
 if __name__ == '__main__':
