@@ -3,10 +3,17 @@
 {% block title %}Plan de Entrenamiento{% endblock %}
 
 {% block herotitle %}Tu Plan de Entrenamiento{% endblock %}
-{% block herosubtitle %}Aquí puedes ver tu rutina semanal.{% endblock %}
+{% block herosubtitle %}Aquí puedes ver tu rutina semanal y próximos entrenamientos.{% endblock %}
 
 {% block content %}
+    <!-- Plan de entrenamiento semanal -->
     <div class="block block-rounded">
+        <div class="block-header block-header-default">
+            <h3 class="block-title">
+                <i class="fa fa-calendar-alt text-primary me-1"></i>
+                Distribución Semanal
+            </h3>
+        </div>
         <div class="block-content">
             {% if training_plan and training_plan.dias %}
                 <div class="row items-push">
@@ -30,4 +37,76 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Predicción de próximos entrenamientos -->
+    {% if predictions %}
+    <div class="block block-rounded">
+        <div class="block-header block-header-default">
+            <h3 class="block-title">
+                <i class="fa fa-chart-line text-success me-1"></i>
+                Próximos Entrenamientos Predichos
+            </h3>
+        </div>
+        <div class="block-content">
+            <p class="text-muted mb-4">
+                <i class="fa fa-info-circle"></i>
+                Predicciones basadas en tu progreso actual (columna, sesión y pesos actuales)
+            </p>
+            
+            <div class="row">
+                {% for prediction in predictions %}
+                    <div class="col-lg-6 col-xl-4">
+                        <div class="block block-rounded block-link-shadow mb-3">
+                            <div class="block-header block-header-default bg-primary-light">
+                                <h3 class="block-title">
+                                    <i class="fa fa-dumbbell text-primary me-1"></i>
+                                    Entrenamiento #{{ prediction.entrenamiento_numero }}
+                                    <small class="text-muted">(Día {{ prediction.dia_plan }})</small>
+                                </h3>
+                            </div>
+                            <div class="block-content">
+                                {% if prediction.ejercicios %}
+                                    {% for ejercicio in prediction.ejercicios %}
+                                        <div class="border-bottom py-2 {% if not loop.last %}mb-2{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="fw-semibold mb-1 text-capitalize">
+                                                        {{ ejercicio.nombre }}
+                                                    </h6>
+                                                    <p class="fs-sm text-muted mb-1">
+                                                        {{ ejercicio.descripcion }}
+                                                    </p>
+                                                    <p class="fs-sm mb-0">
+                                                        <strong>Peso:</strong> {{ ejercicio.peso }}
+                                                    </p>
+                                                </div>
+                                                <div class="ms-2 text-end">
+                                                    <span class="badge {% if ejercicio.tipo_sesion == 'TEST' %}bg-warning{% else %}bg-info{% endif %}">
+                                                        {{ ejercicio.tipo_sesion }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-3">
+                                        <span class="text-muted">No hay ejercicios para este día</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <div class="alert alert-warning">
+                <p class="mb-0">
+                    <i class="fa fa-exclamation-triangle me-1"></i>
+                    <strong>Nota:</strong> Estas predicciones asumen progresión exitosa en cada sesión. 
+                    Los resultados reales pueden variar según tu rendimiento en cada entrenamiento.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}
