@@ -1522,6 +1522,172 @@ def get_training_plan(user_id):
             return None
     return None
 
+def predict_next_workouts(user_id, num_predictions=5):
+    """
+    Predice los próximos entrenamientos basándose en el estado actual de cada ejercicio
+    
+    Args:
+        user_id: ID del usuario
+        num_predictions: Número de entrenamientos futuros a predecir (default: 5)
+    
+    Returns:
+        list: Lista de entrenamientos predichos con formato similar al entrenamiento actual
+    """
+    conn = sqlite3.connect('src/Basededatos')
+    cursor = conn.cursor()
+    
+    try:
+        # Obtener matriz de entrenamiento
+        cursor.execute("SELECT matriz_json FROM MATRIZ_ENTRENAMIENTO ORDER BY id DESC LIMIT 1")
+        matriz_row = cursor.fetchone()
+        if not matriz_row:
+            return []
+        
+        matriz = json.loads(matriz_row[0])
+        
+        # Obtener plan activo
+        cursor.execute("""
+            SELECT current_dia, total_dias, plan_json 
+            FROM PLANES_ENTRENAMIENTO 
+            WHERE user_id = ? AND active = 1
+        """, (user_id,))
+        plan_activo = cursor.fetchone()
+        
+        if not plan_activo:
+            return []
+            
+        current_dia, total_dias, plan_json = plan_activo
+        plan_data = json.loads(plan_json)
+        
+        # Obtener estado actual de todos los ejercicios
+        cursor.execute("""
+            SELECT ejercicio_nombre, current_columna, current_sesion, current_peso, 
+                   lastre_adicional, fila_matriz
+            FROM ESTADO_EJERCICIO_USUARIO 
+            WHERE user_id = ?
+        """, (user_id,))
+        estados_ejercicios = cursor.fetchall()
+        
+        # Obtener peso corporal
+        cursor.execute("""
+            SELECT bodyweight 
+            FROM FUERZA 
+            WHERE user_id = ? 
+            ORDER BY fecha_analisis DESC 
+            LIMIT 1
+        """, (user_id,))
+        registro_fuerza = cursor.fetchone()
+        peso_corporal = registro_fuerza[0] if registro_fuerza else 0
+        
+        # Ejercicios que usan peso corporal
+        ejercicios_peso_corporal = ['dip', 'chinup', 'pullup']
+        
+        # Crear diccionario de estados actuales
+        estado_dict = {}
+        for estado in estados_ejercicios:
+            ejercicio, columna, sesion, peso, lastre, fila = estado
+            estado_dict[ejercicio] = {
+                'current_columna': columna,
+                'current_sesion': sesion,
+                'current_peso': peso,
+                'lastre_adicional': lastre,
+                'fila_matriz': fila
+            }
+        
+        predicciones = []
+        dia_simulado = current_dia
+        
+        for prediction_num in range(num_predictions):
+            # Determinar qué día del plan estamos simulando
+            if dia_simulado > total_dias:
+                dia_simulado = 1  # Reiniciar ciclo
+            
+            # Obtener ejercicios para este día
+            ejercicios_dia = plan_data.get('dias', [])
+            ejercicios_hoy = []
+            
+            for dia_info in ejercicios_dia:
+                if dia_info.get('dia') == dia_simulado:
+                    ejercicios_hoy = dia_info.get('ejercicios', [])
+                    break
+            
+            if not ejercicios_hoy:
+                dia_simulado += 1
+                continue
+            
+            # Generar predicción para cada ejercicio del día
+            ejercicios_prediccion = []
+            
+            for ejercicio_nombre in ejercicios_hoy:
+                if ejercicio_nombre not in estado_dict:
+                    continue
+                    
+                estado = estado_dict[ejercicio_nombre]
+                fila = estado['fila_matriz']
+                columna = estado['current_columna']
+                sesion = estado['current_sesion']
+                peso = estado['current_peso']
+                lastre = estado['lastre_adicional']
+                
+                # Validar límites de matriz
+                if fila >= len(matriz) or columna >= len(matriz[fila]):
+                    continue
+                
+                # Obtener prescripción de la matriz
+                prescripcion = matriz[fila][columna]
+                
+                if sesion == 4:  # Sesión de test
+                    descripcion = f"TEST - Máximo de repeticiones"
+                    peso_mostrado = f"{peso + lastre:.1f}kg" if ejercicio_nombre.lower() in ejercicios_peso_corporal else f"{peso:.1f}kg"
+                else:
+                    # Parsear prescripción (formato: "series.reps.reps.reps.reps")
+                    partes = prescripcion.split('.')
+                    if len(partes) >= 2:
+                        num_series = int(partes[0])
+                        reps_por_serie = [partes[i] for i in range(1, min(len(partes), num_series + 1))]
+                        
+                        descripcion = f"{num_series} series ({', '.join(reps_por_serie)} reps)"
+                        peso_mostrado = f"{peso + lastre:.1f}kg" if ejercicio_nombre.lower() in ejercicios_peso_corporal else f"{peso:.1f}kg"
+                    else:
+                        descripcion = "Prescripción no válida"
+                        peso_mostrado = f"{peso:.1f}kg"
+                
+                ejercicios_prediccion.append({
+                    'nombre': ejercicio_nombre,
+                    'descripcion': descripcion,
+                    'peso': peso_mostrado,
+                    'tipo_sesion': 'TEST' if sesion == 4 else f'Sesión {sesion}'
+                })
+                
+                # Simular progresión para la siguiente predicción
+                if sesion < 4:
+                    estado_dict[ejercicio_nombre]['current_sesion'] = sesion + 1
+                else:
+                    # Después del test, asumir progresión exitosa
+                    nueva_columna = min(columna + 1, len(matriz[fila]) - 1)
+                    estado_dict[ejercicio_nombre]['current_columna'] = nueva_columna
+                    estado_dict[ejercicio_nombre]['current_sesion'] = 1
+                    
+                    # Si es ejercicio de peso corporal y progresa, incrementar lastre
+                    if ejercicio_nombre.lower() in ejercicios_peso_corporal and nueva_columna > columna:
+                        estado_dict[ejercicio_nombre]['lastre_adicional'] = lastre + 2.5
+            
+            predicciones.append({
+                'dia_plan': dia_simulado,
+                'entrenamiento_numero': prediction_num + 1,
+                'ejercicios': ejercicios_prediccion
+            })
+            
+            dia_simulado += 1
+            
+        return predicciones
+        
+    except Exception as e:
+        print(f"Error en predict_next_workouts: {e}")
+        return []
+    finally:
+        conn.close()
+
 def process_diet(diet_form, nameuser):
     # Imprimir datos del formulario
     # for field in diet_form:
