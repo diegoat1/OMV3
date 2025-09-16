@@ -1599,9 +1599,13 @@ def plan_entrenamiento():
     user_id = session['DNI']
     training_plan = functions.get_training_plan(user_id)
     
+    # Obtener predicciones de próximos entrenamientos
+    predictions = functions.predict_next_workouts(user_id, num_predictions=5)
+    
     return render_template('plan_entrenamiento.html', 
                              username=session.get('username'),
-                             training_plan=training_plan)
+                             training_plan=training_plan,
+                             predictions=predictions)
 
 ### FUNCIÓN PARA MOSTRAR LA BASE DE DATOS COMPLETA ###
 
