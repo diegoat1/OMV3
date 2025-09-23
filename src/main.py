@@ -1643,6 +1643,146 @@ def databasemanager():
     # Render the template with the retrieved data and other variables
     return render_template('databasemanager.html', recipes=recipedata, alimento=alimentodata, dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Administrador de base de datos', username=session['username'])
 
+### FUNCIÓN PARA MOSTRAR PROGRAMAS DE ENTRENAMIENTOS GRATUITOS ###
+
+@app.route('/programas-entrenamientos')
+def programas_entrenamientos():
+    """
+    Muestra la galería de programas de entrenamiento gratuitos disponibles.
+    """
+    if 'username' in session:
+        username = session['username']
+    else:
+        username = None
+    
+    # Lista de programas de entrenamiento disponibles
+    programas = [
+        {
+            'id': '30-dias-principiantes',
+            'titulo': 'Programa de 30 Días para Principiantes',
+            'descripcion': 'Programa de bajo impacto perfecto para quienes comienzan su viaje fitness, adultos mayores, personas con obesidad, o cualquiera con problemas de rodillas o espalda.',
+            'duracion': '30 días',
+            'nivel': 'Principiante',
+            'equipamiento': 'Sin equipamiento (opcional: mancuernas ligeras)',
+            'imagen': 'programa-principiantes.jpg'
+        },
+        {
+            'id': '30-dias-forma',
+            'titulo': 'Desafío de 30 Días para Ponerse en Forma',
+            'descripcion': 'Programa intermedio que combina cardio, kickboxing, entrenamiento de fuerza y MMA para obtener resultados rápidos.',
+            'duracion': '30 días (5 semanas)',
+            'nivel': 'Principiante a Intermedio',
+            'equipamiento': 'Mancuernas ligeras (o botellas de agua)',
+            'imagen': 'programa-forma.jpg'
+        },
+        {
+            'id': 'warrior-90',
+            'titulo': 'Rutina de Entrenamiento Guerrero 90 Días',
+            'descripcion': 'Programa avanzado de 90 días con 30 rutinas diferentes que incluye entrenamiento de fuerza, pliometría, kickboxing, MMA y HIIT.',
+            'duracion': '90 días (13 semanas)',
+            'nivel': 'Intermedio a Avanzado',
+            'equipamiento': 'Mancuernas (10-25lbs hombres, 5-10lbs mujeres)',
+            'imagen': 'warrior-90.jpg'
+        },
+        {
+            'id': 'hero-90',
+            'titulo': 'Hero 90 - Programa de Alta Intensidad',
+            'descripcion': 'El programa de ejercicios de alta intensidad más desafiante de HASfit. Contiene 55+ rutinas separadas de alta intensidad para transformar tu cuerpo.',
+            'duracion': '90 días (13 semanas)',
+            'nivel': 'Avanzado',
+            'equipamiento': 'Mancuernas (10-35lbs hombres, 8-15lbs mujeres)',
+            'imagen': 'hero-90.jpg'
+        },
+        {
+            'id': '30-abdominales',
+            'titulo': '30 Días para Abdominales Marcados',
+            'descripcion': 'Programa intensivo especializado en el desarrollo y definición de los músculos abdominales. Ejercicios progresivos con plan nutricional incluido.',
+            'duracion': '30 días (5 semanas)',
+            'nivel': 'Intermedio',
+            'equipamiento': 'Sin equipamiento necesario',
+            'imagen': '30-abdominales.jpg'
+        },
+        {
+            'id': '30-dias-adolescentes',
+            'titulo': '30 Días Pérdida de Peso para Adolescentes',
+            'descripcion': 'Programa especializado para jóvenes de 13 a 19 años que combina ejercicios divertidos y efectivos para perder peso de manera saludable.',
+            'duracion': '30 días (5 semanas)',
+            'nivel': 'Principiante a Intermedio',
+            'equipamiento': 'Sin equipamiento (opcional: mancuernas ligeras)',
+            'imagen': '30-dias-adolescentes.jpg'
+        },
+        {
+            'id': '90-dias-musculo',
+            'titulo': '90 Días Construcción de Músculo',
+            'descripcion': 'Programa intensivo de 90 días diseñado específicamente para maximizar el crecimiento muscular. Combina hipertrofia, fuerza y técnicas avanzadas de entrenamiento.',
+            'duracion': '90 días (13 semanas)',
+            'nivel': 'Intermedio a Avanzado',
+            'equipamiento': 'Mancuernas y acceso a gimnasio recomendado (opcional: barra)',
+            'imagen': '90-dias-musculo.jpg'
+        }
+    ]
+    
+    return render_template('programas_entrenamientos.html', 
+                         title='Programas de Entrenamientos Gratuitos',
+                         username=username, 
+                         programas=programas)
+
+@app.route('/programa/<programa_id>')
+def programa_detalle(programa_id):
+    """
+    Muestra el detalle de un programa de entrenamiento específico.
+    """
+    if 'username' in session:
+        username = session['username']
+    else:
+        username = None
+    
+    # Si es el programa de 30 días principiantes, mostrar el calendario completo
+    if programa_id == '30-dias-principiantes':
+        return render_template('programa_30_dias_principiantes.html', 
+                             title='Programa de 30 Días para Principiantes',
+                             username=username)
+    
+    # Si es el programa de 30 días para ponerse en forma
+    if programa_id == '30-dias-forma':
+        return render_template('programa_30_dias_forma.html', 
+                             title='Desafío de 30 Días para Ponerse en Forma',
+                             username=username)
+    
+    # Si es el programa Warrior 90 Day Workout
+    if programa_id == 'warrior-90':
+        return render_template('programa_warrior_90.html', 
+                             title='Warrior 90 Day Workout Routine',
+                             username=username)
+    
+    # Si es el programa Hero 90 High Intensity
+    if programa_id == 'hero-90':
+        return render_template('programa_hero_90.html', 
+                             title='Hero 90 - Programa de Alta Intensidad 90 Días',
+                             username=username)
+    
+    # Si es el programa 30 Días para Abdominales Marcados
+    if programa_id == '30-abdominales':
+        return render_template('programa_30_abdominales.html', 
+                             title='30 Días para Abdominales Marcados - Programa Intensivo',
+                             username=username)
+    
+    # Si es el programa 30 Días Pérdida de Peso para Adolescentes
+    if programa_id == '30-dias-adolescentes':
+        return render_template('programa_30_dias_adolescentes.html', 
+                             title='30 Días Pérdida de Peso para Adolescentes',
+                             username=username)
+    
+    # Si es el programa 90 Días Construcción de Músculo
+    if programa_id == '90-dias-musculo':
+        return render_template('programa_90_dias_musculo.html', 
+                             title='90 Días Construcción de Músculo - Programa Intensivo',
+                             username=username)
+    
+    # Si llega aquí, el programa no existe
+    flash('Programa no encontrado.')
+    return redirect(url_for('programas_entrenamientos'))
+
 ### FUNCIÓN PARA CORRER LA APLICACIÓN
 
 if __name__ == '__main__':

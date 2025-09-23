@@ -1,0 +1,669 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block herotitle %}Programa de 30 Días para Principiantes{% endblock %}
+{% block herosubtitle %}Rutina de bajo impacto perfecta para empezar tu viaje fitness{% endblock %}
+
+{% block contenttitle %}Plan de Entrenamiento Completo{% endblock %}
+{% block contentsubtitle %}Incluye rutinas de ejercicios, calendario de entrenamiento y guía nutricional{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Botón de regreso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="/programas-entrenamientos" class="btn btn-outline-primary">
+                <i class="fa fa-arrow-left mr-2"></i>
+                Volver a Programas de Entrenamiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Encabezado del programa -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-5" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
+                    <div class="mb-4">
+                        <i class="fa fa-seedling fa-3x mb-3"></i>
+                        <h1 class="display-4 font-weight-bold">PRINCIPIANTES 30</h1>
+                        <h2 class="h4 font-weight-normal">Programa de Bajo Impacto 30 Días</h2>
+                    </div>
+                    <p class="lead mb-4">
+                        El programa perfecto para empezar tu viaje fitness. 
+                        Rutina de bajo impacto diseñada especialmente para principiantes.
+                    </p>
+                    <div class="row text-center">
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">30</div>
+                            <small>Días de Transformación</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">5</div>
+                            <small>Semanas Progresivas</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">20</div>
+                            <small>Min por Sesión</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">5</div>
+                            <small>Días/Semana</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información importante -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info border-0 shadow-sm">
+                <div class="row align-items-center">
+                    <div class="col-md-1 text-center">
+                        <i class="fa fa-info-circle fa-2x text-info"></i>
+                    </div>
+                    <div class="col-md-11">
+                        <h5 class="alert-heading font-weight-bold">🌱 PROGRAMA PRINCIPIANTE</h5>
+                        <p class="mb-2">
+                            Este programa está diseñado específicamente para <strong>PRINCIPIANTES</strong> y personas que recién empiezan en el fitness. 
+                            Perfecto para adultos mayores, personas con obesidad o problemas de rodillas/espalda.
+                        </p>
+                        <small class="text-muted">
+                            💡 Cada rutina puede completarse en menos de 20 minutos sin equipamiento especial.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción del programa -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="card-title text-primary">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Sobre el Programa Principiantes 30 Días
+                    </h3>
+                    <p class="card-text">
+                        Este <strong>Programa Gratuito de 30 Días de Bajo Impacto</strong> está diseñado específicamente para personas que 
+                        recién comienzan su viaje fitness o necesitan un enfoque más suave debido a limitaciones físicas.
+                    </p>
+                    
+                    <h5 class="font-weight-bold mt-4 mb-3">🎯 Perfecto Para:</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Principiantes absolutos</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Adultos mayores</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Personas con obesidad</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Problemas de rodillas</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Problemas de espalda</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Recuperación de lesiones</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="fa fa-dumbbell mr-2"></i>
+                        Equipamiento Necesario
+                    </h5>
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fa fa-home text-primary mr-3"></i>
+                            <div>
+                                <strong>Espacio libre</strong><br>
+                                <small class="text-muted">2m x 2m mínimo</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fa fa-tint text-primary mr-3"></i>
+                            <div>
+                                <strong>Botellas de agua</strong><br>
+                                <small class="text-muted">Como mancuernas ligeras</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-square text-primary mr-3"></i>
+                            <div>
+                                <strong>Colchoneta</strong><br>
+                                <small class="text-muted">Para ejercicios de suelo</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="font-weight-bold mt-4 mb-2">Videos Esenciales:</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/warm-up-exercises/" 
+                               target="_blank" class="btn btn-outline-primary btn-sm btn-block">
+                                <i class="fa fa-play mr-1"></i>
+                                Calentamiento
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/how-to-stretch/" 
+                               target="_blank" class="btn btn-outline-primary btn-sm btn-block">
+                                <i class="fa fa-leaf mr-1"></i>
+                                Enfriamiento
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<!-- Calendario de entrenamiento -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-gradient-primary text-white py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3 class="card-title mb-0">
+                            <i class="fa fa-calendar-alt mr-2"></i>
+                            Cronograma 30 Días Principiantes - Programa de Bajo Impacto
+                        </h3>
+                    </div>
+                    <div class="col-md-4 text-md-right">
+                        <span class="badge badge-light badge-lg px-3 py-2">
+                            <i class="fa fa-clock mr-1"></i>
+                            5 Semanas Progresivas
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="alert alert-info mx-3 mt-3 mb-4">
+                    <h6><i class="fa fa-info-circle mr-2"></i>Rutina completa por sesión:</h6>
+                    <p class="mb-0">
+                        <strong>Calentamiento (5-10 min)</strong> → <strong>Entrenamiento Principal</strong> → <strong>Enfriamiento (5-10 min)</strong>
+                    </p>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-center font-weight-bold" style="width: 10%;">Semana</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Lunes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Martes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Miércoles</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Jueves</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Viernes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Sábado</th>
+                                <th class="text-center font-weight-bold" style="width: 12%;">Domingo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Semana 1</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/warm-up-workout/" target="_blank" class="workout-link">
+                                            <strong>5 Min Entrenamiento de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Introducción suave</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-aerobic-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Min Aeróbicos de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio básico</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-weight-training/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Fuerza para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza básica</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-cardio-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Min Cardio de Bajo Impacto</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/standing-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs de Pie</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-cardio/" target="_blank" class="workout-link">
+                                            <strong>20 Min Cardio de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Resistencia</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 2</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-leg-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Piernas para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza inferior</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-upper-body-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Tren Superior para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza superior</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/easy-workouts/" target="_blank" class="workout-link">
+                                            <strong>15 Min Entrenamiento Fácil</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/easy-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs Fáciles</strong>
+                                        </a>
+                                        <br><small class="text-muted">Combinado</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-workout/" target="_blank" class="workout-link">
+                                            <strong>30 Min Entrenamiento de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Resistencia</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <strong>30 Min de Caminar, Bicicleta o Natación</strong>
+                                        <br><small class="text-muted">Actividad libre</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 3</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/senior/senior-exercises/" target="_blank" class="workout-link">
+                                            <strong>15 Min Bajo Impacto</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/standing-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs de Pie</strong>
+                                        </a>
+                                        <br><small class="text-muted">Combinado</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-weight-training/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Fuerza para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-aerobic-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Min Aeróbicos</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-cardio-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Min Cardio</strong>
+                                        </a>
+                                        <br><small class="text-muted">Doble cardio</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-cardio/" target="_blank" class="workout-link">
+                                            <strong>20 Min Cardio de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Resistencia</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <strong>30 Min de Caminar, Bicicleta o Natación</strong>
+                                        <br><small class="text-muted">Actividad libre</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 4</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-leg-workout/" target="_blank" class="workout-link">
+                                            <strong>Piernas para Principiantes</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-upper-body-workout/" target="_blank" class="workout-link">
+                                            <strong>Tren Superior para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cuerpo completo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/easy-workouts/" target="_blank" class="workout-link">
+                                            <strong>15 Min Entrenamiento Fácil</strong>
+                                        </a>
+                                        <br><small class="text-muted">Recuperación activa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/senior/senior-exercises/" target="_blank" class="workout-link">
+                                            <strong>15 Min Bajo Impacto</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/easy-abdominal-exercises/" target="_blank" class="workout-link">
+                                            <strong>Ejercicios Abdominales Fáciles</strong>
+                                        </a>
+                                        <br><small class="text-muted">Combinado</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <strong>30 Min Caminar/Bicicleta/Natación</strong>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/easy-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs Fáciles</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-workout/" target="_blank" class="workout-link">
+                                            <strong>30 Min Entrenamiento de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Sesión completa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 5</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-cardio/" target="_blank" class="workout-link">
+                                            <strong>20 Min Cardio de Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Desafío final</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-weight-training/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Fuerza</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/easy-abdominal-exercises/" target="_blank" class="workout-link">
+                                            <strong>Ejercicios Abdominales Fáciles</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza + Core</small>
+                                    </div>
+                                </td>
+                                <td colspan="5" class="text-center bg-light">
+                                    <div class="py-3">
+                                        <h5 class="text-primary mb-2">
+                                            <i class="fa fa-graduation-cap mr-2"></i>
+                                            ¡Felicitaciones!
+                                        </h5>
+                                        <p class="mb-2">Has completado el programa de 30 días para principiantes.</p>
+                                        <p class="mb-0">
+                                            <a href="/programa/30-dias-forma" class="btn btn-primary">
+                                                <i class="fa fa-arrow-right mr-2"></i>
+                                                Continúa con el Desafío de 30 Días para Ponerse en Forma
+                                            </a>
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Guía nutricional -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-apple-alt mr-2"></i>
+                        Guía Nutricional para Pérdida de Grasa
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Plan de Alimentación Saludable</h5>
+                    <p class="text-muted mb-3">
+                        La nutrición es tan importante como el ejercicio para alcanzar tus objetivos. 
+                        Esta guía te ayudará a complementar tu entrenamiento con una alimentación balanceada.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fa fa-lightbulb mr-2"></i>Principios clave del plan nutricional:</h6>
+                        <ul class="mb-0">
+                            <li>5 comidas al día para mantener el metabolismo activo</li>
+                            <li>Control de porciones adecuado</li>
+                            <li>Enfoque en alimentos naturales y no procesados</li>
+                            <li>Hidratación adecuada (mínimo 2 litros de agua al día)</li>
+                            <li>Balance entre macronutrientes (carbohidratos, proteínas, grasas)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consejos finales -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-lightbulb mr-2"></i>
+                        Consejos para el Éxito
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-check-circle text-success mr-2"></i>Haz esto:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fa fa-arrow-right text-primary mr-2"></i>Sigue el programa consistentemente</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-primary mr-2"></i>Escucha a tu cuerpo y ajusta según sea necesario</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-primary mr-2"></i>Mantente hidratado durante los entrenamientos</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-primary mr-2"></i>Toma fotos de progreso semanales</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-primary mr-2"></i>Celebra los pequeños logros</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-times-circle text-danger mr-2"></i>Evita esto:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fa fa-arrow-right text-danger mr-2"></i>No te saltes los días de descanso</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-danger mr-2"></i>No ignores el dolor o molestias</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-danger mr-2"></i>No compares tu progreso con otros</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-danger mr-2"></i>No tengas expectativas irreales</li>
+                                <li class="mb-2"><i class="fa fa-arrow-right text-danger mr-2"></i>No abandones si tienes un día malo</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center pt-3 border-top">
+                        <h5 class="text-primary">¡La constancia es la clave del éxito!</h5>
+                        <p class="mb-0">
+                            Recuerda que los resultados toman tiempo. Mantente consistente, sé paciente contigo mismo 
+                            y disfruta del proceso de transformación.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block customscripts %}
+<style>
+.workout-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.workout-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.font-size-sm {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.badge-lg {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3) !important;
+}
+
+.table td {
+    vertical-align: middle;
+    border-color: #dee2e6;
+    padding: 1rem 0.75rem;
+}
+
+.table th {
+    border-color: #dee2e6;
+    font-weight: 600;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+</style>
+
+<script>
+    // Función para resaltar la semana actual (ejemplo)
+    $(document).ready(function() {
+        // Efecto de hover en las filas de la tabla (ya manejado con CSS)
+        
+        // Función para abrir enlaces en nueva pestaña con confirmación
+        $('.workout-link').click(function(e) {
+            var workoutName = $(this).find('strong').text();
+            var confirmMsg = '¿Estás listo para comenzar: ' + workoutName + '?\n\nEsto abrirá el video del ejercicio en una nueva pestaña.';
+            
+            if (!confirm(confirmMsg)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Mensaje de bienvenida en consola
+        setTimeout(function() {
+            console.log('¡Bienvenido a tu programa de 30 días!');
+        }, 1000);
+        
+        // Agregar tooltips a los enlaces de ejercicios
+        $('.workout-link').attr('title', 'Haz clic para ver el video del ejercicio');
+        
+        // Destacar el día actual (simulado)
+        var today = new Date();
+        var dayOfWeek = today.getDay(); // 0 = domingo, 1 = lunes, etc.
+        
+        // Destacar la columna del día actual (ajustar según sea necesario)
+        if (dayOfWeek >= 1 && dayOfWeek <= 7) {
+            $('table th:nth-child(' + (dayOfWeek + 1) + ')').addClass('bg-primary text-white');
+        }
+    });
+</script>
+{% endblock %}

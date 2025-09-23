@@ -1,0 +1,1259 @@
+{% extends "base/base.html" %}
+
+{% block title %}Hero 90 - Programa de Alta Intensidad 90 Días{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Botón de regreso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="/programas-entrenamientos" class="btn btn-outline-primary">
+                <i class="fa fa-arrow-left mr-2"></i>
+                Volver a Programas de Entrenamiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Encabezado del programa -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-5" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white;">
+                    <div class="mb-4">
+                        <i class="fa fa-fire fa-3x mb-3"></i>
+                        <h1 class="display-4 font-weight-bold">HERO 90</h1>
+                        <h2 class="h4 font-weight-normal">Programa de Alta Intensidad 90 Días</h2>
+                    </div>
+                    <p class="lead mb-4">
+                        El programa de ejercicios de alta intensidad más desafiante de HASfit. 
+                        Un entrenamiento avanzado completo de 90 días para hombres y mujeres.
+                    </p>
+                    <div class="row text-center">
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">90</div>
+                            <small>Días de Desafío</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">55+</div>
+                            <small>Rutinas Únicas</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">13</div>
+                            <small>Semanas Intensas</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">5-6</div>
+                            <small>Días/Semana</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información importante -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning border-0 shadow-sm">
+                <div class="row align-items-center">
+                    <div class="col-md-1 text-center">
+                        <i class="fa fa-exclamation-triangle fa-2x text-warning"></i>
+                    </div>
+                    <div class="col-md-11">
+                        <h5 class="alert-heading font-weight-bold">⚠️ PROGRAMA AVANZADO</h5>
+                        <p class="mb-2">
+                            Este es un programa de ejercicios <strong>AVANZADO</strong>. Si eres completamente nuevo en el fitness, 
+                            este NO es el programa para ti. Te recomendamos completar primero el programa 
+                            <a href="/programa-30-dias-principiantes" class="font-weight-bold">Principiantes 30 Días</a> y luego 
+                            <a href="/programa-warrior-90" class="font-weight-bold">Warrior 90</a>.
+                        </p>
+                        <small class="text-muted">
+                            💡 Cada rutina puede completarse en menos de 50 minutos con equipamiento mínimo.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción del programa -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="card-title text-primary">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Sobre el Programa Hero 90
+                    </h3>
+                    <p class="card-text">
+                        Hero 90 desafía tu cuerpo al cambio incorporando una variedad de métodos de entrenamiento 
+                        de forma armoniosa. Contiene <strong>55 rutinas separadas de alta intensidad</strong> para que 
+                        tu cuerpo sea forzado a continuar progresando y transformándose.
+                    </p>
+                    
+                    <h5 class="font-weight-bold mt-4 mb-3">🏋️ Tipos de Entrenamiento Incluidos:</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Entrenamiento con pesas</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Pliometría</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Kickboxing</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>MMA</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Cardio de alta intensidad</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Yoga dinámico</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Levantamiento olímpico</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Ejercicios funcionales</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="card-title text-success">
+                        <i class="fa fa-cogs mr-2"></i>
+                        Equipamiento
+                    </h3>
+                    
+                    <h5 class="font-weight-bold text-primary">Requerido:</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fa fa-dumbbell text-primary mr-2"></i>Mancuernas</li>
+                        <li class="small text-muted ml-4">Hombres: 10-35 lbs</li>
+                        <li class="small text-muted ml-4">Mujeres: 8-15 lbs</li>
+                    </ul>
+                    
+                    <h5 class="font-weight-bold text-secondary mt-3">Opcional:</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fa fa-circle text-secondary mr-2" style="font-size: 0.5em;"></i>Barra de dominadas</li>
+                        <li><i class="fa fa-circle text-secondary mr-2" style="font-size: 0.5em;"></i>Colchoneta de yoga</li>
+                        <li><i class="fa fa-circle text-secondary mr-2" style="font-size: 0.5em;"></i>Espacio para ejercitarse</li>
+                    </ul>
+
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <i class="fa fa-lightbulb mr-1"></i>
+                            Se proporcionan rutinas alternativas si no tienes barra de dominadas.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Cronograma del programa -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="card-title mb-0">
+                                <i class="fa fa-calendar-alt mr-2"></i>
+                                Cronograma Hero 90 - Programa Avanzado de Alta Intensidad
+                            </h3>
+                        </div>
+                        <div class="col-md-4 text-md-right">
+                            <span class="badge badge-light badge-lg px-3 py-2">
+                                <i class="fa fa-clock mr-1"></i>
+                                13 Semanas Intensas
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-center font-weight-bold" style="width: 10%;">Semana</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Lunes</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Martes</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Miércoles</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Jueves</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Viernes</th>
+                                    <th class="text-center font-weight-bold" style="width: 13%;">Sábado</th>
+                                    <th class="text-center font-weight-bold" style="width: 12%;">Domingo</th>
+                                </tr>
+                            </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Semana 1</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-exercises/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Blazing Weight Loss Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa intensa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/weight-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Home Weight Training</strong>
+                                        </a>
+                                        <br><small class="text-muted">Entrenamiento con pesas</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Weight Loss Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/high-intensity-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute High Intensity Abs</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pérdida peso + Abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/tabata-workout/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Tabata Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/arms-workout/" target="_blank" class="workout-link">
+                                            <strong>9 Minute Arm Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Tabata + Brazos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/isometric-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Isometric Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/yoga-weight-loss/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Yoga Cardio Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Isométrico + Yoga</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/ab-ripper-x/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Ab Ripper X</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/dumbbell-work-out/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Dumbbell Work Out</strong>
+                                        </a>
+                                        <br><small class="text-muted">Ab Ripper + Mancuernas</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 2</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/after-burn-workout/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Afterburn Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Efecto postcombustión</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/plank-exercises/" target="_blank" class="workout-link">
+                                            <strong>7 Minute Plank Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/boot-camp-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Boot Camp Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/sports-performance/conditioning-workout/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Conditioning</strong>
+                                        </a>
+                                        <br><small class="text-muted">Triple combinación</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/hiit/" target="_blank" class="workout-link">
+                                            <strong>30 Minute HIIT Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Alta intensidad</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/lower-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Lower Body Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/upper-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Upper Body Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Tren inferior + superior</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardiovascular-exercises/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Shred</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-routine/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Killer Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Abs asesinos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/mma/mma-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute MMA Training</strong>
+                                        </a>
+                                        <br><small class="text-muted">Artes marciales</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 3</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/back-and-biceps-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Blitz Back and Biceps Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/leg-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Devastation Leg Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/chest-and-triceps-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Crushing Chest and Triceps Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Triple devastación</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/cardio-abs/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Annihilation Cardio Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aniquilación cardio abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/calisthenics-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Execution Calisthenics Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Calistenia avanzada</small>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/advanced-high-intensity/advanced-workout/" target="_blank" class="workout-link">
+                                                Ultimate Warrior 30 Min
+                                            </a>
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-training/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Scorching Weight Loss Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa extrema</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <span class="text-info"><strong>60 Minutos Ejercicio Aeróbico</strong></span>
+                                        <br><small class="text-muted">(Correr, Bicicleta, Natación, Elíptica, etc)</small>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-routine/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Killer Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aeróbico + Abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 4</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/exercises-without-weights/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Workout without Weights</strong>
+                                        </a>
+                                        <br><small class="text-muted">Sin equipamiento</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/hiit-training/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Wrecking HIIT Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/standing-ab-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Standing Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT destructivo + Abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/fitness-exercises/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Ultimate Fitness Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/love-handles-exercises/" target="_blank" class="workout-link">
+                                            <strong>5 Minute Oblique Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fitness + Oblicuos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/mma/mma-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute MMA Training</strong>
+                                        </a>
+                                        <br><small class="text-muted">Artes marciales</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/interval-training-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Hurricane High Intensity Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/body-weight/workout-without-equipment/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Body Weight Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Huracán + Body Weight</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 5</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/push-up-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Push Up Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abdominal-workout/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Plank Happy Ab Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Push ups + Plank</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardio-exercises/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Burn Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema cardio</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <span class="text-info"><strong>60 Minutos Ejercicio Aeróbico</strong></span>
+                                        <br><small class="text-muted">(Correr, Bicicleta, Natación, Elíptica, etc)</small>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/get-a-flat-stomach/" target="_blank" class="workout-link">
+                                            <strong>7 Minute Flat Stomach Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aeróbico + Abdomen plano</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/bodybuilding/bicep/biceps-workout/" target="_blank" class="workout-link">
+                                            <strong>300 Biceps Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/legs-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Leg Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/bodybuilding/tricep/300-triceps-workout/" target="_blank" class="workout-link">
+                                            <strong>300 Triceps Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Triple 300</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/exercises-to-burn-fat/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Hot Feet Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pies calientes</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/interval-training-workout/" target="_blank" class="workout-link">
+                                            <strong>15 Minute High Intensity Interval Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/hard-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Demolition Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT + Demolición abs</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 6</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/intensity-exercise/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Destruction Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Destrucción total</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/bodybuilding/back-bodybuilding/home-back-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Home Back Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/exercises/butt/butt-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Butt Blaster Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/home-chest-workouts/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Chest Arrest Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/exercises/calves/calf-exercises/" target="_blank" class="workout-link">
+                                            <strong>5 Minute Calf Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cuádruple ataque</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/six-pack-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Six Pack Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/fat-loss-workout/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Sweat is Fat Crying Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Six pack + Fat crying</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/ultimate-warrior-workout-challenge/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Ultimate Warrior Challenge</strong>
+                                        </a>
+                                        <br><small class="text-muted">Desafío definitivo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/circuit-training/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Killer Exercises to Get Rid of Fat</strong>
+                                        </a>
+                                        <br><small class="text-muted">Ejercicios asesinos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 7</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/body-weight-workouts/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Atomic Calisthenics Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Calistenia atómica</small>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/advanced-high-intensity/hit-training/" target="_blank" class="workout-link">
+                                                Warrior Part 2
+                                            </a>
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/sports-performance/conditioning-workout/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Conditioning at Home</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-work-out/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Ab Burnout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <span class="text-info"><strong>Interval Walk / Jog / Sprint</strong></span>
+                                        <br><small class="text-muted">Triple entrenamiento</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-exercises/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Fat Blazing Weight Loss Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa intensa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardio-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Assassin Training</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio asesino</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/isometric-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Isometric Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/arms-workout/" target="_blank" class="workout-link">
+                                            <strong>9 Minute Arm Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Isométrico + Brazos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 8</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/tabata-workout/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Tabata Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Tabata extremo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/weight-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Home Weight Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/high-intensity-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute High Intensity Abs</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pesas + Alta intensidad</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/yoga-weight-loss/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Yoga Cardio Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/ab-ripper-x/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Ab Ripper X</strong>
+                                        </a>
+                                        <br><small class="text-muted">Yoga + Ab Ripper</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/push-up-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Push Up Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/pull-up-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Pull Up Workout</strong>
+                                        </a>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/back-workouts-at-home/" target="_blank" class="workout-link">
+                                                8 Minute Back Attack Workout
+                                            </a>
+                                        </small>
+                                        <br><small class="text-muted">Push-up + Pull-up</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/hiit/" target="_blank" class="workout-link">
+                                            <strong>30 Minute HIIT Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT extremo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <span class="text-info"><strong>60 Minutos Ejercicio Aeróbico</strong></span>
+                                        <br><small class="text-muted">(Correr, Bicicleta, Natación, Elíptica, etc)</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 9</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/lower-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Lower Body Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/upper-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Upper Body Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cuerpo completo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardiovascular-exercises/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Shred</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/plank-exercises/" target="_blank" class="workout-link">
+                                            <strong>7 Minute Plank Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Plank</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/after-burn-workout/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Afterburn Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Efecto postcombustión</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/back-and-biceps-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Blitz Back and Biceps Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/boot-camp-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Boot Camp Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Espalda/Bíceps + Boot Camp</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/leg-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Devastation Leg Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Weight Loss Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Piernas + Pérdida de peso</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/chest-and-triceps-exercises/" target="_blank" class="workout-link">
+                                            <strong>12 Minute Crushing Chest and Triceps Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-routine/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Killer Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pecho/Tríceps + Abs</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 10</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <span class="text-info"><strong>Interval Walk / Jog / Sprint</strong></span>
+                                        <br><small class="text-muted">Entrenamiento de intervalos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/dumbbell-work-out/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Dumbbell Work Out</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-training/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Scorching Weight Loss Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Mancuernas + Quema grasa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/cardio-abs/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Annihilation Cardio Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aniquilación cardio abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/mma/mma-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute MMA Training</strong>
+                                        </a>
+                                        <br><small class="text-muted">Artes marciales</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/bodybuilding/bicep/biceps-workout/" target="_blank" class="workout-link">
+                                            <strong>300 Biceps Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/legs-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Leg Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/bodybuilding/tricep/300-triceps-workout/" target="_blank" class="workout-link">
+                                            <strong>300 Triceps Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Triple 300</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 11</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/intensity-exercise/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Destruction Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Destrucción total</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <span class="text-info"><strong>60 Minutos Ejercicio Aeróbico</strong></span>
+                                        <br><small class="text-muted">(Correr, Bicicleta, Natación, Elíptica, etc)</small>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/love-handles-exercises/" target="_blank" class="workout-link">
+                                            <strong>5 Minute Oblique Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aeróbico + Oblicuos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/pull-up-workout/" target="_blank" class="workout-link">
+                                            <strong>8 Minute Pull Up Workout</strong>
+                                        </a>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/back-workouts-at-home/" target="_blank" class="workout-link">
+                                                8 Minute Back Attack Workout
+                                            </a>
+                                        </small>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/body-weight/push-up-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Push Up Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pull-up + Push-up</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/exercises-without-weights/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Workout without Weights</strong>
+                                        </a>
+                                        <br><small class="text-muted">Sin equipamiento</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/hiit-training/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Wrecking HIIT Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/standing-ab-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Standing Abs Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/arms-workout/" target="_blank" class="workout-link">
+                                            <strong>9 Minute Arm Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT + Abs + Brazos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 12</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/ultimate-warrior-workout-challenge/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Ultimate Warrior Challenge</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/bodybuilding/back-bodybuilding/home-back-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Home Back Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/exercises/butt/butt-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Butt Blaster Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/home-chest-workouts/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Chest Arrest Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/exercises/calves/calf-exercises/" target="_blank" class="workout-link">
+                                            <strong>5 Minute Calf Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Mega combinación</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/calisthenics-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Execution Calisthenics Workout</strong>
+                                        </a>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/advanced-high-intensity/advanced-workout/" target="_blank" class="workout-link">
+                                                Ultimate Warrior 30 Min
+                                            </a>
+                                        </small>
+                                        <br><small class="text-muted">Calistenia avanzada</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/circuit-training/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Killer Exercises to Get Rid of Fat</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-work-out/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Ab Burnout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Killer circuit + Abs</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardio-exercises/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Burn Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/body-weight/workout-without-equipment/" target="_blank" class="workout-link">
+                                            <strong>Body Weight Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Body Weight</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/interval-training-workout/" target="_blank" class="workout-link">
+                                            <strong>15 Minute High Intensity Interval Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/hard-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Demolition Abs Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT + Demolición</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 13</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/exercises-to-burn-fat/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Hot Feet Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/interval-training-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Hurricane High Intensity Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Hot feet + Huracán</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/interval-training-exercises/" target="_blank" class="workout-link">
+                                            <strong>10 Minute Hurricane High Intensity Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <span class="text-info"><strong>60 Minutos Ejercicio Aeróbico</strong></span>
+                                        <br><small class="text-muted">(Correr, Bicicleta, Natación, Elíptica, etc)</small>
+                                        <br><small class="text-muted">Huracán + Aeróbico</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardio-training/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Cardio Assassin Training</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/plank-exercises/" target="_blank" class="workout-link">
+                                            <strong>7 Minute Plank Workout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio asesino + Plank</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/body-weight/body-weight-workouts/" target="_blank" class="workout-link">
+                                            <strong>15 Minute Atomic Calisthenics Workout</strong>
+                                        </a>
+                                        <br><small class="text-info">
+                                            <strong>O (sin barra):</strong>
+                                            <a href="https://hasfit.com/workouts/home/advanced-high-intensity/hit-training/" target="_blank" class="workout-link">
+                                                20 Minute Warrior Workout Part 2
+                                            </a>
+                                        </small>
+                                        <br><small class="text-muted">Calistenia atómica</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/lower-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Lower Body Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/upper-body-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Minute Upper Body Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/abs-work-out/" target="_blank" class="workout-link">
+                                            <strong>6 Minute Ab Burnout</strong>
+                                        </a>
+                                        <br><small class="text-muted">Triple final</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/advanced-high-intensity/intensity-exercise/" target="_blank" class="workout-link">
+                                            <strong>30 Minute Destruction Workout</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <span class="text-info"><strong>Interval Walk / Jog / Sprint</strong></span>
+                                        <br><small class="text-muted">¡GRAN FINAL!</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guía nutricional -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-apple-alt mr-2"></i>
+                        Plan Nutricional Hero - Élite
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Nutrición de Alto Rendimiento</h5>
+                    <p class="text-muted mb-3">
+                        Hero 90 es el programa más desafiante y requiere la mejor nutrición. Tu alimentación debe estar 
+                        a la altura del desafío para obtener resultados excepcionales.
+                    </p>
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="fa fa-fire mr-2"></i>Los 3 pilares del éxito Hero:</h6>
+                        <ol class="mb-0">
+                            <li><strong>Entrena con intensidad máxima:</strong> Sigue el calendario sin excusas</li>
+                            <li><strong>Alimenta tu cuerpo como un atlélite:</strong> Nutrición precisa y disciplinada</li>
+                            <li><strong>Mantén la mentalidad Hero:</strong> Únete a la comunidad de élite</li>
+                        </ol>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fa fa-flame text-danger mr-2"></i>Para quema extrema de grasa:</h6>
+                            <ul class="font-size-sm">
+                                <li>Déficit calórico agresivo pero controlado</li>
+                                <li>6 comidas pequeñas con proteína alta</li>
+                                <li>Hidratación extrema (4+ litros/día)</li>
+                                <li>Carbohidratos solo pre/post-entrenamiento</li>
+                                <li>Ayuno intermitente avanzado</li>
+                                <li>Suplementación estratégica</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fa fa-dumbbell text-primary mr-2"></i>Para ganancia muscular extrema:</h6>
+                            <ul class="font-size-sm">
+                                <li>Superávit calórico de precisión</li>
+                                <li>2.5g+ proteína por kg de peso</li>
+                                <li>Carbohidratos complejos estratégicos</li>
+                                <li>Grasas de calidad (30% calorías)</li>
+                                <li>Timing nutricional perfecto</li>
+                                <li>Recuperación nutricional avanzada</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consejos finales -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-fire mr-2"></i>
+                        Mentalidad Hero - El Código del Campeón
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-check-circle text-success mr-2"></i>Principios del Hero:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Intensidad máxima - cada rep cuenta</li>
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Consistencia absoluta - 13 semanas sin fallar</li>
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Progresión constante - supérate cada día</li>
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Disciplina férrea - sin excepciones</li>
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Mentalidad de campeón - tú eres un Hero</li>
+                                <li class="mb-2"><i class="fa fa-fire text-success mr-2"></i>Comunidad élite - rodéate de ganadores</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-times-circle text-danger mr-2"></i>Los Heroes nunca:</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Se rinden cuando se pone difícil</li>
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Buscan excusas para no entrenar</li>
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Se comparan con principiantes</li>
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Esperan resultados sin esfuerzo máximo</li>
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Ignoran la importancia de la nutrición</li>
+                                <li class="mb-2"><i class="fa fa-times text-danger mr-2"></i>Entrenan solos - la comunidad es poder</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <div class="alert alert-warning">
+                            <h4><i class="fa fa-crown mr-2"></i>¡Conviértete en un Hero!</h4>
+                            <p class="mb-2">
+                                Hero 90 no es para todos - es para aquellos que buscan la excelencia absoluta.
+                            </p>
+                            <p class="mb-0">
+                                <strong>90 días de dedicación total te convertirán en la mejor versión de ti mismo.</strong>
+                                <br>¿Tienes lo que se necesita para ser un Hero?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.workout-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.workout-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.font-size-sm {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.badge-lg {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #ff6b35, #f7931e) !important;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 1rem 0.75rem;
+}
+
+.table th {
+    border-bottom: 2px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+</style>
+{% endblock %}

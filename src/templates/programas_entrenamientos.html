@@ -1,0 +1,215 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block herotitle %}Programas de Entrenamientos Gratuitos{% endblock %}
+{% block herosubtitle %}Descubre rutinas completas diseñadas para todos los niveles{% endblock %}
+
+{% block contenttitle %}Galería de Programas{% endblock %}
+{% block contentsubtitle %}Elige el programa que mejor se adapte a tus necesidades y objetivos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="block block-themed">
+            <div class="block-header bg-primary-dark">
+                <h3 class="block-title">
+                    <i class="fa fa-dumbbell mr-2"></i>
+                    ¿Por dónde empezar?
+                </h3>
+            </div>
+            <div class="block-content">
+                <p class="lead">
+                    <strong>Nuestros programas de entrenamiento gratuitos</strong> están diseñados para ayudarte a alcanzar tus objetivos de fitness sin importar tu nivel actual. 
+                    Cada programa incluye videos explicativos, rutinas detalladas y consejos nutricionales.
+                </p>
+                <div class="alert alert-info">
+                    <h5><i class="fa fa-info-circle mr-2"></i>Recomendaciones importantes:</h5>
+                    <ul>
+                        <li>Consulta con un médico antes de comenzar cualquier programa de ejercicios</li>
+                        <li>Escucha a tu cuerpo y ajusta la intensidad según tus capacidades</li>
+                        <li>Mantente hidratado y sigue una alimentación balanceada</li>
+                        <li>La constancia es clave para obtener resultados</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    {% for programa in programas %}
+    <div class="col-lg-6 mb-4">
+        <div class="block block-rounded block-link-shadow h-100">
+            <div class="block-header bg-primary-light">
+                <h3 class="block-title text-white">
+                    <i class="fa fa-play-circle mr-2"></i>
+                    {{ programa.titulo }}
+                </h3>
+            </div>
+            <div class="block-content">
+                <div class="row">
+                    <div class="col-12">
+                        <p class="text-muted mb-3">{{ programa.descripcion }}</p>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="font-size-sm">
+                                    <i class="fa fa-clock text-primary mr-1"></i>
+                                    <strong>Duración:</strong><br>
+                                    <span class="text-muted">{{ programa.duracion }}</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="font-size-sm">
+                                    <i class="fa fa-chart-line text-success mr-1"></i>
+                                    <strong>Nivel:</strong><br>
+                                    <span class="text-muted">{{ programa.nivel }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="font-size-sm">
+                                <i class="fa fa-tools text-warning mr-1"></i>
+                                <strong>Equipamiento:</strong><br>
+                                <span class="text-muted">{{ programa.equipamiento }}</span>
+                            </div>
+                        </div>
+                        
+                        <a href="{{ url_for('programa_detalle', programa_id=programa.id) }}" 
+                           class="btn btn-primary btn-block">
+                            <i class="fa fa-eye mr-2"></i>Ver Programa Completo
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="block-content border-top">
+                <div class="font-size-sm text-center">
+                    <span class="badge badge-success">✓ Disponible Ahora</span>
+                    {% if programa.id == '30-dias-principiantes' %}
+                        <span class="badge badge-info">Más Popular</span>
+                    {% elif programa.id == '30-dias-forma' %}
+                        <span class="badge badge-warning">Nuevo</span>
+                    {% elif programa.id == 'warrior-90' %}
+                        <span class="badge badge-danger">Avanzado</span>
+                    {% elif programa.id == 'hero-90' %}
+                        <span class="badge badge-dark">Extremo</span>
+                    {% elif programa.id == '30-abdominales' %}
+                        <span class="badge badge-warning">Especializado</span>
+                    {% elif programa.id == '30-dias-adolescentes' %}
+                        <span class="badge badge-info">Adolescentes</span>
+                    {% elif programa.id == '90-dias-musculo' %}
+                        <span class="badge badge-primary">Músculo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Videos esenciales de calentamiento y enfriamiento -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="block block-themed">
+            <div class="block-header bg-primary-dark">
+                <h5 class="block-title text-white mb-0">
+                    <i class="fa fa-play-circle mr-2"></i>
+                    Videos Esenciales
+                </h5>
+            </div>
+            <div class="block-content pb-2">
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <div class="text-center py-2">
+                            <i class="fa fa-thermometer-half text-primary mb-2"></i>
+                            <h6 class="mb-1">Calentamiento</h6>
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/warm-up-exercises/" 
+                               target="_blank" 
+                               class="btn btn-primary btn-sm">
+                                <i class="fa fa-play mr-1"></i>
+                                Ver Video
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-2">
+                        <div class="text-center py-2">
+                            <i class="fa fa-leaf text-muted mb-2"></i>
+                            <h6 class="mb-1">Enfriamiento</h6>
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/how-to-stretch/" 
+                               target="_blank" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fa fa-leaf mr-1"></i>
+                                Ver Video
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sección de información adicional -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="block block-themed">
+            <div class="block-header bg-primary">
+                <h3 class="block-title text-white">
+                    <i class="fa fa-star mr-2"></i>
+                    ¿Por qué elegir nuestros programas?
+                </h3>
+            </div>
+            <div class="block-content">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="py-3">
+                            <i class="fa fa-heart fa-2x text-primary mb-3"></i>
+                            <h5>100% Gratuito</h5>
+                            <p class="text-muted">Acceso completo sin costo alguno</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="py-3">
+                            <i class="fa fa-user-md fa-2x text-muted mb-3"></i>
+                            <h5>Respaldo Profesional</h5>
+                            <p class="text-muted">Diseñados por profesionales certificados</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="py-3">
+                            <i class="fa fa-home fa-2x text-muted mb-3"></i>
+                            <h5>Entrena en Casa</h5>
+                            <p class="text-muted">Sin necesidad de gimnasio</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center pt-3">
+                    <p class="text-muted">
+                        Selecciona el programa que mejor se adapte a tu nivel y objetivos.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block customscripts %}
+<script>
+    // Efecto hover para las tarjetas de programas
+    $('.block-link-shadow').hover(
+        function() {
+            $(this).addClass('shadow-lg');
+        },
+        function() {
+            $(this).removeClass('shadow-lg');
+        }
+    );
+</script>
+{% endblock %}

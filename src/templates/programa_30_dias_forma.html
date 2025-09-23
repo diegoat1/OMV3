@@ -1,0 +1,690 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block herotitle %}Desafío de 30 Días para Ponerse en Forma{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Botón de regreso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="/programas-entrenamientos" class="btn btn-outline-primary">
+                <i class="fa fa-arrow-left mr-2"></i>
+                Volver a Programas de Entrenamiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Encabezado del programa -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-5" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); color: white;">
+                    <div class="mb-4">
+                        <i class="fa fa-fire fa-3x mb-3"></i>
+                        <h1 class="display-4 font-weight-bold">FORMA 30</h1>
+                        <h2 class="h4 font-weight-normal">Desafío de 30 Días para Ponerse en Forma</h2>
+                    </div>
+                    <p class="lead mb-4">
+                        ¡Transforma tu cuerpo en 30 días! Este programa intensivo combina kickboxing, cardio de alta intensidad, 
+                        entrenamiento de fuerza y MMA para maximizar la quema de grasa.
+                    </p>
+                    <div class="row text-center">
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">30</div>
+                            <small>Días Intensivos</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">5</div>
+                            <small>Semanas de Desafío</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">20</div>
+                            <small>Min por Sesión</small>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="h3 font-weight-bold">5</div>
+                            <small>Días/Semana</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información importante -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning border-0 shadow-sm">
+                <div class="row align-items-center">
+                    <div class="col-md-1 text-center">
+                        <i class="fa fa-fire fa-2x text-warning"></i>
+                    </div>
+                    <div class="col-md-11">
+                        <h5 class="alert-heading font-weight-bold">🔥 PROGRAMA PRINCIPIANTE-INTERMEDIO</h5>
+                        <p class="mb-2">
+                            Este es un programa más <strong>INTENSO</strong> que el de principiantes. Ideal si ya tienes algo de experiencia 
+                            en fitness o has completado el programa de 30 días principiantes.
+                        </p>
+                        <small class="text-muted">
+                            💡 Cada rutina puede completarse en menos de 20 minutos con equipamiento mínimo.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Descripción del programa -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h3 class="card-title text-primary">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Sobre el Programa Forma 30 Días
+                    </h3>
+                    <p class="card-text">
+                        Este <strong>programa intensivo de 30 días</strong> combina kickboxing, cardio de alta intensidad, entrenamiento de fuerza y MMA 
+                        para maximizar la quema de grasa y mejorar tu condición física rápidamente.
+                    </p>
+                    
+                    <h5 class="font-weight-bold mt-4 mb-3">🥊 Tipos de Entrenamiento Incluidos:</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Cardio kickboxing</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Entrenamiento de fuerza</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>HIIT (Alta intensidad)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Artes marciales mixtas (MMA)</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Ejercicios aeróbicos</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Entrenamiento abdominal</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="fa fa-dumbbell mr-2"></i>
+                        Equipamiento Necesario
+                    </h5>
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fa fa-dumbbell text-primary mr-3"></i>
+                            <div>
+                                <strong>Mancuernas ligeras</strong><br>
+                                <small class="text-muted">O botellas de agua como alternativa</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fa fa-square text-primary mr-3"></i>
+                            <div>
+                                <strong>Colchoneta</strong><br>
+                                <small class="text-muted">Para ejercicios de suelo</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-expand-arrows-alt text-primary mr-3"></i>
+                            <div>
+                                <strong>Espacio libre</strong><br>
+                                <small class="text-muted">2m x 2m para moverte</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="font-weight-bold mt-4 mb-2">Videos Esenciales:</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/warm-up-exercises/" 
+                               target="_blank" class="btn btn-outline-primary btn-sm btn-block">
+                                <i class="fa fa-play mr-1"></i>
+                                Calentamiento
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://hasfit.com/workouts/warm-up-cool-down-stretches-stretching/how-to-stretch/" 
+                               target="_blank" class="btn btn-outline-primary btn-sm btn-block">
+                                <i class="fa fa-leaf mr-1"></i>
+                                Enfriamiento
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Calendario de entrenamiento -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-gradient-primary text-white py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3 class="card-title mb-0">
+                            <i class="fa fa-calendar-alt mr-2"></i>
+                            Cronograma 30 Días Forma - Desafío de Alta Intensidad
+                        </h3>
+                    </div>
+                    <div class="col-md-4 text-md-right">
+                        <span class="badge badge-light badge-lg px-3 py-2">
+                            <i class="fa fa-fire mr-1"></i>
+                            5 Semanas Intensivas
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="alert alert-info mx-3 mt-3 mb-4">
+                    <h6><i class="fa fa-info-circle mr-2"></i>Rutina completa por sesión:</h6>
+                    <p class="mb-0">
+                        <strong>Calentamiento (5-10 min)</strong> → <strong>Entrenamiento Principal</strong> → <strong>Enfriamiento (5-10 min)</strong>
+                    </p>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-center font-weight-bold" style="width: 10%;">Semana</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Lunes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Martes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Miércoles</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Jueves</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Viernes</th>
+                                <th class="text-center font-weight-bold" style="width: 13%;">Sábado</th>
+                                <th class="text-center font-weight-bold" style="width: 12%;">Domingo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Semana 1</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-aerobic-workout/" target="_blank" class="workout-link">
+                                            <strong>Ejercicio Aeróbico de Calentamiento y Bajo Impacto</strong>
+                                        </a>
+                                        <br><small class="text-muted">Introducción suave</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/10-minute-trainer/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 1</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/cardio-kickboxing/" target="_blank" class="workout-link">
+                                            <strong>30 Min Cardio Kickboxing</strong>
+                                        </a>
+                                        <br><small class="text-muted">Kickboxing intenso</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/ab/six-pack-abs/" target="_blank" class="workout-link">
+                                            <strong>Abdominales Six Pack en 3 Minutos</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/dumbbell-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Fuerza</strong>
+                                        </a>
+                                        <br><small class="text-muted">Core + Fuerza</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/workouts-to-lose-belly-fat/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 2</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio avanzado</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 2</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/aerobics-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Min Ejercicio Aeróbico para Verse Bien</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aeróbicos intensos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-weight-training/" target="_blank" class="workout-link">
+                                            <strong>15 Min Entrenamiento con Pesas para Principiantes</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/5-minute-abs/" target="_blank" class="workout-link">
+                                            <strong>Six Pack Abs en 5 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pesas + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/10-minute-workout/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 3</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT intenso</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/low-impact-workout/" target="_blank" class="workout-link">
+                                            <strong>30 Min Entrenamiento para Principiantes</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cuerpo completo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/weight-loss/lose-weight-running/" target="_blank" class="workout-link">
+                                            <strong>Intervalo Caminar/Trotar/Sprint</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/6-pack-abs/" target="_blank" class="workout-link">
+                                            <strong>Six Pack Abs en 6 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 3</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/ultimate-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Cardio Definitivo de 10 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio extremo</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/workouts-to-lose-belly-fat/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 2</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/six-pack-abs/" target="_blank" class="workout-link">
+                                            <strong>Six Pack Abs en 3 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/strength-weight-training/dumbbell-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Fuerza</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/standing-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>5 Min Abs de Pie</strong>
+                                        </a>
+                                        <br><small class="text-muted">Fuerza + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/mma/ufc-training/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Artes Marciales Mixtas</strong>
+                                        </a>
+                                        <br><small class="text-muted">MMA intenso</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/weight-loss/lose-weight-running/" target="_blank" class="workout-link">
+                                            <strong>Intervalo Caminar/Trotar/Sprint</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/getting-rid-of-love-handles/" target="_blank" class="workout-link">
+                                            <strong>Ejercicios Oblicuos y Cartucheras en 6 Min</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Oblicuos</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 4</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/aerobics-workout/" target="_blank" class="workout-link">
+                                            <strong>20 Min Ejercicio Aeróbico para Verse Bien</strong>
+                                        </a>
+                                        <br><small class="text-muted">Aeróbicos avanzados</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/easy-beginner/beginner-weight-training/" target="_blank" class="workout-link">
+                                            <strong>15 Min Entrenamiento con Pesas</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/8-minute-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs Definidos de 8 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Pesas + Core intenso</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/10-minute-workout/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 3</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/eight-minute-abs/" target="_blank" class="workout-link">
+                                            <strong>Ocho Minutos para Abs Marcados</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio + Core doble</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/weight-loss-home/weight-loss-workout/" target="_blank" class="workout-link">
+                                            <strong>10 Min Entrenamiento para Pérdida de Peso</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/weight-loss/lose-weight-running/" target="_blank" class="workout-link">
+                                            <strong>Intervalo Caminar/Trotar/Sprint</strong>
+                                        </a>
+                                        <br><small class="text-muted">HIIT + Cardio</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/ultimate-workout/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Cardio Definitivo</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/5-minute-abs/" target="_blank" class="workout-link">
+                                            <strong>Six Pack Abs en 5 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">Cardio extremo + Core</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">DESCANSO</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semana 5</strong></td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/10-minute-trainer/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 1</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/cardio-aerobic/workouts-to-lose-belly-fat/" target="_blank" class="workout-link">
+                                            <strong>Perder Grasa Abdominal Parte 2</strong>
+                                        </a>
+                                        <br><small class="text-muted">Quema grasa doble</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-size-sm">
+                                        <a href="https://hasfit.com/workouts/mma/ufc-training/" target="_blank" class="workout-link">
+                                            <strong>Entrenamiento de Artes Marciales Mixtas</strong>
+                                        </a>
+                                        <br><strong>+</strong><br>
+                                        <a href="https://hasfit.com/workouts/home/ab/8-minute-abs-workout/" target="_blank" class="workout-link">
+                                            <strong>Abs Definidos de 8 Minutos</strong>
+                                        </a>
+                                        <br><small class="text-muted">MMA + Core avanzado</small>
+                                    </div>
+                                </td>
+                                <td colspan="5" class="text-center bg-light">
+                                    <div class="py-3">
+                                        <h5 class="text-primary mb-2">
+                                            <i class="fa fa-star mr-2"></i>
+                                            ¡Felicitaciones!
+                                        </h5>
+                                        <p class="mb-2">Has completado el Desafío de 30 Días para Ponerse en Forma.</p>
+                                        <p class="mb-0">
+                                            <a href="/programa/warrior-90" class="btn btn-primary">
+                                                <i class="fa fa-arrow-right mr-2"></i>
+                                                Continúa con el Warrior 90 Day Workout
+                                            </a>
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Guía nutricional -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-apple-alt mr-2"></i>
+                        Guía Nutricional para Máximos Resultados
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">Plan de Alimentación para Quemar Grasa</h5>
+                    <p class="text-muted mb-3">
+                        Para maximizar los resultados de este programa intensivo, es crucial seguir un plan nutricional adecuado 
+                        que apoye la quema de grasa y la recuperación muscular.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fa fa-lightbulb mr-2"></i>Principios clave para este programa:</h6>
+                        <ul class="mb-0">
+                            <li>6 comidas pequeñas al día para mantener el metabolismo acelerado</li>
+                            <li>Hidratación constante (mínimo 3 litros de agua al día)</li>
+                            <li>Proteína en cada comida para la recuperación muscular</li>
+                            <li>Carbohidratos complejos antes del entrenamiento</li>
+                            <li>Evitar azúcares refinados y alimentos procesados</li>
+                            <li>Descanso adecuado (7-8 horas de sueño) para la recuperación</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consejos finales -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h3 class="card-title mb-0">
+                        <i class="fa fa-lightbulb mr-2"></i>
+                        Consejos para Maximizar Resultados
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-check-circle text-success mr-2"></i>Haz esto:</h5>
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-check text-success mr-2"></i>Mantén la consistencia - no te saltes entrenamientos</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Aumenta la intensidad gradualmente cada semana</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Toma fotos de progreso cada semana</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Duerme 7-8 horas por noche</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Mantente hidratado durante todo el día</li>
+                                <li><i class="fa fa-check text-success mr-2"></i>Celebra cada pequeño logro</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fa fa-times-circle text-danger mr-2"></i>Evita esto:</h5>
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-times text-danger mr-2"></i>Entrenar cuando tengas lesiones</li>
+                                <li><i class="fa fa-times text-danger mr-2"></i>Hacer ejercicio con el estómago completamente vacío</li>
+                                <li><i class="fa fa-times text-danger mr-2"></i>Compararte con otros - cada cuerpo es diferente</li>
+                                <li><i class="fa fa-times text-danger mr-2"></i>Saltarte días de descanso</li>
+                                <li><i class="fa fa-times text-danger mr-2"></i>Ejercitarte si te sientes enfermo</li>
+                                <li><i class="fa fa-times text-danger mr-2"></i>Darte por vencido si tienes un mal día</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <div class="alert alert-success">
+                            <h5><i class="fa fa-fire mr-2"></i>¡Recuerda!</h5>
+                            <p class="mb-0">
+                                Este programa está diseñado para desafiarte y llevarte al siguiente nivel. 
+                                <strong>La constancia y la determinación son la clave del éxito.</strong>
+                                ¡Tú puedes hacerlo!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block customscripts %}
+<style>
+.workout-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.workout-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.font-size-sm {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.badge-lg {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3) !important;
+}
+
+.table td {
+    vertical-align: middle;
+    border-color: #dee2e6;
+    padding: 1rem 0.75rem;
+}
+
+.table th {
+    border-color: #dee2e6;
+    font-weight: 600;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+</style>
+
+<script>
+    // Función para resaltar la semana actual
+    $(document).ready(function() {
+        // Función para abrir enlaces en nueva pestaña con confirmación
+        $('.workout-link').click(function(e) {
+            var workoutName = $(this).find('strong').text();
+            var confirmMsg = '¿Estás listo para comenzar: ' + workoutName + '?\n\nEsto abrirá el video del ejercicio en una nueva pestaña.';
+            
+            if (!confirm(confirmMsg)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Mensaje de bienvenida en consola
+        setTimeout(function() {
+            console.log('¡Bienvenido al Desafío de 30 Días para Ponerse en Forma!');
+        }, 1000);
+        
+        // Agregar tooltips a los enlaces de ejercicios
+        $('.workout-link').attr('title', 'Haz clic para ver el video del ejercicio');
+        
+        // Destacar el día actual (simulado)
+        var today = new Date();
+        var dayOfWeek = today.getDay(); // 0 = domingo, 1 = lunes, etc.
+        
+        // Destacar la columna del día actual (ajustar según sea necesario)
+        if (dayOfWeek >= 1 && dayOfWeek <= 7) {
+            $('table th:nth-child(' + (dayOfWeek + 1) + ')').addClass('bg-primary text-white');
+        }
+    });
+</script>
+{% endblock %}
