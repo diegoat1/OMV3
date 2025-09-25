@@ -15,7 +15,7 @@
 </script>
 <!-- Modal para parametros de optimización -->
 <div class="modal fade" id="optimizacionModal" tabindex="-1" aria-labelledby="optimizacionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="optimizacionModalLabel">Parámetros de optimización</h5>
@@ -32,6 +32,45 @@
                     <div class="mb-3">
                         <label for="numeroEjercicios" class="form-label">Ejercicios por día</label>
                         <input type="number" class="form-control" id="numeroEjercicios" value="3" min="1" max="6">
+                    </div>
+                    <div class="mb-3 d-flex align-items-center justify-content-between">
+                        <label class="form-label mb-0 me-3" for="includeRunning">Agregar sesiones de correr</label>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" id="includeRunning">
+                        </div>
+                    </div>
+                    <div id="runningConfig" class="border rounded bg-light p-3 mb-2" style="display: none;">
+                        <div class="mb-2">
+                            <label for="runningSpeed" class="form-label">Velocidad inicial (km/h)</label>
+                            <input type="number" class="form-control form-control-sm" id="runningSpeed" value="8" min="1" step="0.1">
+                        </div>
+                        <div class="mb-2">
+                            <label for="runningMinutes" class="form-label">Duración objetivo inicial</label>
+                            <select class="form-select form-select-sm" id="runningMinutes">
+                                <option value="0.5">0:30</option>
+                                <option value="1">1:00</option>
+                                <option value="1.5">1:30</option>
+                                <option value="2">2:00</option>
+                                <option value="2.5">2:30</option>
+                                <option value="3" selected>3:00</option>
+                                <option value="3.5">3:30</option>
+                                <option value="4">4:00</option>
+                                <option value="4.5">4:30</option>
+                            </select>
+                            <small class="form-text text-muted">4:30 equivale al máximo recomendado (9 repeticiones).</small>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Días con sesiones de correr</label>
+                            <div class="d-flex flex-wrap gap-2" id="runningDaysContainer">
+                                {% for dia in range(1, 8) %}
+                                <div class="form-check form-check-inline mb-1">
+                                    <input class="form-check-input running-day-option" type="checkbox" id="runningDay{{ dia }}" value="{{ dia }}">
+                                    <label class="form-check-label" for="runningDay{{ dia }}">Día {{ dia }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <small class="form-text text-muted">Solo se utilizarán los días disponibles según la rutina seleccionada.</small>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -73,7 +112,14 @@
                                 <span class="fw-bold text-nowrap">Score: {{ registro.total_score | round(1) if registro.total_score is not none else 'N/A' }}</span>
                                 <span class="badge bg-light text-dark">{{ registro.score_class if registro.score_class else 'N/A' }}</span>
                                 <button class="btn btn-danger btn-sm ms-2" onclick="eliminarRegistro('{{ registro.id }}')"><i class="fa fa-trash"></i></button>
-                                <button class="btn btn-info btn-sm ms-1 btn-optimizar" data-id="{{ registro.id }}" data-categories='{{ registro.categories_results_json | tojson if registro.categories_results_json else "{}" }}' data-bs-toggle="tooltip" title="Optimizar entrenamiento"><i class="fa fa-cogs"></i></button>
+                                <button class="btn btn-info btn-sm ms-1 btn-optimizar"
+                                        data-id="{{ registro.id }}"
+                                        data-categories='{{ registro.categories_results_json | tojson if registro.categories_results_json else "{}" }}'
+                                        data-running='{{ registro.running_training_state | tojson | safe }}'
+                                        data-bs-toggle="tooltip"
+                                        title="Optimizar entrenamiento">
+                                    <i class="fa fa-cogs"></i>
+                                </button>
                                 <button class="btn btn-link btn-sm" data-bs-toggle="collapse" data-bs-target="#collapseAdminStrength-{{ registro.id }}" role="button" aria-expanded="false" aria-controls="collapseAdminStrength-{{ registro.id }}">
                                     <i class="fa fa-chevron-down"></i>
                                 </button>
@@ -537,24 +583,186 @@ function filtrarYPaginar() {
 // Inicializar al cargar
 document.addEventListener('DOMContentLoaded', function() {
     filtrarYPaginar();
-    
+
     // Inicializar tooltips de Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
-    
+
+    const runningCheckbox = document.getElementById('includeRunning');
+    const runningConfigBox = document.getElementById('runningConfig');
+    const runningSpeedInput = document.getElementById('runningSpeed');
+    const runningMinutesInput = document.getElementById('runningMinutes');
+    const numeroDiasInput = document.getElementById('numeroDias');
+
+    const obtenerValorInicial = (elemento, fallback) => {
+        if (!elemento) {
+            return fallback;
+        }
+        const valor = elemento.getAttribute('value');
+        return valor !== null && valor !== '' ? valor : fallback;
+    };
+
+    const seleccionarDiasCorrer = (diasSeleccionados = []) => {
+        const diasSet = new Set((diasSeleccionados || []).map(d => parseInt(d)));
+        document.querySelectorAll('.running-day-option').forEach(checkbox => {
+            checkbox.checked = diasSet.has(parseInt(checkbox.value));
+        });
+    };
+
+    const resetRunningConfig = () => {
+        if (runningCheckbox) {
+            runningCheckbox.checked = false;
+        }
+        if (runningSpeedInput) {
+            runningSpeedInput.value = obtenerValorInicial(runningSpeedInput, '8');
+        }
+        if (runningMinutesInput) {
+            runningMinutesInput.value = obtenerValorInicial(runningMinutesInput, '3');
+        }
+        seleccionarDiasCorrer([]);
+        
+        // Restaurar etiquetas originales
+        const speedLabel = document.querySelector('label[for="runningSpeed"]');
+        const minutesLabel = document.querySelector('label[for="runningMinutes"]');
+        const runningLabel = document.querySelector('label[for="includeRunning"]');
+        
+        if (speedLabel) {
+            speedLabel.textContent = 'Velocidad inicial (km/h)';
+            speedLabel.classList.remove('text-primary', 'fw-bold');
+        }
+        if (minutesLabel) {
+            minutesLabel.textContent = 'Duración objetivo inicial';
+            minutesLabel.classList.remove('text-primary', 'fw-bold');
+        }
+        if (runningLabel) {
+            runningLabel.innerHTML = 'Agregar sesiones de correr';
+        }
+    };
+
+    const aplicarRunningExistente = (configData) => {
+        if (!configData || typeof configData !== 'object') {
+            resetRunningConfig();
+            return;
+        }
+
+        if (runningCheckbox) {
+            runningCheckbox.checked = true;
+        }
+
+        // Actualizar etiquetas para indicar datos existentes
+        const speedLabel = document.querySelector('label[for="runningSpeed"]');
+        const minutesLabel = document.querySelector('label[for="runningMinutes"]');
+        const runningLabel = document.querySelector('label[for="includeRunning"]');
+        
+        if (speedLabel) {
+            speedLabel.textContent = 'Velocidad actual (km/h)';
+            speedLabel.classList.add('text-primary', 'fw-bold');
+        }
+        if (minutesLabel) {
+            minutesLabel.textContent = 'Duración actual';
+            minutesLabel.classList.add('text-primary', 'fw-bold');
+        }
+        if (runningLabel) {
+            runningLabel.innerHTML = 'Editar sesiones de correr <small class="text-muted">(datos existentes)</small>';
+        }
+
+        if (runningSpeedInput) {
+            const velocidad = parseFloat(configData.speed);
+            runningSpeedInput.value = !isNaN(velocidad) && velocidad > 0
+                ? velocidad.toFixed(1).replace(/\.0$/, '')
+                : obtenerValorInicial(runningSpeedInput, '8');
+        }
+
+        if (runningMinutesInput) {
+            // Los datos vienen del backend ya convertidos a minutos en el campo 'minutes'
+            const minutos = parseFloat(configData.minutes);
+            if (!isNaN(minutos) && minutos > 0) {
+                // Para el selector, usar el valor más cercano disponible
+                const minutosAjustados = Math.min(4.5, Math.max(0.5, minutos));
+                runningMinutesInput.value = minutosAjustados;
+            } else {
+                runningMinutesInput.value = obtenerValorInicial(runningMinutesInput, '3');
+            }
+        }
+
+        if (Array.isArray(configData.days)) {
+            seleccionarDiasCorrer(configData.days);
+        }
+    };
+
+    const actualizarDisponibilidadDiasCorrer = () => {
+        if (!numeroDiasInput) return;
+        const diasDisponibles = parseInt(numeroDiasInput.value) || 0;
+        document.querySelectorAll('.running-day-option').forEach(checkbox => {
+            const dia = parseInt(checkbox.value);
+            const parent = checkbox.closest('.form-check');
+            const habilitado = dia <= diasDisponibles || diasDisponibles === 0;
+            checkbox.disabled = !habilitado;
+            if (!habilitado) {
+                checkbox.checked = false;
+            }
+            if (parent) {
+                parent.classList.toggle('text-muted', !habilitado);
+            }
+        });
+    };
+
+    const actualizarVisibilidadConfigCorrer = () => {
+        if (!runningConfigBox) return;
+        runningConfigBox.style.display = runningCheckbox && runningCheckbox.checked ? 'block' : 'none';
+    };
+
+    if (runningCheckbox) {
+        runningCheckbox.addEventListener('change', actualizarVisibilidadConfigCorrer);
+        actualizarVisibilidadConfigCorrer();
+    }
+
+    if (numeroDiasInput) {
+        numeroDiasInput.addEventListener('change', actualizarDisponibilidadDiasCorrer);
+        actualizarDisponibilidadDiasCorrer();
+    }
+
+    const parseRunningAttribute = (attr) => {
+        if (!attr || attr === 'null' || attr === 'undefined') {
+            return null;
+        }
+        try {
+            const parsed = JSON.parse(attr);
+            if (!parsed || typeof parsed !== 'object') {
+                return null;
+            }
+            return Object.keys(parsed).length > 0 ? parsed : null;
+        } catch (e) {
+            console.warn('No se pudo parsear runningConfig almacenado:', e);
+            return null;
+        }
+    };
+
     // Solo un manejador para los botones de optimización
     document.querySelectorAll('.btn-optimizar').forEach(btn => {
         btn.addEventListener('click', function(event) {
             event.preventDefault();
             const id = this.getAttribute('data-id');
             const dataCategoriesAttr = this.getAttribute('data-categories');
-            
+            const runningAttr = this.getAttribute('data-running');
+
             // Guardar datos en el modal
             document.getElementById('optimizacionId').value = id;
             document.getElementById('optimizacionCategories').value = dataCategoriesAttr;
-            
+
+            resetRunningConfig();
+            actualizarDisponibilidadDiasCorrer();
+
+            const runningData = parseRunningAttribute(runningAttr);
+            if (runningData) {
+                aplicarRunningExistente(runningData);
+            }
+
+            actualizarDisponibilidadDiasCorrer();
+            actualizarVisibilidadConfigCorrer();
+
             // Mostrar el modal
             const optimizacionModal = new bootstrap.Modal(document.getElementById('optimizacionModal'));
             optimizacionModal.show();
@@ -601,8 +809,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Cerrar el modal usando nuestra función segura
         cerrarModal();
         
+        const runningConfig = obtenerRunningConfig();
+
         // Enviar datos
-        optimizarEntrenamiento(id, categoriesData, numeroDias, numeroEjercicios);
+        optimizarEntrenamiento(id, categoriesData, numeroDias, numeroEjercicios, runningConfig);
         };
     }
 });
@@ -636,9 +846,10 @@ function procesarOptimizacion() {
     const categoriesAttr = document.getElementById('optimizacionCategories').value;
     const numeroDias = document.getElementById('numeroDias').value;
     const numeroEjercicios = document.getElementById('numeroEjercicios').value;
-    
+    const runningConfig = obtenerRunningConfig();
+
     let categoriesData = {};
-    
+
     try {
         // Asegurarnos de que los datos no sean nulos o indefinidos
         if (categoriesAttr && categoriesAttr !== 'null' && categoriesAttr !== 'undefined') {
@@ -663,9 +874,39 @@ function procesarOptimizacion() {
     
     // Cerrar el modal usando nuestra función cerrarModal
     cerrarModal();
-    
+
     // Enviar datos
-    optimizarEntrenamiento(id, categoriesData, numeroDias, numeroEjercicios);
+    optimizarEntrenamiento(id, categoriesData, numeroDias, numeroEjercicios, runningConfig);
+}
+
+function obtenerRunningConfig() {
+    const includeRunning = document.getElementById('includeRunning');
+    if (!includeRunning || !includeRunning.checked) {
+        return { enabled: false };
+    }
+
+    const speedInput = document.getElementById('runningSpeed');
+    const minutesInput = document.getElementById('runningMinutes');
+
+    const velocidad = speedInput ? parseFloat(speedInput.value) : NaN;
+    let minutos = minutesInput ? parseFloat(minutesInput.value) : NaN;
+
+    if (isNaN(minutos) || minutos <= 0) {
+        minutos = 3;
+    }
+    // El valor ya está en minutos, no se necesita conversión aquí.
+    minutos = Math.min(4.5, Math.max(0.5, minutos));
+
+    const diasSeleccionados = Array.from(document.querySelectorAll('.running-day-option:checked'))
+        .map(input => parseInt(input.value))
+        .filter(valor => !isNaN(valor));
+
+    return {
+        enabled: true,
+        initialSpeed: !isNaN(velocidad) && velocidad > 0 ? velocidad : 8, // Backend espera initialSpeed
+        initialMinutes: minutos, // Backend espera initialMinutes
+        days: diasSeleccionados
+    };
 }
 
 // --- Eliminar registro ---
@@ -712,7 +953,7 @@ function eliminarRegistro(id) {
 }
 
 // --- Optimizar entrenamiento ---
-function optimizarEntrenamiento(id, categoriesData, numeroDias = 3, numeroEjercicios = 3) {
+function optimizarEntrenamiento(id, categoriesData, numeroDias = 3, numeroEjercicios = 3, runningConfig = {}) {
     // Mostrar un indicador de carga
     const buttonElement = document.querySelector(`[data-id="${id}"].btn-optimizar`);
     if (buttonElement) {
@@ -726,8 +967,7 @@ function optimizarEntrenamiento(id, categoriesData, numeroDias = 3, numeroEjerci
         console.warn('categoriesData no es un objeto válido, usando objeto vacío');
         dataToSend = {};
     }
-    
-    // Crear objeto con los datos a enviar
+
     const dataToSubmit = {
         squat: parseFloat(dataToSend.squat) || 0,
         floorPull: parseFloat(dataToSend.floorPull) || 0,
@@ -735,7 +975,8 @@ function optimizarEntrenamiento(id, categoriesData, numeroDias = 3, numeroEjerci
         verticalPress: parseFloat(dataToSend.verticalPress) || 0,
         pullup: parseFloat(dataToSend.pullup) || 0,
         numeroDias: parseInt(numeroDias) || 3,
-        numeroEjercicios: parseInt(numeroEjercicios) || 3
+        numeroEjercicios: parseInt(numeroEjercicios) || 3,
+        runningConfig: runningConfig
     };
     
 
@@ -881,6 +1122,17 @@ document.addEventListener('DOMContentLoaded', function() {
 .strengthdata-card .card-header {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
+}
+#optimizacionModal .form-switch {
+padding-left: 0;
+display: flex;
+align-items: center;
+gap: 0.75rem;
+}
+
+#optimizacionModal .form-switch .form-check-input {
+margin-left: 0;
+margin-right: 0.25rem;
 }
 .strength-analysis-card {
     border: none;

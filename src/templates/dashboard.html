@@ -27,7 +27,7 @@
 
     <!-- Overview -->
     <div class="row row-deck">
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-sm-6 col-xl-4">
             <!-- Pending Orders -->
             <div class="block block-rounded d-flex flex-column">
                 <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
@@ -47,7 +47,7 @@
             </div>
             <!-- END Pending Orders -->
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-sm-6 col-xl-4">
             <!-- New Customers -->
             <div class="block block-rounded d-flex flex-column">
                 <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
@@ -67,7 +67,7 @@
             </div>
             <!-- END New Customers -->
         </div>
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-sm-6 col-xl-4">
             <!-- Messages -->
             <div class="block block-rounded d-flex flex-column">
                 <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
@@ -87,76 +87,86 @@
             </div>
             <!-- END Messages -->
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <!-- Conversion Rate -->
-            <div class="block block-rounded d-flex flex-column">
-                <!-- Radar -->
-                {% if solver_category == "General" %}
-                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                    <dl class="mb-0">
-                        <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
-                        <dd class="text-muted mb-0">Rendimiento general</dd>
-                    </dl>
-                    {% if habitperformance>=66 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% elif habitperformance<=33 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#e37d7d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% else %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#dce37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% endif %}
-                        <span>{{ habitperformance }}<br><small class="text-muted">/100</small></span>
+        <div class="col-sm-12">
+            <div class="block block-rounded">
+                <div class="block-header block-header-default align-items-start flex-column flex-sm-row">
+                    <div>
+                        <h3 class="block-title mb-1">Reloj de rendimiento</h3>
+                        <p class="mb-0 text-muted font-size-sm">Comparativo de fatrate y leanrate según el escenario y el periodo seleccionado.</p>
+                    </div>
+                    <div class="block-options">
+                        <span class="badge badge-primary font-size-sm mr-2">Objetivo fatrate: {{ fatrate_target|round(2) }} kg/sem</span>
+                        <span class="badge badge-success font-size-sm">Objetivo leanrate: {{ leanrate_target|round(2) }} kg/sem</span>
                     </div>
                 </div>
-                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                    <a class="font-w500 d-flex align-items-center">
-                        No hay suficientes datos tuyos para un cálculo preciso. Este resultado se basa en datos generales de muchas personas.
-                    </a>
-                </div>
-                {% elif solver_category == "Completo" %}
-                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                    <dl class="mb-0">
-                        <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
-                        <dd class="text-muted mb-0">Rendimiento completo</dd>
-                    </dl>
-                    {% if habitperformance>=66 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% elif habitperformance<=33 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#e37d7d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% else %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#dce37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% endif %}
-                        <span>{{ habitperformance }}<br><small class="text-muted">/100</small></span>
+                <div class="block-content block-content-full">
+                    <div class="row">
+                        {% for scenario in performance_clock.values() %}
+                        <div class="col-lg-4">
+                            <h4 class="font-w700 font-size-h5">{{ scenario.label }}</h4>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Periodo</th>
+                                            <th>Fatrate</th>
+                                            <th>Leanrate</th>
+                                            <th>Confianza</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for timeframe in scenario.timeframes.values() %}
+                                        <tr>
+                                            <td class="font-w600">{{ timeframe.label }}</td>
+                                            <td>
+                                                {% if timeframe.fat_rate is not none %}
+                                                    {% set fat_class = 'text-success' if timeframe.fat_rate <= 0 else 'text-danger' %}
+                                                    <span class="font-w600 {{ fat_class }}">{{ timeframe.fat_rate|round(2) }} kg/sem</span>
+                                                    {% if timeframe.fat_diff is not none %}
+                                                        {% set fat_diff_class = 'text-success' if timeframe.fat_diff >= 0 else 'text-danger' %}
+                                                        <div class="font-size-sm {{ fat_diff_class }}">Δ {{ timeframe.fat_diff|abs|round(2) }} vs ideal</div>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Sin datos suficientes</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if timeframe.lean_rate is not none %}
+                                                    {% set lean_class = 'text-success' if timeframe.lean_rate >= 0 else 'text-danger' %}
+                                                    <span class="font-w600 {{ lean_class }}">{{ timeframe.lean_rate|round(2) }} kg/sem</span>
+                                                    {% if timeframe.lean_diff is not none %}
+                                                        {% set lean_diff_class = 'text-success' if timeframe.lean_diff >= 0 else 'text-danger' %}
+                                                        <div class="font-size-sm {{ lean_diff_class }}">Δ {{ timeframe.lean_diff|abs|round(2) }} vs ideal</div>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Sin datos suficientes</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set confidence = timeframe.confidence %}
+                                                {% if confidence.count > 0 %}
+                                                    <span class="font-w600">{{ confidence.count }}</span> pesajes
+                                                    <div class="text-muted font-size-sm">
+                                                        {% if confidence.cv is not none %}
+                                                            CV {{ (confidence.cv * 100)|round(1) }}%
+                                                        {% else %}
+                                                            CV n/d
+                                                        {% endif %}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">Sin registros</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
-                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                    <a class="font-w500 d-flex align-items-center">
-                        Este resultado es un reflejo completo de tu estilo de vida durante el último año, tanto los buenos como los malos días. Acercarse al 100% significa que estás en el camino correcto.
-                    </a>
-                </div>
-                {% elif solver_category == "Positivo" %}
-                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
-                    <dl class="mb-0">
-                        <dt class="font-size-h2 font-w700">{{ habitperformance }}% del ideal</dt>
-                        <dd class="text-muted mb-0">Rendimiento positivo</dd>
-                    </dl>
-                    {% if habitperformance>=66 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#abe37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% elif habitperformance<=33 %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#e37d7d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% else %}
-                    <div class="js-pie-chart pie-chart" data-percent="{{ habitperformance }}" data-line-width="3" data-size="100" data-bar-color="#dce37d" data-track-color="#eeeeee" data-scale-color="#dddddd">
-                    {% endif %}
-                        <span>{{ habitperformance }}<br><small class="text-muted">/100</small></span>
-                    </div>
-                </div>
-                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                    <a class="font-w500 d-flex align-items-center">
-                        Este resultado se basa solo en tus días buenos. Un puntaje alto aquí muestra que tus esfuerzos están dando frutos, pero ten en cuenta que no incluye los días menos exitosos.
-                    </a>
-                </div>
-                {% endif %}
             </div>
-            <!-- END Conversion Rate-->
         </div>
     </div>
     <!-- END Overview -->

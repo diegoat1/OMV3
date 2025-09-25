@@ -379,6 +379,8 @@ def dashboard():
         return (entry.get("lbm_category") in positive_lbmloss) or (entry.get("fbm_category") in positive_fbmgain)
 
     def build_metrics(filtered_entries, baseline_entry, label, scenario_name):
+        scenario_tag = f"[DEBUG][{scenario_name}]"
+
         def summarize_entry(entry):
             if not entry:
                 return "Sin datos"
@@ -395,6 +397,7 @@ def dashboard():
             weight_str = f"{weight_value:.2f}" if isinstance(weight_value, (int, float)) else "n/d"
             return f"{date_str} | grasa={fat_str} | magra={lean_str} | peso={weight_str}"
 
+        print(f"{scenario_tag} Preparando métricas para {label}")
         metrics = {
             "label": label,
             "fat_rate": None,
@@ -411,23 +414,37 @@ def dashboard():
             preview_entries = ", ".join(summarize_entry(entry) for entry in filtered_entries[:3])
             if len(filtered_entries) > 3:
                 preview_entries += ", ..."
+            print(f"{scenario_tag} Entradas filtradas ({len(filtered_entries)}): {preview_entries}")
+        else:
+            print(f"{scenario_tag} Sin registros dentro del periodo {label}")
+
+        if baseline_entry:
+            print(f"{scenario_tag} Registro base previo: {summarize_entry(baseline_entry)}")
+        else:
+            print(f"{scenario_tag} Sin registro base previo para {label}")
 
         weights = [entry["weight"] for entry in filtered_entries if entry["weight"] is not None]
         if len(weights) > 1:
             mean_weight = sum(weights) / len(weights)
             if mean_weight:
                 metrics["confidence"]["cv"] = statistics.pstdev(weights) / mean_weight
+                sample_weights = ", ".join(f"{weight:.2f}" for weight in weights[:5])
+                if len(weights) > 5:
+                    sample_weights += ", ..."
+                print(f"{scenario_tag} Pesos considerados para CV: {sample_weights} (media={mean_weight:.2f}, CV={metrics['confidence']['cv']:.4f})")
         elif len(weights) == 1:
             metrics["confidence"]["cv"] = None
+            print(f"{scenario_tag} Un único peso válido detectado; CV no aplica")
+        else:
+            print(f"{scenario_tag} No se encontraron pesos válidos para calcular CV")
 
         comparison_entries = []
         if baseline_entry:
             comparison_entries.append(baseline_entry)
         comparison_entries.extend(filtered_entries)
-        comparison_entries = [
-            entry for entry in comparison_entries
-            if entry["date"] and entry["fat_mass"] is not None and entry["lean_mass"] is not None
-        ]
+        comparison_entries = [entry for entry in comparison_entries if entry["date"] and entry["fat_mass"] is not None and entry["lean_mass"] is not None]
+
+        print(f"{scenario_tag} Registros considerados para comparación: {len(comparison_entries)}")
 
         if len(comparison_entries) >= 2:
             first_entry = comparison_entries[0]
@@ -438,11 +455,26 @@ def dashboard():
                 lean_rate = (last_entry["lean_mass"] - first_entry["lean_mass"]) / delta_days * 7
                 metrics["fat_rate"] = fat_rate
                 metrics["lean_rate"] = lean_rate
+                print(
+                    f"{scenario_tag} Delta días: {delta_days} | Fat inicial={first_entry['fat_mass']:.4f} final={last_entry['fat_mass']:.4f} | "
+                    f"Lean inicial={first_entry['lean_mass']:.4f} final={last_entry['lean_mass']:.4f}"
+                )
+                print(f"{scenario_tag} Tasas calculadas -> fat_rate={fat_rate:.4f}, lean_rate={lean_rate:.4f}")
                 if fatrate_target is not None:
                     expected_fat_rate = -fatrate_target
                     metrics["fat_diff"] = expected_fat_rate - fat_rate
+                    print(
+                        f"{scenario_tag} Objetivo fat_rate={expected_fat_rate:.4f} | Actual={fat_rate:.4f} | Δ={metrics['fat_diff']:.4f}"
+                    )
                 if leanrate_target is not None:
                     metrics["lean_diff"] = lean_rate - leanrate_target
+                    print(
+                        f"{scenario_tag} Objetivo lean_rate={leanrate_target:.4f} | Actual={lean_rate:.4f} | Δ={metrics['lean_diff']:.4f}"
+                    )
+            else:
+                print(f"{scenario_tag} Los registros seleccionados no tienen diferencia de días positiva (delta={delta_days})")
+        else:
+            print(f"{scenario_tag} No hay suficientes registros para calcular tasas en {label}")
 
         return metrics
 
@@ -492,14 +524,17 @@ def dashboard():
         for key, days, label in timeframes:
             filtered_all, baseline_all = prepare_entries(days, positive_only=False)
             metrics_all = build_metrics(filtered_all, baseline_all, label, "Todos los datos")
+            print(f"[DEBUG][Todos los datos] Resultado {label}: fat_rate={metrics_all['fat_rate']}, lean_rate={metrics_all['lean_rate']}, count={metrics_all['confidence']['count']}, cv={metrics_all['confidence']['cv']}")
             performance_clock["all"]["timeframes"][key] = metrics_all
 
             filtered_positive, baseline_positive = prepare_entries(days, positive_only=True)
             metrics_positive = build_metrics(filtered_positive, baseline_positive, label, "Solo positivos")
+            print(f"[DEBUG][Solo positivos] Resultado {label}: fat_rate={metrics_positive['fat_rate']}, lean_rate={metrics_positive['lean_rate']}, count={metrics_positive['confidence']['count']}, cv={metrics_positive['confidence']['cv']}")
             performance_clock["positive"]["timeframes"][key] = metrics_positive
 
             start_date = (latest_entry_date - timedelta(days=days)).strftime('%Y-%m-%d')
             end_date = latest_entry_date.strftime('%Y-%m-%d')
+            print(f"[DEBUG][Población] Consultando datos entre {start_date} y {end_date} para {label}")
             population_cursor.execute(
                 """
                 SELECT FECHA_REGISTRO, PESO, PESO_GRASO, PESO_MAGRO, DELTAPG, DELTAPM, DELTADIA
@@ -512,6 +547,7 @@ def dashboard():
             )
             population_rows = population_cursor.fetchall()
 
+            print(f"[DEBUG][Población] Registros recuperados: {len(population_rows)}")
             if population_rows:
                 sample_population = []
                 for row in population_rows[:3]:
@@ -525,6 +561,7 @@ def dashboard():
                             "delta_dias": row[6]
                         }
                     )
+                print(f"[DEBUG][Población] Muestra de registros: {sample_population}{'...' if len(population_rows) > 3 else ''}")
 
             population_metrics = {
                 "label": label,
@@ -543,8 +580,15 @@ def dashboard():
                 mean_weight = sum(population_weights) / len(population_weights)
                 if mean_weight:
                     population_metrics["confidence"]["cv"] = statistics.pstdev(population_weights) / mean_weight
+                    sample_weights = ", ".join(f"{weight:.2f}" for weight in population_weights[:5])
+                    if len(population_weights) > 5:
+                        sample_weights += ", ..."
+                    print(f"[DEBUG][Población] Pesos utilizados para CV: {sample_weights} (media={mean_weight:.2f}, CV={population_metrics['confidence']['cv']:.4f})")
             elif len(population_weights) == 1:
                 population_metrics["confidence"]["cv"] = None
+                print(f"[DEBUG][Población] Solo un peso válido; CV no aplica")
+            else:
+                print(f"[DEBUG][Población] No se encontraron pesos válidos para calcular CV")
 
             total_days = 0
             total_fat_change = 0
@@ -555,18 +599,29 @@ def dashboard():
                     total_fat_change += delta_fat
                     total_lean_change += delta_lean
 
+            print(f"[DEBUG][Población] Acumulados -> días={total_days}, Δgrasa={total_fat_change}, Δmagra={total_lean_change}")
 
             if total_days > 0:
                 fat_rate_population = (total_fat_change / total_days) * 7
                 lean_rate_population = (total_lean_change / total_days) * 7
                 population_metrics["fat_rate"] = fat_rate_population
                 population_metrics["lean_rate"] = lean_rate_population
+                print(f"[DEBUG][Población] Tasas calculadas -> fat_rate={fat_rate_population:.4f}, lean_rate={lean_rate_population:.4f}")
                 if fatrate_target is not None:
                     expected_fat_rate = -fatrate_target
                     population_metrics["fat_diff"] = expected_fat_rate - fat_rate_population
+                    print(
+                        f"[DEBUG][Población] Objetivo fat_rate={expected_fat_rate:.4f} | Actual={fat_rate_population:.4f} | Δ={population_metrics['fat_diff']:.4f}"
+                    )
                 if leanrate_target is not None:
                     population_metrics["lean_diff"] = lean_rate_population - leanrate_target
+                    print(
+                        f"[DEBUG][Población] Objetivo lean_rate={leanrate_target:.4f} | Actual={lean_rate_population:.4f} | Δ={population_metrics['lean_diff']:.4f}"
+                    )
+            else:
+                print(f"[DEBUG][Población] Sin días acumulados suficientes para calcular tasas en {label}")
 
+            print(f"[DEBUG][Población] Resultado {label}: fat_rate={population_metrics['fat_rate']}, lean_rate={population_metrics['lean_rate']}, count={population_metrics['confidence']['count']}, cv={population_metrics['confidence']['cv']}")
             performance_clock["population"]["timeframes"][key] = population_metrics
     finally:
         population_connection.close()
@@ -634,25 +689,30 @@ def get_user_exercises(user_name):
         # Verificar estructura de la tabla
         cursor.execute("PRAGMA table_info(PERFILESTATICO)")
         columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de PERFILESTATICO: {columns}")
         
         if not columns:
             return jsonify({'error': 'Tabla PERFILESTATICO no existe'}), 500
         
         # Verificar si existen las columnas necesarias
         column_names = [col[1] for col in columns]
+        print(f"DEBUG - Nombres de columnas: {column_names}")
         
         # Obtener datos del perfil estático usando índices directos para evitar problemas con nombres
         try:
             cursor.execute("SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO = ?", (user_name,))
             user_record = cursor.fetchone()
+            print(f"DEBUG - Fila encontrada: {user_record}")
             
             if not user_record:
                 return jsonify({'exercises': [], 'user_name': user_name})
             
             # Usar índices directos según PRAGMA table_info: DNI(1), SEXO(4), FECHA_NACIMIENTO(5) 
             user_dni, sexo, fecha_nacimiento = user_record[1], user_record[4], user_record[5]
+            print(f"DEBUG - Datos extraídos: DNI={user_dni}, SEXO={sexo}, FECHA={fecha_nacimiento}")
             
         except Exception as e:
+            print(f"DEBUG - Error SQL: {e}")
             return jsonify({'error': f'Error en consulta SQL: {str(e)}'}), 500
         
         # Calcular edad si hay fecha de nacimiento
@@ -681,6 +741,7 @@ def get_user_exercises(user_name):
         # Verificar estructura de tabla ESTADO_EJERCICIO_USUARIO
         cursor.execute("PRAGMA table_info(ESTADO_EJERCICIO_USUARIO)")
         ejercicio_columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de ESTADO_EJERCICIO_USUARIO: {ejercicio_columns}")
         
         # Obtener ejercicios actuales del usuario usando columnas correctas
         # Usar current_columna que es la columna de repeticiones actuales
@@ -713,6 +774,7 @@ def get_user_exercises(user_name):
         # Verificar estructura de tabla FUERZA
         cursor.execute("PRAGMA table_info(FUERZA)")
         fuerza_columns = cursor.fetchall()
+        print(f"DEBUG - Columnas de FUERZA: {fuerza_columns}")
         
         # Obtener último bodyweight de la tabla FUERZA para ejercicios de peso corporal
         if fuerza_columns:
@@ -1032,7 +1094,7 @@ def entrenamiento_actual():
     
     # Obtener información del último test de cada ejercicio
     cursor.execute("""
-        SELECT ejercicio_nombre, last_test_reps, current_columna, lastre_adicional, current_peso
+        SELECT ejercicio_nombre, current_columna, current_sesion, current_peso, last_test_reps, lastre_adicional
         FROM ESTADO_EJERCICIO_USUARIO
         WHERE user_id = ?
     """, (user_id,))
@@ -1042,9 +1104,9 @@ def entrenamiento_actual():
     # Crear diccionario con información del último test
     ultimo_test_info = {}
     for estado in estados_ejercicios:
-        ejercicio_nombre, last_test_reps, current_columna, lastre_adicional, current_peso = estado
+        ejercicio_nombre, current_columna, current_sesion, current_peso, last_test_reps, lastre_adicional = estado
 
-        # La meta a superar es directamente el valor de current_columna
+        # IMPORTANTE: current_columna = repeticiones m�ximas actuales (lo que debe SUPERAR)
         target_reps = current_columna if current_columna else 1
 
         info_ejercicio = {
@@ -1136,41 +1198,16 @@ def registrar_sesion():
             
             # Si hay datos de TEST para este ejercicio, guardarlos
             if nombre_ejercicio in datos_test:
-                test_data = datos_test[nombre_ejercicio] or {}
-
-                if nombre_ejercicio.lower() == 'running':
-                    running_test_data = {
-                        'velocidadBase': test_data.get('velocidadBase'),
-                        'incrementoVelocidad': test_data.get('incrementoVelocidad', 0),
-                        'tiempo': test_data.get('tiempo', 0),
-                        'convertedToTest': test_data.get('convertedToTest', False)
-                    }
-                    repeticiones_test[nombre_ejercicio] = running_test_data
-
-                    if running_test_data['convertedToTest']:
-                        sesiones_convertidas_test[nombre_ejercicio] = True
-                        print(
-                            f"Ejercicio {nombre_ejercicio} (running) fue CONVERTIDO A TEST: "
-                            f"tiempo={running_test_data['tiempo']} min, incremento velocidad={running_test_data['incrementoVelocidad']} km/h"
-                        )
-                    else:
-                        print(
-                            f"Datos TEST running para {nombre_ejercicio}: "
-                            f"tiempo={running_test_data['tiempo']} min, incremento velocidad={running_test_data['incrementoVelocidad']} km/h"
-                        )
+                test_data = datos_test[nombre_ejercicio]
+                repeticiones_test[nombre_ejercicio] = test_data.get('repeticiones', 0)
+                incrementos_peso[nombre_ejercicio] = test_data.get('incrementoPeso', 2.5)
+                
+                # Verificar si fue convertida a TEST
+                if test_data.get('convertedToTest', False):
+                    sesiones_convertidas_test[nombre_ejercicio] = True
+                    print(f"Ejercicio {nombre_ejercicio} fue CONVERTIDO A TEST: {repeticiones_test[nombre_ejercicio]} reps, incremento {incrementos_peso[nombre_ejercicio]} kg")
                 else:
-                    repeticiones = test_data.get('repeticiones', 0)
-                    incremento = test_data.get('incrementoPeso', 2.5)
-
-                    repeticiones_test[nombre_ejercicio] = repeticiones
-                    incrementos_peso[nombre_ejercicio] = incremento
-                    
-                    # Verificar si fue convertida a TEST
-                    if test_data.get('convertedToTest', False):
-                        sesiones_convertidas_test[nombre_ejercicio] = True
-                        print(f"Ejercicio {nombre_ejercicio} fue CONVERTIDO A TEST: {repeticiones} reps, incremento {incremento} kg")
-                    else:
-                        print(f"Datos TEST para {nombre_ejercicio}: {repeticiones} reps, incremento {incremento} kg")
+                    print(f"Datos TEST para {nombre_ejercicio}: {repeticiones_test[nombre_ejercicio]} reps, incremento {incrementos_peso[nombre_ejercicio]} kg")
             
             # Verificar si el ejercicio tiene información de completado/no completado
             if nombre_ejercicio in sesiones_completadas_data:
@@ -1491,17 +1528,6 @@ def optimizar_entrenamiento(id):
         dias_correr = running_config.get('days') or []
         velocidad_inicial_correr = float(running_config.get('initialSpeed', 0) or 0)
         minutos_iniciales_correr = float(running_config.get('initialMinutes', 0) or 0)
-
-        # Obtener el user_id del registro de fuerza
-        conn_temp = sqlite3.connect(functions.DATABASE_PATH)
-        cursor_temp = conn_temp.cursor()
-        cursor_temp.execute("SELECT user_id FROM FUERZA WHERE id = ?", (id,))
-        user_id_row = cursor_temp.fetchone()
-        conn_temp.close()
-
-        if user_id_row and incluir_correr:
-            user_id_for_running = user_id_row[0]
-            functions.actualizar_estado_running(user_id_for_running, velocidad_inicial_correr, minutos_iniciales_correr)
         
         # Ya no imprimimos los parámetros recibidos
         

@@ -16,6 +16,49 @@ def decode_json_data(json_string):
             return None
     return None
 
+def actualizar_estado_running(user_id, speed, minutes):
+    """Actualiza o inserta el estado del ejercicio 'running' para un usuario."""
+    if not user_id or speed is None or minutes is None:
+        return
+
+    # Convertir minutos a repeticiones (asumiendo 1 rep = 0.5 min)
+    reps = int(minutes / 0.5)
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+
+        # Verificar si ya existe un registro para 'running'
+        cursor.execute(
+            "SELECT id FROM ESTADO_EJERCICIO_USUARIO WHERE user_id = ? AND LOWER(ejercicio_nombre) = 'running'",
+            (user_id,)
+        )
+        existing_record = cursor.fetchone()
+
+        if existing_record:
+            # Actualizar registro existente
+            cursor.execute(
+                """UPDATE ESTADO_EJERCICIO_USUARIO
+                   SET current_peso = ?, current_columna = ?
+                   WHERE id = ?""",
+                (speed, reps, existing_record[0])
+            )
+        else:
+            # Insertar nuevo registro
+            cursor.execute(
+                """INSERT INTO ESTADO_EJERCICIO_USUARIO (user_id, ejercicio_nombre, current_peso, current_columna)
+                   VALUES (?, 'running', ?, ?)""",
+                (user_id, speed, reps)
+            )
+        
+        conn.commit()
+
+    except sqlite3.Error as e:
+        print(f"Error al actualizar el estado de running: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 def get_all_strength_data_admin():
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
@@ -942,7 +985,7 @@ def get_all_strength_data_admin():
         
         data = []
         for row_obj in rows:
-            item = dict(row_obj) 
+            item = dict(row_obj)
             item['lift_fields_json'] = decode_json_data(item.get('lift_fields_json'))
             item['strongest_muscle_groups_names'] = decode_json_data(item.get('strongest_muscle_groups_names'))
             item['weakest_muscle_groups_names'] = decode_json_data(item.get('weakest_muscle_groups_names'))
@@ -950,6 +993,68 @@ def get_all_strength_data_admin():
             item['categories_results_json'] = decode_json_data(item.get('categories_results_json'))
             item['muscle_groups_results_json'] = decode_json_data(item.get('muscle_groups_results_json'))
             item['standards_results_json'] = decode_json_data(item.get('standards_results_json'))
+
+            # Recuperar, si existe, el estado actual del ejercicio de correr en el
+            # plan activo del usuario. Esto permite reutilizar los parámetros ya
+            # cargados (velocidad, tiempo objetivo y días asignados) cuando se
+            # vuelve a optimizar el plan.
+            running_state = None
+            try:
+                estado_cursor = conn.cursor()
+                estado_cursor.execute(
+                    """
+                        SELECT current_peso, last_test_reps, current_columna
+                        FROM ESTADO_EJERCICIO_USUARIO
+                        WHERE user_id = ? AND LOWER(ejercicio_nombre) = 'running'
+                    """,
+                    (item['user_id'],)
+                )
+                running_row = estado_cursor.fetchone()
+
+                if running_row:
+                    current_speed = running_row['current_peso'] or 0
+                    # Las repeticiones equivalentes guardan el tiempo conseguido
+                    # (cada repetición equivale a 30 segundos).
+                    base_reps = running_row['current_columna'] or 1
+                    minutes_equivalent = max(0.5, min(5.0, (base_reps or 1) * 0.5))
+
+                    running_state = {
+                        'speed': float(current_speed) if current_speed is not None else 0.0,
+                        'minutes': minutes_equivalent,
+                        'reps': int(base_reps) if base_reps else 1,
+                        'days': []
+                    }
+
+                    # Intentar obtener el plan activo para conocer en qué días se
+                    # programó la sesión de correr.
+                    estado_cursor.execute(
+                        """
+                            SELECT plan_json
+                            FROM PLANES_ENTRENAMIENTO
+                            WHERE user_id = ? AND active = 1
+                            ORDER BY id DESC
+                            LIMIT 1
+                        """,
+                        (item['user_id'],)
+                    )
+                    plan_row = estado_cursor.fetchone()
+                    if plan_row and plan_row['plan_json']:
+                        try:
+                            plan_data = json.loads(plan_row['plan_json'])
+                            running_days = []
+                            for dia_info in plan_data.get('dias', []):
+                                dia_num = dia_info.get('dia')
+                                ejercicios = dia_info.get('ejercicios', [])
+                                if dia_num and any(ej.lower() == 'running' for ej in ejercicios):
+                                    running_days.append(int(dia_num))
+                            running_state['days'] = running_days
+                        except (ValueError, TypeError, json.JSONDecodeError):
+                            running_state['days'] = []
+
+            except sqlite3.Error:
+                running_state = None
+
+            item['running_training_state'] = running_state
             data.append(item)
             
         return data
@@ -1639,23 +1744,48 @@ def predict_next_workouts(user_id, num_predictions=5):
             for ejercicio_nombre in ejercicios_hoy:
                 if ejercicio_nombre not in estado_dict:
                     continue
-                    
+
                 estado = estado_dict[ejercicio_nombre]
                 fila = estado['fila_matriz']
                 columna = estado['current_columna']
+                columna = max(0, (columna or 1) - 1)
                 sesion = estado['current_sesion']
                 peso = estado['current_peso']
                 lastre = estado['lastre_adicional']
+                es_running = ejercicio_nombre.lower() == 'running'
                 
                 # Validar límites de matriz
-                if fila >= len(matriz) or columna >= len(matriz[fila]):
+                if fila >= len(matriz):
                     continue
-                
+                    
+                # Para running, usar fila según sesión
+                if es_running:
+                    # La fila debe corresponder a la sesión: sesión 1→fila 0, sesión 2→fila 1, sesión 3→fila 2
+                    if sesion < 4:
+                        fila_efectiva = min(sesion - 1, len(matriz) - 1)  # sesion 1→fila 0, sesion 2→fila 1, etc.
+                    else:
+                        fila_efectiva = fila  # Para TEST usar fila original
+                    
+                    # Convertir "columna 9" (posición 9) a índice 8
+                    # Columna 9 = posición 9 = índice 8 (porque se cuenta desde 0)
+                    if columna >= len(matriz[fila_efectiva]):
+                        columna_efectiva = len(matriz[fila_efectiva]) - 1  # Columna 9 → índice 8
+                    else:
+                        columna_efectiva = columna
+                    
+                    # Actualizar fila y columna
+                    fila = fila_efectiva
+                    columna = columna_efectiva
+                elif columna >= len(matriz[fila]):
+                    continue
+
                 # Obtener prescripción de la matriz
                 prescripcion = matriz[fila][columna]
-                
+
                 # Determinar cómo mostrar el peso
-                if ejercicio_nombre.lower() in ejercicios_peso_corporal:
+                if es_running:
+                    peso_mostrado = f"{peso:.1f} km/h"
+                elif ejercicio_nombre.lower() in ejercicios_peso_corporal:
                     if lastre > 0:
                         peso_mostrado = f"Peso corporal + {lastre:.1f}kg"
                     elif lastre < 0:
@@ -1666,18 +1796,51 @@ def predict_next_workouts(user_id, num_predictions=5):
                     peso_mostrado = f"{peso:.1f}kg"
                 
                 if sesion == 4:  # Sesión de test
-                    descripcion = f"TEST - Máximo de repeticiones"
+                    if es_running:
+                        descripcion = "TEST - Registra velocidad y tiempo (objetivo 5 min)"
+                    else:
+                        descripcion = f"TEST - Máximo de repeticiones"
                 else:
                     # Parsear prescripción (formato: "series.reps.reps.reps.reps")
                     partes = prescripcion.split('.')
-                    if len(partes) >= 2:
+                    if es_running:
+                        bloques = []
+                        minutos_totales = 0.0
+                        # Para running siempre son 5 series, independientemente del primer número
+                        num_series = 5
+                        
+                        # Para running, usar directamente los primeros cinco valores de la prescripción
+                        reps_a_usar = partes[:5]
+                        if len(reps_a_usar) < 5:
+                            if reps_a_usar:
+                                reps_a_usar.extend([reps_a_usar[-1]] * (5 - len(reps_a_usar)))
+                            else:
+                                reps_a_usar = ['1'] * 5
+
+                        for rep in reps_a_usar:
+                            try:
+                                rep_int = int(rep)
+                            except (TypeError, ValueError):
+                                continue
+                            minutos = rep_int * 0.5
+                            minutos_totales += minutos
+                            if minutos > 0:
+                                bloques.append(f"{minutos:.1f} min")
+                        
+                        if minutos_totales > 0 and bloques:
+                            descripcion = f"{num_series} series: Corre durante {minutos_totales:.1f} min ({', '.join(bloques)})"
+                        elif minutos_totales > 0:
+                            descripcion = f"{num_series} series: Corre durante {minutos_totales:.1f} min"
+                        else:
+                            descripcion = "Trabajo de carrera"
+                    elif len(partes) >= 2:
                         num_series = int(partes[0])
                         reps_por_serie = [partes[i] for i in range(1, min(len(partes), num_series + 1))]
-                        
+
                         descripcion = f"{num_series} series ({', '.join(reps_por_serie)} reps)"
                     else:
                         descripcion = "Prescripción no válida"
-                
+
                 ejercicios_prediccion.append({
                     'nombre': ejercicio_nombre,
                     'descripcion': descripcion,

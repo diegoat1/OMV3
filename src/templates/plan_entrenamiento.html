@@ -23,7 +23,16 @@
                                 <div class="card-header"><strong>Día {{ dia.dia }}</strong></div>
                                 <ul class="list-group list-group-flush">
                                     {% for ejercicio in dia.ejercicios %}
-                                        <li class="list-group-item">{{ ejercicio }}</li>
+                                        {% set es_running = ejercicio|lower == 'running' %}
+                                        <li class="list-group-item d-flex align-items-center">
+                                            {% if es_running %}
+                                                <i class="fa fa-running text-success me-2"></i>
+                                                <span class="text-success fw-semibold">Correr</span>
+                                            {% else %}
+                                                <i class="fa fa-dumbbell text-primary me-2"></i>
+                                                <span>{{ ejercicio }}</span>
+                                            {% endif %}
+                                        </li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -70,18 +79,29 @@
                                         <div class="border-bottom py-2 {% if not loop.last %}mb-2{% endif %}">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
+                                                    {% set es_running = ejercicio.nombre.lower() == 'running' %}
                                                     <h6 class="fw-semibold mb-1 text-capitalize">
-                                                        {{ ejercicio.nombre }}
+                                                        {% if es_running %}
+                                                            <i class="fa fa-running text-primary me-1"></i>
+                                                            Correr
+                                                        {% else %}
+                                                            <i class="fa fa-dumbbell text-secondary me-1"></i>
+                                                            {{ ejercicio.nombre }}
+                                                        {% endif %}
                                                     </h6>
                                                     <p class="fs-sm text-muted mb-1">
                                                         {{ ejercicio.descripcion }}
                                                     </p>
                                                     <p class="fs-sm mb-0">
-                                                        <strong>Peso:</strong> {{ ejercicio.peso }}
+                                                        {% if es_running %}
+                                                            <strong>Velocidad:</strong> {{ ejercicio.peso }}
+                                                        {% else %}
+                                                            <strong>Peso:</strong> {{ ejercicio.peso }}
+                                                        {% endif %}
                                                     </p>
                                                 </div>
                                                 <div class="ms-2 text-end">
-                                                    <span class="badge {% if ejercicio.tipo_sesion == 'TEST' %}bg-warning{% else %}bg-info{% endif %}">
+                                                    <span class="badge {% if ejercicio.tipo_sesion == 'TEST' %}bg-warning{% elif es_running %}bg-success{% else %}bg-info{% endif %}">
                                                         {{ ejercicio.tipo_sesion }}
                                                     </span>
                                                 </div>

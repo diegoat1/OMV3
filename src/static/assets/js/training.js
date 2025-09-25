@@ -1,6 +1,28 @@
 // Funcionalidad para la página de entrenamiento
 
 document.addEventListener('DOMContentLoaded', function() {
+    const RUNNING_TIME_OPTIONS = Array.from({ length: 10 }, (_, idx) => (idx + 1) * 0.5);
+
+    function formatMinutesLabel(minutes) {
+        const totalSeconds = Math.round(minutes * 60);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function buildRunningTimeOptions(selectedMinutes) {
+        const parsedMinutes = parseFloat(selectedMinutes);
+        const validMinutes = Math.min(5, Math.max(0.5, isNaN(parsedMinutes) ? 3 : parsedMinutes));
+        const selectedIndex = Math.min(10, Math.max(1, Math.round(validMinutes * 2)));
+
+        return RUNNING_TIME_OPTIONS.map((value, idx) => {
+            const optionValue = value.toFixed(1);
+            const label = formatMinutesLabel(value);
+            const isSelected = (idx + 1) === selectedIndex;
+            return `<option value="${optionValue}" ${isSelected ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+    }
+
     // ----- TIMER DE DESCANSO -----
     let timerInterval;
     let timeLeft = 0;
@@ -146,82 +168,115 @@ document.addEventListener('DOMContentLoaded', function() {
     generateWarmupBtn.forEach(btn => {
         btn.addEventListener('click', function() {
             const exerciseCard = this.closest('.exercise-card');
+            if (!exerciseCard) return;
+            const exerciseType = exerciseCard.dataset.exerciseType || 'strength';
             const weightInfo = exerciseCard.querySelector('.weight-info');
-            
-            // Extraer peso del texto mostrado como alternativa
+            if (!weightInfo) return;
+
             const weightText = weightInfo.textContent.trim();
             const weightMatch = weightText.match(/(\d+\.?\d*)\s*kg/);
+            const speedMatch = weightText.match(/(\d+\.?\d*)\s*km\/h/i);
+
             let workingWeight = parseFloat(weightInfo.dataset.weight || 0);
-            
-            // Si el dataset no tiene el peso correcto, extraerlo del texto
+
             if ((!workingWeight || workingWeight <= 0) && weightMatch) {
                 workingWeight = parseFloat(weightMatch[1]);
             }
-            
-            // Si aún no tenemos peso, buscar en todo el card
-            if (!workingWeight || workingWeight <= 0) {
-                const cardText = exerciseCard.textContent;
-                const cardMatch = cardText.match(/(\d+\.?\d*)\s*kg/);
-                if (cardMatch) {
-                    workingWeight = parseFloat(cardMatch[1]);
+
+            if (exerciseType === 'running' && (!workingWeight || workingWeight <= 0) && speedMatch) {
+                workingWeight = parseFloat(speedMatch[1]);
+            }
+
+            if (exerciseType === 'running' && (!workingWeight || workingWeight <= 0)) {
+                const fallbackSpeed = parseFloat(exerciseCard.dataset.runningSpeed || 0);
+                if (!isNaN(fallbackSpeed) && fallbackSpeed > 0) {
+                    workingWeight = fallbackSpeed;
                 }
             }
-            
-            
-            const warmupContainer = exerciseCard.querySelector('.warmup-container');
-            
+
             if (!workingWeight || workingWeight <= 0) {
-                alert(`No se puede generar calentamiento sin un peso de trabajo válido. Peso detectado: ${workingWeight}`);
+                const mensaje = exerciseType === 'running'
+                    ? `No se puede generar calentamiento sin una velocidad objetivo válida. Velocidad detectada: ${workingWeight}`
+                    : `No se puede generar calentamiento sin un peso de trabajo válido. Peso detectado: ${workingWeight}`;
+                alert(mensaje);
                 return;
             }
-            
-            // Limpiar series de calentamiento existentes
+
+            const warmupContainer = exerciseCard.querySelector('.warmup-container');
+            if (!warmupContainer) return;
+
             const existingWarmups = warmupContainer.querySelector('.warmup-series');
             if (existingWarmups) {
                 existingWarmups.remove();
             }
-            
-            // Calcular series de calentamiento (60% y 80% del peso de trabajo)
-            // Redondear a múltiplos de 5kg para facilitar la carga de pesos
-            const warmup60 = Math.round((workingWeight * 0.6) / 5) * 5; // Redondear a 5kg más cercano
-            const warmup80 = Math.round((workingWeight * 0.8) / 5) * 5; // Redondear a 5kg más cercano
-            
-            console.log('Cálculos:', { workingWeight, warmup60, warmup80 });
-            
-            // Crear el contenedor para las series de calentamiento
+
             const warmupSeries = document.createElement('div');
             warmupSeries.className = 'warmup-series';
-            
-            // HTML para las series de calentamiento
-            warmupSeries.innerHTML = `
-                <div class="warmup-title">
-                    <i class="fa fa-fire warmup-icon"></i>
-                    Series de calentamiento
-                    <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
-                       title="Realiza estas series de calentamiento antes de las series principales para preparar los músculos"></i>
-                </div>
-                <div class="warmup-sets">
-                    <div class="warmup-set">
-                        <input type="checkbox" class="warmup-checkbox">
-                        <span>10 reps con ${warmup60}kg (60%)</span>
+
+            if (exerciseType === 'running') {
+                const baseSpeed = workingWeight;
+                const easySpeed = Math.max(4, Math.round(baseSpeed * 0.6 * 10) / 10);
+                const moderateSpeed = Math.round(baseSpeed * 0.75 * 10) / 10;
+                const fastSpeed = Math.round(baseSpeed * 0.9 * 10) / 10;
+                const formatSpeed = (value) => value.toFixed(1).replace(/\.0$/, '');
+
+                warmupSeries.innerHTML = `
+                    <div class="warmup-title">
+                        <i class="fa fa-fire warmup-icon"></i>
+                        Calentamiento sugerido
+                        <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip"
+                           title="Progresa de menor a mayor velocidad antes de alcanzar la intensidad objetivo"></i>
                     </div>
-                    <div class="warmup-set">
-                        <input type="checkbox" class="warmup-checkbox">
-                        <span>8 reps con ${warmup80}kg (80%)</span>
+                    <div class="warmup-sets">
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>5 min trote suave a ${formatSpeed(easySpeed)} km/h</span>
+                        </div>
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>3 min a ${formatSpeed(moderateSpeed)} km/h</span>
+                        </div>
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>3 × 30s aceleraciones a ${formatSpeed(fastSpeed)} km/h</span>
+                        </div>
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>2 min caminata o trote muy suave</span>
+                        </div>
                     </div>
-                </div>
-            `;
-            
-            // Añadir las series al contenedor
+                `;
+            } else {
+                const warmup60 = Math.round((workingWeight * 0.6) / 5) * 5;
+                const warmup80 = Math.round((workingWeight * 0.8) / 5) * 5;
+
+                warmupSeries.innerHTML = `
+                    <div class="warmup-title">
+                        <i class="fa fa-fire warmup-icon"></i>
+                        Series de calentamiento
+                        <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip"
+                           title="Realiza estas series de calentamiento antes de las series principales para preparar los músculos"></i>
+                    </div>
+                    <div class="warmup-sets">
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>10 reps con ${warmup60}kg (60%)</span>
+                        </div>
+                        <div class="warmup-set">
+                            <input type="checkbox" class="warmup-checkbox">
+                            <span>8 reps con ${warmup80}kg (80%)</span>
+                        </div>
+                    </div>
+                `;
+            }
+
             warmupContainer.appendChild(warmupSeries);
             warmupContainer.style.display = 'block';
-            
-            // Inicializar tooltips
+
             if (typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
                 $('[data-toggle="tooltip"]').tooltip();
             }
-            
-            // Configurar los checkboxes de calentamiento
+
             warmupContainer.querySelectorAll('.warmup-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
                     const warmupSet = this.closest('.warmup-set');
@@ -234,8 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             });
-            
-            // Ocultar el botón después de generar las series
+
             this.style.display = 'none';
         });
     });
@@ -245,8 +299,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.test-reps').forEach(select => {
             const actualizarVisibilidadIncremento = () => {
                 const repeticiones = parseInt(select.value);
-                const contenedorIncremento = select.closest('.test-fields').querySelector('.incremento-peso-container');
-                
+                const fieldsContainer = select.closest('.test-fields');
+                if (!fieldsContainer) return;
+                const contenedorIncremento = fieldsContainer.querySelector('.incremento-peso-container');
+                if (!contenedorIncremento) return;
+
                 if (repeticiones === 10) {
                     contenedorIncremento.style.display = 'block';
                 } else {
@@ -262,17 +319,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
     
+    const setupRunningTestListeners = () => {
+        document.querySelectorAll('.test-fields[data-type="running"]').forEach(fields => {
+            const timeSelect = fields.querySelector('.test-time');
+            const incrementContainer = fields.querySelector('.incremento-velocidad-container');
+            const incrementSelect = fields.querySelector('.test-velocity-increment');
+
+            if (!timeSelect || !incrementContainer) {
+                return;
+            }
+
+            const updateIncrementVisibility = () => {
+                const minutes = parseFloat(timeSelect.value || '0');
+                if (minutes >= 5) {
+                    incrementContainer.style.display = 'block';
+                } else {
+                    incrementContainer.style.display = 'none';
+                    if (incrementSelect) {
+                        incrementSelect.value = '0';
+                    }
+                }
+            };
+
+            updateIncrementVisibility();
+            timeSelect.addEventListener('change', updateIncrementVisibility);
+        });
+    };
+
     // Configurar listeners iniciales
     setupTestRepsListeners();
+    setupRunningTestListeners();
 
     // ----- CONVERTIR SESIÓN NORMAL A TEST -----
     document.querySelectorAll('.convert-to-test-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const ejercicioNombre = this.dataset.ejercicio;
             const exerciseCard = this.closest('.exercise-card');
-            
+            const exerciseType = exerciseCard ? (exerciseCard.dataset.exerciseType || '') : '';
+            const confirmMessage = exerciseType === 'running'
+                ? `¿Estás seguro de convertir "${ejercicioNombre}" en un test de carrera al fallo (máximo 5 minutos)?`
+                : `¿Estás seguro de convertir "${ejercicioNombre}" a una sesión de TEST al fallo?`;
+
             // Confirmar la conversión
-            if (confirm(`¿Estás seguro de convertir "${ejercicioNombre}" a una sesión de TEST al fallo?`)) {
+            if (confirm(confirmMessage)) {
                 // Transformar la card a formato TEST
                 transformToTestFormat(exerciseCard, ejercicioNombre, true);
             }
@@ -286,7 +375,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const generateWarmupBtn = exerciseCard.querySelector('.generate-warmup');
         const warmupContainer = exerciseCard.querySelector('.warmup-container');
         const convertBtn = exerciseCard.querySelector('.convert-to-test-btn');
-        
+        const exerciseType = exerciseCard.dataset.exerciseType || (ejercicioNombre && ejercicioNombre.toLowerCase() === 'running' ? 'running' : 'strength');
+        const isRunning = exerciseType === 'running';
+
         if (setsContainer) setsContainer.style.display = 'none';
         if (generateWarmupBtn) generateWarmupBtn.style.display = 'none';
         if (warmupContainer) warmupContainer.style.display = 'none';
@@ -317,48 +408,88 @@ document.addEventListener('DOMContentLoaded', function() {
         // Crear interfaz de TEST usando el mismo formato que los tests originales
         const testInterface = document.createElement('div');
         testInterface.className = 'test-interface mt-3';
-        testInterface.innerHTML = `
-            <div class="alert ${isConverted ? 'alert-warning' : 'alert-info'}">
-                <i class="fa fa-bolt mr-2"></i>
-                <strong>${isConverted ? 'Sesión convertida a TEST' : 'Sesión de TEST'}</strong>
-                <p class="mb-0">Realiza 1 serie al fallo con el peso indicado</p>
-            </div>
-            <div class="test-fields" data-ejercicio="${ejercicioNombre}">
-                <div class="form-group">
-                    <label>
-                        Repeticiones logradas:
-                        <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
-                           title="Indica cuántas repeticiones pudiste realizar en tu serie al fallo"></i>
-                    </label>
-                    <select class="form-control form-control-sm test-reps">
-                        ${Array.from({length: 10}, (_, i) => 
-                            `<option value="${i+1}" ${i+1 === 5 ? 'selected' : ''}>${i+1}</option>`
-                        ).join('')}
-                    </select>
-                </div>
-                <div class="form-group mt-1 incremento-peso-container" style="display: none;">
-                    <label>
-                        Incremento de peso (kg):
-                        <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip" 
-                           title="Si lograste 10 repeticiones, puedes incrementar el peso para el próximo ciclo"></i>
-                    </label>
-                    <select class="form-control form-control-sm test-peso-incremento">
-                        <option value="0" selected>Sin cambio</option>
-                        <option value="2.5">+2.5 kg</option>
-                        <option value="5">+5 kg</option>
-                        <option value="7.5">+7.5 kg</option>
-                        <option value="10">+10 kg</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        
-        // Insertar la interfaz de TEST después del weight-info
         const weightInfo = exerciseCard.querySelector('.weight-info');
+
+        if (isRunning) {
+            const defaultSpeed = parseFloat(exerciseCard.dataset.runningSpeed || (weightInfo ? weightInfo.dataset.weight : '0')) || 0;
+            const defaultMinutes = parseFloat(exerciseCard.dataset.runningLastMinutes || exerciseCard.dataset.runningTargetMinutes || '3') || 3;
+
+            const speedLabel = defaultSpeed > 0 ? `${defaultSpeed.toFixed(1)} km/h` : 'Pendiente';
+
+            testInterface.innerHTML = `
+                <div class="alert ${isConverted ? 'alert-warning' : 'alert-info'}">
+                    <i class="fa fa-running mr-2"></i>
+                    <strong>${isConverted ? 'Sesión convertida a TEST' : 'Sesión de TEST'}</strong>
+                    <p class="mb-0">Registra el tiempo total que pudiste mantener tu velocidad actual (máximo 5 minutos).</p>
+                </div>
+                <div class="weight-info mb-3">
+                    <i class="fa fa-tachometer-alt weight-icon mr-2"></i>
+                    Velocidad base actual: ${speedLabel}
+                </div>
+                <div class="test-fields" data-ejercicio="${ejercicioNombre}" data-type="running" data-base-speed="${defaultSpeed.toFixed(1)}">
+                    <div class="form-group">
+                        <label>Tiempo logrado (máx. 5 minutos)</label>
+                        <select class="form-control form-control-sm test-time">
+                            ${buildRunningTimeOptions(defaultMinutes)}
+                        </select>
+                        <small class="form-text text-muted">5 minutos equivalen a 10 repeticiones.</small>
+                    </div>
+                    <div class="form-group mt-1 incremento-velocidad-container" style="display: none;">
+                        <label>Incremento de velocidad (km/h)</label>
+                        <select class="form-control form-control-sm test-velocity-increment">
+                            <option value="0" selected>Sin cambio</option>
+                            <option value="0.5">+0.5 km/h</option>
+                            <option value="1">+1.0 km/h</option>
+                            <option value="1.5">+1.5 km/h</option>
+                            <option value="2">+2.0 km/h</option>
+                        </select>
+                        <small class="form-text text-muted">Solo disponible si completas los 5 minutos.</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            testInterface.innerHTML = `
+                <div class="alert ${isConverted ? 'alert-warning' : 'alert-info'}">
+                    <i class="fa fa-bolt mr-2"></i>
+                    <strong>${isConverted ? 'Sesión convertida a TEST' : 'Sesión de TEST'}</strong>
+                    <p class="mb-0">Realiza 1 serie al fallo con el peso indicado</p>
+                </div>
+                <div class="test-fields" data-ejercicio="${ejercicioNombre}">
+                    <div class="form-group">
+                        <label>
+                            Repeticiones logradas:
+                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip"
+                               title="Indica cuántas repeticiones pudiste realizar en tu serie al fallo"></i>
+                        </label>
+                        <select class="form-control form-control-sm test-reps">
+                            ${Array.from({length: 10}, (_, i) =>
+                                `<option value="${i+1}" ${i+1 === 5 ? 'selected' : ''}>${i+1}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group mt-1 incremento-peso-container" style="display: none;">
+                        <label>
+                            Incremento de peso (kg):
+                            <i class="fa fa-question-circle tooltip-icon" data-toggle="tooltip"
+                               title="Si lograste 10 repeticiones, puedes incrementar el peso para el próximo ciclo"></i>
+                        </label>
+                        <select class="form-control form-control-sm test-peso-incremento">
+                            <option value="0" selected>Sin cambio</option>
+                            <option value="2.5">+2.5 kg</option>
+                            <option value="5">+5 kg</option>
+                            <option value="7.5">+7.5 kg</option>
+                            <option value="10">+10 kg</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Insertar la interfaz de TEST después del weight-info
         if (weightInfo) {
             weightInfo.parentNode.insertBefore(testInterface, weightInfo.nextSibling);
         }
-        
+
         // Agregar botón de revertir si es convertido
         if (isConverted) {
             const revertBtn = document.createElement('button');
@@ -371,8 +502,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Configurar listeners
-        setupTestRepsListeners();
-        
+        if (!isRunning) {
+            setupTestRepsListeners();
+        }
+
+        setupRunningTestListeners();
+
         // Inicializar tooltips
         if (typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
             $('[data-toggle="tooltip"]').tooltip();
@@ -385,11 +520,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const setsContainer = exerciseCard.querySelector('.sets-container');
         const generateWarmupBtn = exerciseCard.querySelector('.generate-warmup');
         const convertBtn = exerciseCard.querySelector('.convert-to-test-btn');
-        
+        const warmupContainer = exerciseCard.querySelector('.warmup-container');
+
         if (setsContainer) setsContainer.style.display = 'block';
         if (generateWarmupBtn) generateWarmupBtn.style.display = 'inline-block';
         if (convertBtn) convertBtn.style.display = 'inline-block';
-        
+        if (warmupContainer) {
+            const hasWarmup = warmupContainer.querySelector('.warmup-series');
+            warmupContainer.style.display = hasWarmup ? 'block' : 'none';
+        }
+
         // Remover interfaz de TEST
         const testInterface = exerciseCard.querySelector('.test-interface');
         if (testInterface) testInterface.remove();
@@ -457,25 +597,75 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Para tests originales, buscar en el área original
                     testFields = ejercicioCard.querySelector('.test-fields');
                 }
-                
+
                 // Procesar datos de TEST (originales o convertidos)
                 if (testFields && checkbox.checked) {
-                    const reps = parseInt(testFields.querySelector('.test-reps').value) || 0;
-                    const incrementoPeso = parseFloat(testFields.querySelector('.test-peso-incremento').value) || 0;
-                    datosTest[nombreEjercicio] = {
-                        repeticiones: reps,
-                        incrementoPeso: incrementoPeso,
-                        convertedToTest: isConvertedToTest
-                    };
+                    if (testFields.dataset.type === 'running') {
+                        const timeInput = testFields.querySelector('.test-time');
+                        const incrementSelect = testFields.querySelector('.test-velocity-increment');
+
+                        let tiempo = timeInput ? parseFloat(timeInput.value) : 0;
+                        if (isNaN(tiempo) || tiempo <= 0) {
+                            tiempo = 0.5;
+                        }
+                        tiempo = Math.min(5, Math.max(0.5, tiempo));
+
+                        let incrementoVelocidad = incrementSelect ? parseFloat(incrementSelect.value) : 0;
+                        if (isNaN(incrementoVelocidad) || tiempo < 5) {
+                            incrementoVelocidad = 0;
+                        }
+
+                        const velocidadBase = parseFloat(testFields.dataset.baseSpeed || '0') || 0;
+
+                        datosTest[nombreEjercicio] = {
+                            velocidadBase: velocidadBase,
+                            incrementoVelocidad: incrementoVelocidad,
+                            tiempo: tiempo,
+                            convertedToTest: isConvertedToTest
+                        };
+                    } else {
+                        const reps = parseInt(testFields.querySelector('.test-reps').value) || 0;
+                        const incrementoPeso = parseFloat(testFields.querySelector('.test-peso-incremento').value) || 0;
+                        datosTest[nombreEjercicio] = {
+                            repeticiones: reps,
+                            incrementoPeso: incrementoPeso,
+                            convertedToTest: isConvertedToTest
+                        };
+                    }
                 } else if (testFields && !checkbox.checked) {
-                    // Si es un test no completado 
-                    const reps = parseInt(testFields.querySelector('.test-reps').value) || 0;
-                    const decrementoPeso = -2.5;
-                    datosTest[nombreEjercicio] = {
-                        repeticiones: reps,
-                        incrementoPeso: decrementoPeso,
-                        convertedToTest: isConvertedToTest
-                    };
+                    if (testFields.dataset.type === 'running') {
+                        const timeInput = testFields.querySelector('.test-time');
+                        const incrementSelect = testFields.querySelector('.test-velocity-increment');
+
+                        let tiempo = timeInput ? parseFloat(timeInput.value) : 0;
+                        if (isNaN(tiempo) || tiempo <= 0) {
+                            tiempo = 0.5;
+                        }
+                        tiempo = Math.min(5, Math.max(0.5, tiempo));
+
+                        let incrementoVelocidad = incrementSelect ? parseFloat(incrementSelect.value) : 0;
+                        if (isNaN(incrementoVelocidad) || tiempo < 5) {
+                            incrementoVelocidad = 0;
+                        }
+
+                        const velocidadBase = parseFloat(testFields.dataset.baseSpeed || '0') || 0;
+
+                        datosTest[nombreEjercicio] = {
+                            velocidadBase: velocidadBase,
+                            incrementoVelocidad: incrementoVelocidad,
+                            tiempo: tiempo,
+                            convertedToTest: isConvertedToTest
+                        };
+                    } else {
+                        // Si es un test no completado
+                        const reps = parseInt(testFields.querySelector('.test-reps').value) || 0;
+                        const decrementoPeso = -2.5;
+                        datosTest[nombreEjercicio] = {
+                            repeticiones: reps,
+                            incrementoPeso: decrementoPeso,
+                            convertedToTest: isConvertedToTest
+                        };
+                    }
                 }
             });
             

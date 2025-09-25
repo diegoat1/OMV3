@@ -134,18 +134,33 @@ def guardar_plan_optimizado(user_id, plan_optimizado_dias, datos_fuerza_actual):
         else:
             # Si no existe, lo creamos con valores iniciales desde los datos de fuerza
             # Verifica la estructura exacta de datos_fuerza_actual para acceder correctamente
-            print(f"DEBUG - Datos fuerza para {ejercicio_nombre}: {datos_fuerza_actual.get(ejercicio_nombre, 'No encontrado')}")
             peso_inicial = 60  # Valor predeterminado
             reps_iniciales = 1  # Valor predeterminado
-            
+            minutos_iniciales = None
+
+            es_running = ejercicio_nombre.lower() == 'running'
+
             # Si existe el ejercicio en datos_fuerza_actual y tiene estructura correcta
             if ejercicio_nombre in datos_fuerza_actual and isinstance(datos_fuerza_actual[ejercicio_nombre], dict):
-                peso_inicial = datos_fuerza_actual[ejercicio_nombre].get('weight', 60)
-                reps_iniciales = datos_fuerza_actual[ejercicio_nombre].get('reps', 1)
-                print(f"INFO - Usando peso personalizado {peso_inicial}kg y {reps_iniciales} reps para {ejercicio_nombre}")
-            
+                ejercicio_data = datos_fuerza_actual[ejercicio_nombre]
+                if es_running:
+                    minutos_iniciales = ejercicio_data.get('minutes')
+                peso_inicial = ejercicio_data.get('weight', 60)
+                reps_iniciales = ejercicio_data.get('reps', 1)
+
+            if es_running and minutos_iniciales is not None:
+                try:
+                    minutos_iniciales = float(minutos_iniciales)
+                except (TypeError, ValueError):
+                    minutos_iniciales = None
+
+            if es_running and minutos_iniciales is not None:
+                reps_iniciales = int(round(minutos_iniciales / 0.5))
+
             # La columna inicial debe ser exactamente el número de repeticiones iniciales
             # Limitamos a máximo 9 columnas
+            reps_iniciales = max(1, reps_iniciales)
+            reps_iniciales = min(10, reps_iniciales)
             columna_inicial = min(reps_iniciales, 9)
 
             # Determinar si es ejercicio de peso corporal y calcular lastre
@@ -158,19 +173,18 @@ def guardar_plan_optimizado(user_id, plan_optimizado_dias, datos_fuerza_actual):
                 current_peso_bd = peso_corporal_usuario
                 lastre_adicional_bd = lastre
             else:
-                # Para ejercicios normales: usar peso directamente
+                # Para ejercicios normales y correr: usar valor directamente
                 current_peso_bd = peso_inicial
                 lastre_adicional_bd = 0
-            
+
             cursor.execute('''
-            INSERT INTO ESTADO_EJERCICIO_USUARIO 
+            INSERT INTO ESTADO_EJERCICIO_USUARIO
                 (user_id, ejercicio_nombre, current_columna, current_sesion, current_peso, lastre_adicional, last_test_reps)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (user_id, ejercicio_nombre, columna_inicial, 1, current_peso_bd, lastre_adicional_bd, reps_iniciales))
 
     conn.commit()
     conn.close()
-    print(f"Plan {plan_id} guardado para usuario {user_id}.")
     return plan_id
 
 def _parse_prescription(prescription_str, weight, es_peso_corporal=False, mensaje_peso=None):
@@ -209,6 +223,44 @@ def _parse_prescription(prescription_str, weight, es_peso_corporal=False, mensaj
         return f"{num_series} series de {reps_por_serie[0]} reps con {peso_mostrado}"
     else:
         return f"{num_series} series ({', '.join(reps_por_serie)} reps por serie) con {peso_mostrado}"
+
+def _formatear_sesion_correr(prescription_str, velocidad):
+    try:
+        velocidad = float(velocidad)
+    except (TypeError, ValueError):
+        velocidad = 0
+
+    partes = [p for p in (prescription_str.split('.') if prescription_str else []) if p]
+    if not partes:
+        return "Velocidad pendiente" if velocidad <= 0 else f"Corre a {velocidad:.1f} km/h"
+
+    minutos_totales = 0.0
+    bloques = []
+    # Usar los primeros cinco valores de la prescripción (o completar repitiendo el último)
+    reps_a_usar = partes[:5]
+    if len(reps_a_usar) < 5:
+        if reps_a_usar:
+            reps_a_usar.extend([reps_a_usar[-1]] * (5 - len(reps_a_usar)))
+        else:
+            reps_a_usar = ['1'] * 5
+
+    for rep in reps_a_usar:
+        try:
+            rep_int = int(rep)
+        except (TypeError, ValueError):
+            continue
+        minutos = rep_int * 0.5
+        minutos_totales += minutos
+        if minutos > 0:
+            bloques.append(f"{minutos:.1f} min")
+
+    velocidad_texto = "Velocidad pendiente" if velocidad <= 0 else f"Corre a {velocidad:.1f} km/h"
+
+    if minutos_totales > 0 and bloques:
+        return f"{velocidad_texto} durante {minutos_totales:.1f} min ({', '.join(bloques)})"
+    if minutos_totales > 0:
+        return f"{velocidad_texto} durante {minutos_totales:.1f} min"
+    return velocidad_texto
 
 def obtener_entrenamiento_del_dia(user_id):
     """Obtiene el entrenamiento para el día actual del plan activo
@@ -298,10 +350,35 @@ def obtener_entrenamiento_del_dia(user_id):
             if not estado_ejercicio:
                 entrenamiento_formateado.append(f"  {ejercicio_nombre}: Estado no encontrado (error)")
                 continue
-            
+
             sesion = estado_ejercicio['current_sesion']
             reps_test_fallo = estado_ejercicio['current_columna']
-            peso = estado_ejercicio['current_peso']
+            peso = estado_ejercicio['current_peso'] if estado_ejercicio['current_peso'] is not None else 0
+            es_running = ejercicio_nombre.lower() == 'running'
+
+            if es_running:
+                if sesion == TEST_SESSION_NUMBER:
+                    columna_actual = estado_ejercicio['current_columna']
+                    ultimo_test = estado_ejercicio['last_test_reps'] if estado_ejercicio['last_test_reps'] else columna_actual
+                    minutos_previos = (ultimo_test or 0) * 0.5
+                    entrenamiento_formateado.append(
+                        f"  {ejercicio_nombre}: TEST - Registra velocidad y tiempo (Velocidad base: {peso:.1f} km/h, Último test: {minutos_previos:.1f} min)"
+                    )
+                else:
+                    fila_idx = sesion - 1
+                    col_idx = reps_test_fallo - 1
+
+                    if not (0 <= fila_idx < len(matriz_progresion)) or not (0 <= col_idx < len(matriz_progresion[fila_idx])):
+                        entrenamiento_formateado.append(
+                            f"  {ejercicio_nombre}: Sesión {sesion}/{TEST_SESSION_NUMBER-1} - Configuración no disponible."
+                        )
+                    else:
+                        prescripcion_running = matriz_progresion[fila_idx][col_idx]
+                        detalle_correr = _formatear_sesion_correr(prescripcion_running, peso)
+                        entrenamiento_formateado.append(
+                            f"  {ejercicio_nombre}: Sesión {sesion}/{TEST_SESSION_NUMBER-1} - {detalle_correr}"
+                        )
+                continue
 
             # Lógica de selección de la prescripción:
             # - La 'sesion' (1, 2, o 3) determina la FILA de la matriz (índice 0, 1, o 2).
@@ -388,46 +465,96 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
         nueva_sesion = estado['current_sesion']
         nuevo_peso = estado['current_peso']
         mensaje_extra = ""
+        es_running = ejercicio_nombre.lower() == 'running'
 
         # Verificar si el ejercicio está marcado como no completado
         sesion_completada = sesiones_completadas.get(ejercicio_nombre, True)  # Por defecto es completada
-        
+
         # Verificar si la sesión fue convertida a TEST
         fue_convertida_test = sesiones_convertidas_test.get(ejercicio_nombre, False)
 
         if estado['current_sesion'] == TEST_SESSION_NUMBER or fue_convertida_test: # Es día de test O fue convertida a test
-            # Obtener las repeticiones para este ejercicio del diccionario
-            if ejercicio_nombre in repeticiones_test:
-                reps_test = repeticiones_test[ejercicio_nombre]
-                print(f"Procesando {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} para {ejercicio_nombre}: {reps_test} repeticiones")
-                
-                # Establecer la nueva columna según las repeticiones del test
-                nueva_columna = min(reps_test, 9)  # Limitar a máximo 9
-                
-                # Solo si son exactamente 10 repeticiones y hay incremento elegido, aumentamos el peso
-                incremento = 0
-                if reps_test == 10:
-                    incremento = incrementos_peso.get(ejercicio_nombre, 0)
-                
-                # Actualizar las repeticiones del test (sin fecha)
+            if es_running:
+                datos_test_running = repeticiones_test.get(ejercicio_nombre, {}) or {}
+
+                velocidad_base = datos_test_running.get('velocidadBase', nuevo_peso)
+                try:
+                    velocidad_base = float(velocidad_base) if velocidad_base is not None else nuevo_peso
+                except (TypeError, ValueError):
+                    velocidad_base = nuevo_peso
+
+                incremento_velocidad = datos_test_running.get('incrementoVelocidad', 0)
+                try:
+                    incremento_velocidad = float(incremento_velocidad)
+                except (TypeError, ValueError):
+                    incremento_velocidad = 0
+
+                tiempo_minutos = datos_test_running.get('tiempo', 0)
+                try:
+                    tiempo_minutos = float(tiempo_minutos)
+                except (TypeError, ValueError):
+                    tiempo_minutos = 0
+
+                if tiempo_minutos <= 0:
+                    tiempo_minutos = 0.5
+
+                tiempo_minutos = max(0.5, min(5.0, tiempo_minutos))
+                reps_equivalentes = int(round(tiempo_minutos / 0.5))
+                reps_equivalentes = max(1, min(10, reps_equivalentes))
+
                 cursor.execute("UPDATE ESTADO_EJERCICIO_USUARIO SET last_test_reps = ? WHERE id = ?",
-                            (reps_test, estado['id']))
-                
-                nueva_sesion = 1 # Resetear a la primera sesión
-                
-                # Solo aumentamos el peso si son 10 reps y se solicitó un incremento
-                if reps_test == 10 and incremento > 0:
-                    nuevo_peso += incremento
-                    nueva_columna = 1 # Reiniciar a la columna 1 con más peso
-                    # Reiniciar también last_test_reps a 1 ya que empezamos un nuevo ciclo con más peso
-                    reps_test = 1
-                    mensaje_extra = f"Peso incrementado a {nuevo_peso:.1f} kg (+{incremento} kg). {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
+                               (reps_equivalentes, estado['id']))
+
+                nueva_sesion = 1
+                nueva_columna = min(reps_equivalentes, 9)
+
+                if tiempo_minutos >= 5.0 and incremento_velocidad > 0:
+                    nuevo_peso = max(0, velocidad_base) + incremento_velocidad
+                    nueva_columna = 1
+                    mensaje_extra = (
+                        f"Velocidad incrementada a {nuevo_peso:.1f} km/h (+{incremento_velocidad:.1f}) "
+                        f"tras completar {tiempo_minutos:.1f} min. Reiniciando ciclo."
+                    )
                 else:
-                    mensaje_extra = f"Repeticiones registradas: {reps_test}. {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
+                    nuevo_peso = velocidad_base
+                    mensaje_extra = (
+                        f"Tiempo registrado: {tiempo_minutos:.1f} min a {nuevo_peso:.1f} km/h. "
+                        "Reiniciando ciclo."
+                    )
+
             else:
-                # Si no hay datos de TEST para este ejercicio, simplemente avanzamos al siguiente día
-                nueva_sesion = 1 # Resetear a la primera sesión
-                mensaje_extra = f"Sesión de {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} completada sin datos específicos. Reiniciando ciclo."
+                # Obtener las repeticiones para este ejercicio del diccionario
+                if ejercicio_nombre in repeticiones_test:
+                    reps_test = repeticiones_test[ejercicio_nombre]
+                    print(f"Procesando {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} para {ejercicio_nombre}: {reps_test} repeticiones")
+
+                    # Establecer la nueva columna según las repeticiones del test
+                    nueva_columna = min(reps_test, 9)  # Limitar a máximo 9
+
+                    # Solo si son exactamente 10 repeticiones y hay incremento elegido, aumentamos el peso
+                    incremento = 0
+                    if reps_test == 10:
+                        incremento = incrementos_peso.get(ejercicio_nombre, 0)
+
+                    # Actualizar las repeticiones del test (sin fecha)
+                    cursor.execute("UPDATE ESTADO_EJERCICIO_USUARIO SET last_test_reps = ? WHERE id = ?",
+                                (reps_test, estado['id']))
+
+                    nueva_sesion = 1 # Resetear a la primera sesión
+
+                    # Solo aumentamos el peso si son 10 reps y se solicitó un incremento
+                    if reps_test == 10 and incremento > 0:
+                        nuevo_peso += incremento
+                        nueva_columna = 1 # Reiniciar a la columna 1 con más peso
+                        # Reiniciar también last_test_reps a 1 ya que empezamos un nuevo ciclo con más peso
+                        reps_test = 1
+                        mensaje_extra = f"Peso incrementado a {nuevo_peso:.1f} kg (+{incremento} kg). {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
+                    else:
+                        mensaje_extra = f"Repeticiones registradas: {reps_test}. {'[CONVERTIDO A TEST]' if fue_convertida_test else ''} Reiniciando ciclo."
+                else:
+                    # Si no hay datos de TEST para este ejercicio, simplemente avanzamos al siguiente día
+                    nueva_sesion = 1 # Resetear a la primera sesión
+                    mensaje_extra = f"Sesión de {'TEST CONVERTIDO' if fue_convertida_test else 'TEST'} completada sin datos específicos. Reiniciando ciclo."
 
         else: # Sesión normal
             if sesion_completada:
