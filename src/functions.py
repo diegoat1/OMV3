@@ -4,6 +4,8 @@ from pulp import *
 import sqlite3
 import json
 from datetime import datetime
+import tempfile
+import os
 
 DATABASE_PATH = "src/Basededatos"
 
@@ -2311,7 +2313,9 @@ def recipe(recipeform, nameuser):
         metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) <= ch0*(1+(libertad/100)), "Limite superior de carbos"
         metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) >= ch0*(1-(libertad/100)), "Limite inferior de carbos"
         
-        metodo1.writeLP("src/metodo1Model.lp")
+        # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
+        temp_dir = tempfile.gettempdir()
+        metodo1.writeLP(os.path.join(temp_dir, "metodo1Model.lp"))
         
         metodo1.solve()
 
@@ -2325,7 +2329,8 @@ def recipe(recipeform, nameuser):
             #metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) <= p0*(1+libertad/100), "Limite superior de proteinas"
             metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-libertad/100), "Limite inferior de proteinas"
 
-            metodo2.writeLP("src/metodo2Model.lp")
+            # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
+            metodo2.writeLP(os.path.join(temp_dir, "metodo2Model.lp"))
 
             metodo2.solve()
 
@@ -2337,7 +2342,8 @@ def recipe(recipeform, nameuser):
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
 
-                metodo3.writeLP("src/metodo3Model.lp")
+                # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
+                metodo3.writeLP(os.path.join(temp_dir, "metodo3Model.lp"))
 
                 metodo3.solve()
                 if LpStatus[metodo3.status] == "Optimal":
