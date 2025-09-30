@@ -1,0 +1,1149 @@
+{% extends "base/base.html" %}
+
+{% block title %}Plan Alimentario{% endblock %}
+
+{% block herotitle %}Plan Alimentario{% endblock %}
+{% block herosubtitle %}Personaliza tu alimentación con {{ username }}{% endblock %}
+
+{% block contenttitle %}Plan Alimentario Personalizado{% endblock %}
+{% block contentsubtitle %}Selecciona tu tipo de plan preferido y configura tus comidas{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Botón de regreso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="/dashboard" class="btn btn-outline-primary">
+                <i class="fa fa-arrow-left me-2"></i>Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Selector de tipo de plan -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h4 class="card-title mb-0">
+                        <i class="fa fa-cog me-2"></i>Tipo de Plan Alimentario
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card h-100 plan-selector" data-plan="recetas">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-utensils fa-3x text-primary mb-3"></i>
+                                    <h5 class="text-primary">Plan con Recetas</h5>
+                                    <p class="text-muted">Selecciona recetas específicas para cada comida del día</p>
+                                    <ul class="list-unstyled text-start mt-3">
+                                        <li><i class="fa fa-check text-success me-2"></i>Recetas personalizadas</li>
+                                        <li><i class="fa fa-check text-success me-2"></i>Cálculos precisos de porciones</li>
+                                        <li><i class="fa fa-check text-success me-2"></i>Lista de compras detallada</li>
+                                    </ul>
+                                    <button class="btn btn-primary btn-selector mt-3">Usar Recetas</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 plan-selector" data-plan="simplificado">
+                                <div class="card-body text-center">
+                                    <i class="fa fa-layer-group fa-3x text-success mb-3"></i>
+                                    <h5 class="text-success">Plan Simplificado</h5>
+                                    <p class="text-muted">Usa grupos de alimentos para planes más flexibles</p>
+                                    <ul class="list-unstyled text-start mt-3">
+                                        <li><i class="fa fa-check text-success me-2"></i>Grupos alimentarios</li>
+                                        <li><i class="fa fa-check text-success me-2"></i>Mayor flexibilidad</li>
+                                        <li><i class="fa fa-check text-success me-2"></i>Más fácil de seguir</li>
+                                    </ul>
+                                    <button class="btn btn-success btn-selector mt-3">Usar Simplificado</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Plan Guardado (se muestra primero si existe) -->
+    <div id="panel-plan-guardado" class="plan-panel" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm border-success">
+                    <div class="card-header bg-gradient-success text-white py-3">
+                        <h4 class="card-title mb-0">
+                            <i class="fa fa-check-circle me-2"></i>Tu Plan Alimentario Activo
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="plan-guardado-content">
+                            <!-- Se llenará con el plan calculado -->
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <button class="btn btn-warning btn-block" id="modificar-plan-btn">
+                                    <i class="fa fa-edit me-2"></i>Modificar Plan
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-info btn-block" id="generar-lista-compras-guardado">
+                                    <i class="fa fa-shopping-cart me-2"></i>Generar Lista de Compras
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Plan con Recetas (para crear/modificar) -->
+    <div id="panel-recetas" class="plan-panel" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-gradient-primary text-white py-3 d-flex justify-content-between align-items-center">
+                        <h4 class="card-title mb-0">
+                            <i class="fa fa-utensils me-2"></i>Crear/Modificar Plan con Recetas
+                        </h4>
+                        <button class="btn btn-sm btn-light" id="cancelar-modificacion-btn" style="display: none;">
+                            <i class="fa fa-times me-2"></i>Cancelar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- Información del plan nutricional -->
+                        <div class="alert alert-info" id="plan-info">
+                            <h6><i class="fa fa-info-circle me-2"></i>Información del Plan</h6>
+                            <div id="plan-details">
+                                <p class="mb-0">Cargando información del plan nutricional...</p>
+                            </div>
+                        </div>
+
+                        <!-- Comidas del día -->
+                        <div class="row" id="comidas-container">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <button class="btn btn-success btn-block" id="guardar-plan-recetas">
+                                    <i class="fa fa-save me-2"></i>Guardar Plan
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-info btn-block" id="generar-lista-compras">
+                                    <i class="fa fa-shopping-cart me-2"></i>Generar Lista de Compras
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Plan Simplificado -->
+    <div id="panel-simplificado" class="plan-panel" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-gradient-success text-white py-3">
+                        <h4 class="card-title mb-0">
+                            <i class="fa fa-layer-group me-2"></i>Plan Simplificado por Grupos
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <h6><i class="fa fa-code me-2"></i>En Desarrollo</h6>
+                            <p class="mb-0">Esta funcionalidad estará disponible próximamente. Por ahora, puedes usar el plan con recetas.</p>
+                        </div>
+
+                        <!-- Placeholder para grupos alimentarios -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fa fa-bread-slice fa-2x text-warning mb-2"></i>
+                                        <h6>Cereales y Panes</h6>
+                                        <p class="text-muted small">Próximamente</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fa fa-drumstick-bite fa-2x text-danger mb-2"></i>
+                                        <h6>Proteínas</h6>
+                                        <p class="text-muted small">Próximamente</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="fa fa-apple-alt fa-2x text-success mb-2"></i>
+                                        <h6>Frutas y Verduras</h6>
+                                        <p class="text-muted small">Próximamente</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Lista de Compras -->
+    <div id="panel-lista-compras" class="card border-0 shadow-sm" style="display: none;">
+        <div class="card-header bg-gradient-info text-white py-3">
+            <h4 class="card-title mb-0">
+                <i class="fa fa-shopping-cart me-2"></i>Lista de Compras Generada
+            </h4>
+        </div>
+        <div class="card-body">
+            <div id="lista-compras-content">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.alert {
+    border-radius: 10px;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.plan-selector {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.plan-selector:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.plan-selector.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.comida-card {
+    border-left: 4px solid;
+    overflow: visible !important;
+}
+
+.comida-card .card-body {
+    overflow: visible !important;
+}
+
+.bg-light.rounded {
+    overflow: visible !important;
+}
+
+.comida-desayuno { border-left-color: #ff6b6b; }
+.comida-media-manana { border-left-color: #4ecdc4; }
+.comida-almuerzo { border-left-color: #45b7d1; }
+.comida-merienda { border-left-color: #f7b731; }
+.comida-media-tarde { border-left-color: #5f27cd; }
+.comida-cena { border-left-color: #00d2d3; }
+
+.recipe-selector {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Barra de calidad segmentada */
+.quality-bar {
+    display: flex;
+    gap: 2px;
+    height: 20px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    padding: 2px;
+    overflow: hidden;
+}
+
+.quality-segment {
+    flex: 1;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    background: #e0e0e0;
+}
+
+.quality-segment.active {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Colores graduales para los segmentos */
+.quality-segment.active.q-1, .quality-segment.active.q-2 { background: #ff4444; } /* Rojo */
+.quality-segment.active.q-3, .quality-segment.active.q-4 { background: #ff8800; } /* Naranja */
+.quality-segment.active.q-5, .quality-segment.active.q-6 { background: #ffbb00; } /* Amarillo */
+.quality-segment.active.q-7, .quality-segment.active.q-8 { background: #88cc00; } /* Verde claro */
+.quality-segment.active.q-9, .quality-segment.active.q-10 { background: #00cc44; } /* Verde */
+
+/* Badges de métodos */
+.badge-metodo {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.badge-metodo:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.badge-metodo-completo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.badge-metodo-proteinas {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.badge-metodo-calorias {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+/* Tooltip personalizado */
+.info-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.info-tooltip .tooltiptext {
+    visibility: hidden;
+    width: 300px;
+    max-width: 90vw;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    border-radius: 8px;
+    padding: 10px 12px;
+    position: absolute;
+    z-index: 10000;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s, visibility 0.3s;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    white-space: normal;
+}
+
+.info-tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #333 transparent;
+}
+
+.info-tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Headers personalizados con gradiente */
+.bg-gradient-primary,
+.bg-gradient-success {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+}
+
+.bg-gradient-primary h4,
+.bg-gradient-primary .card-title,
+.bg-gradient-success h4,
+.bg-gradient-success .card-title {
+    color: white !important;
+    font-weight: 600;
+}
+
+.card-header.bg-gradient-primary,
+.card-header.bg-gradient-success {
+    border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // CARGAR PLAN GUARDADO AUTOMÁTICAMENTE AL INICIO
+    verificarPlanGuardado();
+    
+    // Selectores de plan
+    const planSelectors = document.querySelectorAll('.plan-selector');
+    const planPanels = document.querySelectorAll('.plan-panel');
+    
+    // Variable global para almacenar el plan actual
+    let planActualGuardado = null;
+    
+    // Botón modificar plan
+    document.getElementById('modificar-plan-btn').addEventListener('click', function() {
+        document.getElementById('panel-plan-guardado').style.display = 'none';
+        document.getElementById('panel-recetas').style.display = 'block';
+        document.getElementById('cancelar-modificacion-btn').style.display = 'inline-block';
+        document.querySelector('.row.mb-4').style.display = 'none'; // Ocultar selector de tipo
+        
+        // CARGAR PLAN ACTUAL PARA MODIFICAR
+        cargarPlanParaModificar();
+    });
+    
+    // Botón cancelar modificación
+    document.getElementById('cancelar-modificacion-btn').addEventListener('click', function() {
+        document.getElementById('panel-recetas').style.display = 'none';
+        document.getElementById('panel-plan-guardado').style.display = 'block';
+        this.style.display = 'none';
+        document.querySelector('.row.mb-4').style.display = 'block';
+    });
+    
+    planSelectors.forEach(selector => {
+        selector.addEventListener('click', function() {
+            const planType = this.dataset.plan;
+            
+            // Remover selección anterior
+            planSelectors.forEach(s => s.classList.remove('selected'));
+            planPanels.forEach(p => p.style.display = 'none');
+            
+            // Seleccionar nuevo plan
+            this.classList.add('selected');
+            document.getElementById(`panel-${planType}`).style.display = 'block';
+            
+            // Cargar datos específicos del plan
+            if (planType === 'recetas') {
+                cargarPlanRecetas();
+            } else if (planType === 'simplificado') {
+                cargarPlanSimplificado();
+            }
+        });
+    });
+    
+    // Función para verificar si existe un plan guardado
+    function verificarPlanGuardado() {
+        fetch('/api/plan-alimentario/plan-guardado')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.recetas_calculadas) {
+                    // GUARDAR PLAN COMPLETO para uso posterior
+                    planActualGuardado = data;
+                    
+                    // HAY PLAN GUARDADO - Mostrarlo
+                    mostrarPlanGuardadoCompleto(data.recetas_calculadas);
+                    document.getElementById('panel-plan-guardado').style.display = 'block';
+                    document.querySelector('.row.mb-4').style.display = 'none'; // Ocultar selector de tipo
+                } else {
+                    // NO HAY PLAN - Mostrar selector de tipo
+                    planActualGuardado = null;
+                    document.querySelector('.row.mb-4').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.log('No hay plan guardado o error:', error);
+                planActualGuardado = null;
+                // Mostrar selector de tipo
+                document.querySelector('.row.mb-4').style.display = 'block';
+            });
+    }
+    
+    // Función para cargar el plan actual en modo edición
+    function cargarPlanParaModificar() {
+        // Primero cargar la estructura básica
+        fetch('/api/plan-alimentario/info')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarInfoPlan(data.plan);
+                    mostrarComidasDisponibles(data.comidas);
+                    cargarRecetasDisponibles();
+                    
+                    // Esperar un poco para que se carguen los selectores
+                    setTimeout(() => {
+                        precargarRecetasDelPlan();
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando plan:', error);
+            });
+    }
+    
+    // Función para precargar las recetas del plan guardado
+    function precargarRecetasDelPlan() {
+        if (!planActualGuardado || !planActualGuardado.recetas_calculadas) {
+            return;
+        }
+        
+        // Recorrer cada comida del plan guardado
+        Object.keys(planActualGuardado.recetas_calculadas).forEach(comidaId => {
+            const comida = planActualGuardado.recetas_calculadas[comidaId];
+            
+            if (comida.recetas && comida.recetas.length > 0) {
+                // Para cada receta en esta comida
+                comida.recetas.forEach(receta => {
+                    // Agregar la receta a la interfaz
+                    agregarRecetaAComida(comidaId, receta.id, receta.nombre);
+                });
+            }
+        });
+        
+        // Mostrar mensaje informativo
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fa fa-info-circle me-2"></i>
+            <strong>Plan cargado:</strong> Puedes agregar o eliminar recetas según necesites.
+        `;
+        document.getElementById('plan-info').insertAdjacentElement('afterend', alert);
+        
+        // Auto-cerrar después de 5 segundos
+        setTimeout(() => {
+            alert.remove();
+        }, 5000);
+    }
+    
+    function mostrarPlanGuardadoCompleto(recetasCalculadas) {
+        const container = document.getElementById('plan-guardado-content');
+        
+        // Nota explicativa sobre cómo leer las cantidades
+        let html = `
+            <div class="alert alert-info mb-4">
+                <h6><i class="fa fa-info-circle me-2"></i>Cómo medir los alimentos</h6>
+                <p class="mb-1 small">Cada alimento muestra dos formas de medirlo:</p>
+                <ul class="mb-0 small">
+                    <li><strong>Con báscula (recomendado):</strong> Peso en gramos en <strong>negrita</strong></li>
+                    <li><strong>Sin báscula:</strong> Multiplicar las porciones por la medida casera <span class="text-muted">(entre paréntesis)</span></li>
+                </ul>
+                <p class="mb-0 mt-2 small"><strong>Ejemplo:</strong> "Avena: <strong>37.32g</strong> <span class="text-muted">(1.38 × 1/3 taza)</span>" significa pesar 37.32g O usar aproximadamente 1.38 veces un tercio de taza.</p>
+            </div>
+            <div class="row">
+        `;
+        
+        // ORDENAR las comidas por el campo 'orden' o por orden predefinido
+        const ordenComidas = ['desayuno', 'media_manana', 'almuerzo', 'merienda', 'media_tarde', 'cena'];
+        const comidasOrdenadas = ordenComidas.filter(comidaId => recetasCalculadas[comidaId]);
+        
+        comidasOrdenadas.forEach(comidaId => {
+            const comida = recetasCalculadas[comidaId];
+            const config = getComidasConfig()[comidaId];
+            
+            html += `
+                <div class="col-12 mb-4">
+                    <div class="card comida-card ${config.class}">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fa ${config.icon} me-2"></i>${comida.nombre_comida}
+                            </h5>
+                            <small class="text-muted">
+                                Objetivo: P: ${comida.macros_objetivo.proteina}g | G: ${comida.macros_objetivo.grasa}g | C: ${comida.macros_objetivo.carbohidratos}g
+                            </small>
+                        </div>
+                        <div class="card-body">
+            `;
+            
+            comida.recetas.forEach(receta => {
+                html += `
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <h6 class="text-primary"><i class="fa fa-utensils me-2"></i>${receta.nombre}</h6>
+                `;
+                
+                if (receta.calculo && receta.calculo.status === 'success') {
+                    html += `
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <p class="mb-1"><strong>Método:</strong></p>
+                                        ${generarBadgeMetodo(receta.calculo.metodo)}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <p class="mb-1"><strong>Calorías:</strong></p>
+                                        <span class="badge bg-info text-dark">${receta.calculo.calorias_totales} kcal</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        ${receta.calculo.calidad ? `
+                                            <p class="mb-1"><strong>Calidad:</strong></p>
+                                            ${generarBarraCalidad(receta.calculo.calidad)}
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <p class="mb-2"><strong>Alimentos:</strong></p>
+                                <ul class="list-unstyled mb-0">
+                    `;
+                    
+                    if (receta.calculo.alimentos_variables) {
+                        receta.calculo.alimentos_variables.forEach(alimento => {
+                            // Formatear de forma más clara: PESO primero, luego medida casera
+                            const pesoInfo = `<strong>${alimento.total_gramos}g</strong>`;
+                            // Redondear porciones al entero más cercano para facilitar la medición
+                            const porcionesRedondeadas = Math.round(alimento.porciones);
+                            const medidaInfo = `<span class="text-muted">(≈${porcionesRedondeadas} × ${alimento.medida})</span>`;
+                            html += `<li class="small mb-1">
+                                <i class="fa fa-check text-success me-1"></i>
+                                ${alimento.nombre}: ${pesoInfo} ${medidaInfo}
+                            </li>`;
+                        });
+                    }
+                    
+                    if (receta.calculo.alimentos_fijos) {
+                        receta.calculo.alimentos_fijos.forEach(alimento => {
+                            const pesoInfo = `<strong>${alimento.total_gramos}g</strong>`;
+                            // Redondear porciones al entero más cercano para facilitar la medición
+                            const porcionesRedondeadas = Math.round(alimento.porciones);
+                            const medidaInfo = `<span class="text-muted">(≈${porcionesRedondeadas} × ${alimento.medida})</span>`;
+                            html += `<li class="small mb-1">
+                                <i class="fa fa-check text-success me-1"></i>
+                                ${alimento.nombre}: ${pesoInfo} ${medidaInfo}
+                            </li>`;
+                        });
+                    }
+                    
+                    html += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `<p class="text-danger">Error al calcular: ${receta.calculo ? receta.calculo.message : 'Desconocido'}</p>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        // Inicializar tooltips de Bootstrap después de renderizar el HTML
+        setTimeout(() => {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }, 100);
+    }
+    
+    // ========== FUNCIONES DE UTILIDAD (DEBEN ESTAR PRIMERO) ==========
+    
+    function getComidasConfig() {
+        return {
+            'desayuno': { nombre: 'Desayuno', icon: 'fa-coffee', class: 'comida-desayuno' },
+            'media_manana': { nombre: 'Media Mañana', icon: 'fa-apple-alt', class: 'comida-media-manana' },
+            'almuerzo': { nombre: 'Almuerzo', icon: 'fa-utensils', class: 'comida-almuerzo' },
+            'merienda': { nombre: 'Merienda', icon: 'fa-cookie-bite', class: 'comida-merienda' },
+            'media_tarde': { nombre: 'Media Tarde', icon: 'fa-tea', class: 'comida-media-tarde' },
+            'cena': { nombre: 'Cena', icon: 'fa-moon', class: 'comida-cena' }
+        };
+    }
+    
+    // Función para generar badge de método con Bootstrap tooltip
+    function generarBadgeMetodo(metodo) {
+        const metodos = {
+            'Completo': {
+                class: 'badge-metodo-completo',
+                tooltip: 'Método Completo: Se cumplen todas las restricciones de proteínas, grasas y carbohidratos. Este es el resultado ideal.'
+            },
+            'Proteínas': {
+                class: 'badge-metodo-proteinas',
+                tooltip: 'Método Proteínas: Se priorizan las proteínas y calorías totales cuando no es posible cumplir todas las restricciones.'
+            },
+            'Calorías': {
+                class: 'badge-metodo-calorias',
+                tooltip: 'Método Calorías: Se optimiza para alcanzar las calorías objetivo cuando las restricciones de macros son muy estrictas.'
+            }
+        };
+        
+        const config = metodos[metodo] || { class: 'badge-secondary', tooltip: metodo };
+        
+        return `<span class="badge-metodo ${config.class}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="${config.tooltip}">${metodo}</span>`;
+    }
+    
+    // Función para generar indicador de calidad simple con Bootstrap tooltip
+    function generarBarraCalidad(calidad) {
+        if (!calidad && calidad !== 0) return '<span class="text-muted">N/A</span>';
+        
+        // Asegurar que esté entre 0 y 10
+        const calidadLimitada = Math.max(0, Math.min(10, calidad));
+        
+        // Determinar color y categoría según la calidad
+        let bgColor, textColor, categoria;
+        if (calidadLimitada <= 3) {
+            bgColor = '#dc3545'; // Rojo
+            textColor = 'white';
+            categoria = 'Baja';
+        } else if (calidadLimitada <= 5) {
+            bgColor = '#ffc107'; // Amarillo
+            textColor = 'black';
+            categoria = 'Regular';
+        } else if (calidadLimitada <= 7) {
+            bgColor = '#fd7e14'; // Naranja
+            textColor = 'white';
+            categoria = 'Buena';
+        } else {
+            bgColor = '#28a745'; // Verde
+            textColor = 'white';
+            categoria = 'Excelente';
+        }
+        
+        const tooltipText = `Calidad ${categoria}: ${calidadLimitada.toFixed(1)}/10. Indica qué tan bien la receta cumple con los objetivos de macronutrientes.`;
+        
+        return `
+            <div class="d-inline-block" style="min-width: 80px;">
+                <span class="badge" style="background-color: ${bgColor}; color: ${textColor}; font-size: 0.9rem; padding: 6px 12px; cursor: help;" 
+                      data-bs-toggle="tooltip" data-bs-placement="bottom" title="${tooltipText}">
+                    ${calidadLimitada.toFixed(1)}/10
+                </span>
+                <small class="d-block text-muted mt-1" style="font-size: 0.75rem;">${categoria}</small>
+            </div>
+        `;
+    }
+    
+    // ========== FIN FUNCIONES DE UTILIDAD ==========
+    
+    // Función para cargar el plan de recetas
+    function cargarPlanRecetas() {
+        // Obtener información del plan nutricional del usuario
+        fetch('/api/plan-alimentario/info')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarInfoPlan(data.plan);
+                    mostrarComidasDisponibles(data.comidas);
+                    cargarRecetasDisponibles();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando plan:', error);
+                document.getElementById('plan-details').innerHTML = 
+                    '<p class="text-danger">Error cargando información del plan. Asegúrate de tener configurado tu plan nutricional.</p>';
+            });
+    }
+    
+    function mostrarInfoPlan(plan) {
+        const planDetails = document.getElementById('plan-details');
+        planDetails.innerHTML = `
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Usuario:</strong> ${plan.usuario || 'No definido'}
+                </div>
+                <div class="col-md-3">
+                    <strong>Calorías Totales:</strong> ${plan.calorias || 'No definidas'} kcal
+                </div>
+                <div class="col-md-3">
+                    <strong>Comidas Activas:</strong> ${plan.comidas_activas || 0}
+                </div>
+                <div class="col-md-3">
+                    <strong>Libertad:</strong> ${plan.libertad || 0}%
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-4">
+                    <small><strong>Proteína Total:</strong> ${plan.proteina_total || 0}g</small>
+                </div>
+                <div class="col-md-4">
+                    <small><strong>Grasa Total:</strong> ${plan.grasa_total || 0}g</small>
+                </div>
+                <div class="col-md-4">
+                    <small><strong>Carbohidratos Total:</strong> ${plan.carbohidratos_total || 0}g</small>
+                </div>
+            </div>
+        `;
+    }
+    
+    function mostrarComidasDisponibles(comidas) {
+        const container = document.getElementById('comidas-container');
+        container.innerHTML = '';
+        
+        const comidasConfig = {
+            'desayuno': { nombre: 'Desayuno', icon: 'fa-coffee', class: 'comida-desayuno' },
+            'media_manana': { nombre: 'Media Mañana', icon: 'fa-apple-alt', class: 'comida-media-manana' },
+            'almuerzo': { nombre: 'Almuerzo', icon: 'fa-utensils', class: 'comida-almuerzo' },
+            'merienda': { nombre: 'Merienda', icon: 'fa-cookie-bite', class: 'comida-merienda' },
+            'media_tarde': { nombre: 'Media Tarde', icon: 'fa-tea', class: 'comida-media-tarde' },
+            'cena': { nombre: 'Cena', icon: 'fa-moon', class: 'comida-cena' }
+        };
+        
+        // ORDENAR las comidas según el campo 'orden' del backend
+        // Convertir objeto a array de [id, data] y ordenar por campo 'orden'
+        const comidasOrdenadas = Object.entries(comidas)
+            .filter(([_, comida]) => comida.activa)
+            .sort((a, b) => (a[1].orden || 0) - (b[1].orden || 0));
+        
+        // Iterar sobre las comidas ya ordenadas
+        comidasOrdenadas.forEach(([comidaId, comida]) => {
+            const config = comidasConfig[comidaId];
+                
+                const comidaHtml = `
+                    <div class="col-lg-6 mb-4">
+                        <div class="card comida-card ${config.class}">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fa ${config.icon} me-2"></i>${config.nombre}
+                                </h6>
+                                <small class="text-muted">
+                                    P: ${comida.proteina}g | G: ${comida.grasa}g | C: ${comida.carbohidratos}g
+                                </small>
+                            </div>
+                            <div class="card-body">
+                                <div class="recetas-container" data-comida="${comidaId}">
+                                    <div class="receta-selector mb-2">
+                                        <div class="input-group">
+                                            <select class="form-select recipe-select" data-comida="${comidaId}">
+                                                <option value="">Seleccionar receta...</option>
+                                            </select>
+                                            <button class="btn btn-primary btn-add-recipe" data-comida="${comidaId}">
+                                                <i class="fa fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="recetas-seleccionadas" id="recetas-${comidaId}">
+                                        <!-- Las recetas seleccionadas aparecerán aquí -->
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-info">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Puedes seleccionar entre 1-7 recetas por comida
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += comidaHtml;
+        });
+        
+        // Agregar event listeners para los botones de agregar receta
+        document.querySelectorAll('.btn-add-recipe').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const comidaId = this.dataset.comida;
+                const select = this.parentElement.querySelector('.recipe-select');
+                const recetaId = select.value;
+                const recetaNombre = select.options[select.selectedIndex].text;
+                
+                if (!recetaId) {
+                    alert('Por favor selecciona una receta primero');
+                    return;
+                }
+                
+                // Verificar límites (1-7 recetas)
+                const recetasContainer = document.getElementById(`recetas-${comidaId}`);
+                const recetasActuales = recetasContainer.querySelectorAll('.receta-item').length;
+                
+                if (recetasActuales >= 7) {
+                    alert('Máximo 7 recetas por comida');
+                    return;
+                }
+                
+                // Verificar que no esté duplicada
+                const recetasExistentes = Array.from(recetasContainer.querySelectorAll('.receta-item'))
+                    .map(item => item.dataset.recetaId);
+                
+                if (recetasExistentes.includes(recetaId)) {
+                    alert('Esta receta ya está agregada');
+                    return;
+                }
+                
+                // Agregar receta
+                agregarRecetaAComida(comidaId, recetaId, recetaNombre);
+                
+                // Limpiar selector
+                select.value = '';
+            });
+        });
+    }
+    
+    function agregarRecetaAComida(comidaId, recetaId, recetaNombre) {
+        const container = document.getElementById(`recetas-${comidaId}`);
+        
+        const recetaHtml = `
+            <div class="receta-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" 
+                 data-receta-id="${recetaId}">
+                <div>
+                    <i class="fa fa-utensils text-primary me-2"></i>
+                    <span class="fw-bold">${recetaNombre}</span>
+                </div>
+                <button class="btn btn-sm btn-outline-danger btn-remove-recipe" 
+                        data-comida="${comidaId}" data-receta-id="${recetaId}">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        container.innerHTML += recetaHtml;
+        
+        // Agregar event listener al botón de eliminar
+        const removeBtn = container.lastElementChild.querySelector('.btn-remove-recipe');
+        removeBtn.addEventListener('click', function() {
+            this.closest('.receta-item').remove();
+        });
+    }
+    
+    function cargarRecetasDisponibles() {
+        fetch('/api/plan-alimentario/recetas')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const selects = document.querySelectorAll('.recipe-select');
+                    selects.forEach(select => {
+                        data.recetas.forEach(receta => {
+                            const option = document.createElement('option');
+                            option.value = receta.id;
+                            option.textContent = receta.nombre;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            });
+    }
+    
+    // Guardar plan de recetas
+    document.getElementById('guardar-plan-recetas').addEventListener('click', function() {
+        const planData = {
+            tipo: 'recetas',
+            comidas: {}
+        };
+        
+        // Recopilar todas las recetas seleccionadas por comida
+        document.querySelectorAll('.recetas-container').forEach(container => {
+            const comidaId = container.dataset.comida;
+            const recetasItems = container.querySelectorAll('.receta-item');
+            
+            if (recetasItems.length > 0) {
+                const recetasIds = Array.from(recetasItems).map(item => item.dataset.recetaId);
+                planData.comidas[comidaId] = recetasIds;
+            }
+        });
+        
+        // Validar que haya al menos una comida con recetas
+        if (Object.keys(planData.comidas).length === 0) {
+            alert('Por favor selecciona al menos una receta para una comida antes de guardar.');
+            return;
+        }
+        
+        // Validar que cada comida tenga entre 1-7 recetas
+        for (const [comida, recetas] of Object.entries(planData.comidas)) {
+            if (recetas.length < 1) {
+                alert(`La comida ${comida.replace('_', ' ')} necesita al menos 1 receta (actual: ${recetas.length})`);
+                return;
+            }
+            if (recetas.length > 7) {
+                alert(`La comida ${comida.replace('_', ' ')} no puede tener más de 7 recetas (actual: ${recetas.length})`);
+                return;
+            }
+        }
+        
+        // Mostrar confirmación con resumen
+        const totalRecetas = Object.values(planData.comidas).reduce((sum, recetas) => sum + recetas.length, 0);
+        const confirmMessage = `¿Guardar plan con ${totalRecetas} recetas en ${Object.keys(planData.comidas).length} comidas?`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        fetch('/api/plan-alimentario/guardar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            },
+            body: JSON.stringify(planData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`¡Plan guardado exitosamente!\n${data.message}`);
+                // RECARGAR VISTA DEL PLAN GUARDADO
+                document.getElementById('panel-recetas').style.display = 'none';
+                document.getElementById('cancelar-modificacion-btn').style.display = 'none';
+                verificarPlanGuardado();
+            } else {
+                alert('Error guardando el plan: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión al guardar el plan');
+        });
+    });
+    
+    function mostrarBotonVerPlanCalculado() {
+        const container = document.querySelector('.row.mt-4');
+        if (!document.getElementById('ver-plan-calculado')) {
+            const btnHtml = `
+                <div class="col-md-12 mt-2">
+                    <button class="btn btn-success btn-block" id="ver-plan-calculado">
+                        <i class="fa fa-calculator me-2"></i>Ver Plan Calculado Automáticamente
+                    </button>
+                </div>
+            `;
+            container.innerHTML += btnHtml;
+            
+            // Agregar event listener
+            document.getElementById('ver-plan-calculado').addEventListener('click', function() {
+                cargarPlanCalculado();
+            });
+        }
+    }
+    
+    function cargarPlanCalculado() {
+        fetch('/api/plan-alimentario/plan-guardado')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarPlanCalculado(data.recetas_calculadas);
+                } else {
+                    alert('Error cargando plan calculado: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error de conexión al cargar plan calculado');
+            });
+    }
+    
+    function mostrarPlanCalculado(recetasCalculadas) {
+        // Crear modal o sección para mostrar el plan calculado
+        let html = `
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fa fa-calculator me-2"></i>Plan Alimentario Calculado
+                            </h5>
+                        </div>
+                        <div class="card-body">
+        `;
+        
+        Object.keys(recetasCalculadas).forEach(comidaId => {
+            const comida = recetasCalculadas[comidaId];
+            html += `
+                <div class="mb-4">
+                    <h6 class="text-success">${comida.nombre_comida}</h6>
+                    <div class="row">
+            `;
+            
+            comida.recetas.forEach(receta => {
+                html += `
+                    <div class="col-md-6 mb-2">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-1">${receta.nombre}</h6>
+                                <small class="text-muted">
+                                    ${receta.calculo ? receta.calculo.status : 'Calculando...'}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Insertar después del panel de recetas
+        const panelRecetas = document.getElementById('panel-recetas');
+        panelRecetas.innerHTML += html;
+        
+        // Scroll to the calculated plan
+        panelRecetas.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    
+    // Generar lista de compras
+    document.getElementById('generar-lista-compras').addEventListener('click', function() {
+        const comidasSeleccionadas = {};
+        document.querySelectorAll('.recipe-select').forEach(select => {
+            if (select.value) {
+                comidasSeleccionadas[select.dataset.comida] = select.value;
+            }
+        });
+        
+        if (Object.keys(comidasSeleccionadas).length === 0) {
+            alert('Selecciona recetas antes de generar la lista de compras.');
+            return;
+        }
+        
+        fetch('/api/plan-alimentario/lista-compras', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ comidas: comidasSeleccionadas })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarListaCompras(data.lista);
+            }
+        });
+    });
+    
+    function mostrarListaCompras(lista) {
+        const panel = document.getElementById('panel-lista-compras');
+        const content = document.getElementById('lista-compras-content');
+        
+        let html = '<div class="row">';
+        Object.keys(lista).forEach(categoria => {
+            html += `
+                <div class="col-md-6 mb-3">
+                    <h6><i class="fa fa-list-ul me-2"></i>${categoria}</h6>
+                    <ul class="list-unstyled">
+            `;
+            lista[categoria].forEach(item => {
+                html += `<li><i class="fa fa-check-circle text-success me-2"></i>${item.nombre} (${item.cantidad})</li>`;
+            });
+            html += '</ul></div>';
+        });
+        html += '</div>';
+        
+        content.innerHTML = html;
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+</script>
+{% endblock %}
