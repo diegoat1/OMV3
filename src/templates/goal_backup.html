@@ -1,0 +1,230 @@
+{% extends 'base/base.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block herotitle %} Definir objetivos {% endblock %}
+{% block herosubtitle %} {% endblock %}
+{% block contenttitle %} {% endblock %}
+{% block contentsubtitle %} {% endblock %}
+
+{% block content %}
+
+    
+    {% from "_macro.html" import render_field %}
+    <div>
+        <!-- Mensaje -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-danger alert-dismissable" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+            </div>
+            <div id="objetivos-automaticos-data" style="display: none;">
+                <!-- Datos Actuales -->
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="block block-rounded block-bordered">
+                            <div class="block-header block-header-default bg-primary-light">
+                                <h3 class="block-title text-primary">
+                                    <i class="fa fa-fw fa-user mr-1"></i>
+                                    Estado Actual
+                                </h3>
+                            </div>
+                            <div class="block-content">
+                                <div class="row font-size-sm">
+                                    <div class="col-6">
+                                        <strong>Peso:</strong><br>
+                                        <span id="peso-actual" class="font-weight-bold text-dark">-</span> kg
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>% Grasa:</strong><br>
+                                        <span id="bf-actual" class="font-weight-bold text-dark">-</span>%
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>FFMI:</strong><br>
+                                        <span id="ffmi-actual" class="font-weight-bold text-dark">-</span>
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Peso Magro:</strong><br>
+                                        <span id="peso-magro-actual" class="font-weight-bold text-dark">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Peso Graso:</strong><br>
+                                        <span id="peso-graso-actual" class="font-weight-bold text-dark">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Abdomen:</strong><br>
+                                        <span id="abdomen-actual" class="font-weight-bold text-dark">-</span> cm
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="block block-rounded block-bordered">
+                            <div class="block-header block-header-default bg-success-light">
+                                <h3 class="block-title text-success">
+                                    <i class="fa fa-fw fa-trophy mr-1"></i>
+                                    Objetivo Genético
+                                </h3>
+                            </div>
+                            <div class="block-content">
+                                <div class="row font-size-sm">
+                                    <div class="col-6">
+                                        <strong>Peso Objetivo:</strong><br>
+                                        <span id="peso-objetivo" class="font-weight-bold text-success">-</span> kg
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>% Grasa Esencial:</strong><br>
+                                        <span id="bf-objetivo" class="font-weight-bold text-success">-</span>%
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>FFMI Límite:</strong><br>
+                                        <span id="ffmi-objetivo" class="font-weight-bold text-success">-</span>
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Peso Magro Obj.:</strong><br>
+                                        <span id="peso-magro-objetivo" class="font-weight-bold text-success">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Peso Graso Obj.:</strong><br>
+                                        <span id="peso-graso-objetivo" class="font-weight-bold text-success">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Abdomen Obj.:</strong><br>
+                                        <span id="abdomen-objetivo" class="font-weight-bold text-success">-</span> cm
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cambios Necesarios -->
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="block block-rounded block-bordered">
+                            <div class="block-header block-header-default bg-warning-light">
+                                <h3 class="block-title text-warning">
+                                    <i class="fa fa-fw fa-exchange-alt mr-1"></i>
+                                    Cambios Necesarios
+                                </h3>
+                            </div>
+                            <div class="block-content">
+                                <div class="row font-size-sm">
+                                    <div class="col-6">
+                                        <strong>Peso:</strong><br>
+                                        <span id="cambio-peso" class="font-weight-bold">-</span> kg
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Peso Magro:</strong><br>
+                                        <span id="cambio-peso-magro" class="font-weight-bold text-success">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Peso Graso:</strong><br>
+                                        <span id="cambio-peso-graso" class="font-weight-bold text-danger">-</span> kg
+                                    </div>
+                                    <div class="col-6 mt-2">
+                                        <strong>Abdomen:</strong><br>
+                                        <span id="cambio-abdomen" class="font-weight-bold">-</span> cm
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="block block-rounded block-bordered">
+                            <div class="block-header block-header-default bg-info-light">
+                                <h3 class="block-title text-info">
+                                    <i class="fa fa-fw fa-clock mr-1"></i>
+                                    Tiempo Estimado
+                                </h3>
+                            </div>
+                            <div class="block-content">
+                                <div class="row font-size-sm">
+                                    <div class="col-6">
+                                        <strong>Meses:</strong><br>
+                                        <span id="tiempo-meses" class="font-weight-bold text-info">-</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Años:</strong><br>
+                                        <span id="tiempo-años" class="font-weight-bold text-info">-</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fa fa-info-circle mr-1"></i>
+                                        Estimación basada en tasas de progreso naturales y seguras.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón para usar objetivos automáticos -->
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <button type="button" class="btn btn-success" id="usar-objetivos-automaticos">
+                            <i class="fa fa-fw fa-magic mr-1"></i>
+                            Usar Estos Objetivos Automáticamente
+                        </button>
+                        <small class="d-block text-muted mt-2">
+                            Los valores se copiarán automáticamente en el formulario manual
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div id="objetivos-automaticos-error" class="text-center" style="display: none;">
+                <div class="alert alert-warning">
+                    <i class="fa fa-exclamation-triangle mr-1"></i>
+                    <span id="error-message">Error al cargar los objetivos automáticos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="block block-rounded">
+        <div class="block-content block-content-full">
+            <form name="sentMessage" id="plannerForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="row push">
+                        <p class="font-size-sm text-muted">
+                        </p>
+                    </div>
+                    <div class="col-lg-8 col-xl-10">
+                        <div class="form-row">
+                            <div class="form-group col-md-12 font-size-sm">
+                                <label>Apellido y nombre:</label>
+                                {{ render_field(form.nameuser, class='form-control') }}
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6 font-size-sm">
+                                <label>Índice de masa magra corporal deseada: </label>
+                                {{ render_field(form.goalimmc, class='form-control', value=defgoalimmc) }}  
+                            </div>
+                            <div class="form-group col-md-6 font-size-sm">
+                                <label>Porcentaje de grasa corporal deseada: </label>
+                                {{ render_field(form.goalbf, class='form-control', value=defgoalbf) }}  
+                            </div>
+                        </div>
+                        <div id="success" class="form-group row justify-content-center mb-0">
+                            <div class="col-md-6 col-xl-5">
+                                <button type="submit" class="btn btn-block btn-primary">
+                                    <i class="fa fa-fw fa-calendar-check mr-1"></i> Objetivos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends "base/base.html" %}
+
+{% block title %}Telemedicina - Omega Medicina{% endblock %}
+
+{% block herotitle %}Telemedicina{% endblock %}
+{% block herosubtitle %}Sistema integral de gestión médica{% endblock %}
+
+{% block contenttitle %}Panel de Telemedicina{% endblock %}
+{% block contentsubtitle %}Gestiona tu salud de forma integral{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Resumen de Estado de Salud -->
+    <div class="col-md-6 col-xl-3">
+        <a class="block block-rounded block-link-shadow text-center" href="/historia-medica">
+            <div class="block-content">
+                <p class="mt-2 mb-3">
+                    <i class="fa fa-file-medical fa-3x text-primary"></i>
+                </p>
+                <p class="font-w600 font-size-sm text-uppercase text-muted mb-0">Historia Médica</p>
+                <p class="font-size-lg font-w700 mb-0 text-primary">
+                    <span id="total-registros">-</span> registros
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Próximas Citas -->
+    <div class="col-md-6 col-xl-3">
+        <a class="block block-rounded block-link-shadow text-center" href="/citas-medicas">
+            <div class="block-content">
+                <p class="mt-2 mb-3">
+                    <i class="fa fa-calendar-check fa-3x text-success"></i>
+                </p>
+                <p class="font-w600 font-size-sm text-uppercase text-muted mb-0">Próximas Citas</p>
+                <p class="font-size-lg font-w700 mb-0 text-success">
+                    <span id="proximas-citas">-</span> programadas
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Signos Vitales -->
+    <div class="col-md-6 col-xl-3">
+        <a class="block block-rounded block-link-shadow text-center" href="/signos-vitales">
+            <div class="block-content">
+                <p class="mt-2 mb-3">
+                    <i class="fa fa-thermometer-half fa-3x text-warning"></i>
+                </p>
+                <p class="font-w600 font-size-sm text-uppercase text-muted mb-0">Signos Vitales</p>
+                <p class="font-size-lg font-w700 mb-0 text-warning">
+                    Última medición: <span id="ultima-medicion">-</span>
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Programas de Prevención -->
+    <div class="col-md-6 col-xl-3">
+        <a class="block block-rounded block-link-shadow text-center" href="/programas-prevencion">
+            <div class="block-content">
+                <p class="mt-2 mb-3">
+                    <i class="fa fa-shield-alt fa-3x text-info"></i>
+                </p>
+                <p class="font-w600 font-size-sm text-uppercase text-muted mb-0">Prevención</p>
+                <p class="font-size-lg font-w700 mb-0 text-info">
+                    <span id="programas-activos">-</span> programas
+                </p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Alertas y Recordatorios -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-bell mr-2"></i>Alertas y Recordatorios
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="alertas-container">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Cargando alertas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de Salud Reciente -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-line mr-2"></i>Resumen de Salud
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="resumen-salud">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Cargando datos de salud...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Rápidas -->
+<div class="row">
+    <div class="col-12">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-plus-circle mr-2"></i>Acciones Rápidas
+                </h3>
+            </div>
+            <div class="block-content">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-primary btn-block" onclick="registrarSignosVitales()">
+                            <i class="fa fa-thermometer-half mr-2"></i>Registrar Signos Vitales
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success btn-block" onclick="programarCita()">
+                            <i class="fa fa-calendar-plus mr-2"></i>Programar Cita
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-info btn-block" onclick="agregarHistoria()">
+                            <i class="fa fa-file-medical-alt mr-2"></i>Agregar Historia
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-warning btn-block" onclick="contactarEmergencia()">
+                            <i class="fa fa-phone mr-2"></i>Contacto Emergencia
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block customscripts %}
+<script>
+$(document).ready(function() {
+    cargarDashboardTelemedicina();
+});
+
+function cargarDashboardTelemedicina() {
+    // Cargar estadísticas del dashboard
+    Promise.all([
+        fetch('/api/historia-medica').then(r => r.json()),
+        fetch('/api/citas-medicas').then(r => r.json()),
+        fetch('/api/signos-vitales').then(r => r.json()),
+        fetch('/api/programas-prevencion').then(r => r.json())
+    ]).then(([historia, citas, signos, programas]) => {
+        // Actualizar contadores
+        $('#total-registros').text(historia.historia ? historia.historia.length : 0);
+        $('#proximas-citas').text(citas.citas ? citas.citas.filter(c => new Date(c[3]) > new Date()).length : 0);
+        $('#programas-activos').text(programas.programas ? programas.programas.length : 0);
+        
+        // Última medición de signos vitales
+        if (signos.signos && signos.signos.length > 0) {
+            const ultimaFecha = new Date(signos.signos[0][2]);
+            $('#ultima-medicion').text(ultimaFecha.toLocaleDateString());
+        } else {
+            $('#ultima-medicion').text('Sin registros');
+        }
+        
+        cargarAlertas();
+        cargarResumenSalud();
+    }).catch(error => {
+        console.error('Error cargando dashboard:', error);
+    });
+}
+
+function cargarAlertas() {
+    $('#alertas-container').html(`
+        <div class="alert alert-info">
+            <i class="fa fa-info-circle mr-2"></i>
+            <strong>Recordatorio:</strong> Es hora de tu chequeo anual.
+        </div>
+        <div class="alert alert-warning">
+            <i class="fa fa-exclamation-triangle mr-2"></i>
+            <strong>Próxima cita:</strong> Consulta con cardiología el 15/10/2024.
+        </div>
+        <div class="alert alert-success">
+            <i class="fa fa-check-circle mr-2"></i>
+            <strong>Completado:</strong> Análisis de sangre registrado exitosamente.
+        </div>
+    `);
+}
+
+function cargarResumenSalud() {
+    $('#resumen-salud').html(`
+        <div class="row text-center">
+            <div class="col-4">
+                <h4 class="text-success">120/80</h4>
+                <small class="text-muted">Presión Arterial</small>
+            </div>
+            <div class="col-4">
+                <h4 class="text-primary">72</h4>
+                <small class="text-muted">Freq. Cardíaca</small>
+            </div>
+            <div class="col-4">
+                <h4 class="text-info">36.5°C</h4>
+                <small class="text-muted">Temperatura</small>
+            </div>
+        </div>
+        <hr>
+        <div class="text-center">
+            <span class="badge badge-success">Estado General: Bueno</span>
+        </div>
+    `);
+}
+
+function registrarSignosVitales() {
+    window.location.href = '/signos-vitales';
+}
+
+function programarCita() {
+    window.location.href = '/citas-medicas';
+}
+
+function agregarHistoria() {
+    window.location.href = '/historia-medica';
+}
+
+function contactarEmergencia() {
+    alert('Función de contacto de emergencia será implementada próximamente.');
+}
+</script>
+{% endblock %}

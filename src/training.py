@@ -67,7 +67,6 @@ def crear_tablas():
 
     conn.commit()
     conn.close()
-    print("Tablas creadas o ya existentes.")
 
 def inicializar_matriz_entrenamiento():
     conn = obtener_conexion_db()
@@ -83,9 +82,6 @@ def inicializar_matriz_entrenamiento():
         cursor.execute("INSERT INTO MATRIZ_ENTRENAMIENTO (matriz_json, descripcion) VALUES (?, ?)", 
                        (matriz_json, 'Matriz de progresión estándar 3x9'))
         conn.commit()
-        print("Matriz de entrenamiento inicializada.")
-    else:
-        print("Matriz de entrenamiento ya existe.")
     conn.close()
 
 def obtener_matriz_entrenamiento():

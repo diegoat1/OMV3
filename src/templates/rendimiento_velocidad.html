@@ -1,0 +1,394 @@
+{% extends "base/base.html" %}
+
+{% block title %}Análisis de Velocidad - Omega Medicina{% endblock %}
+
+{% block herotitle %}Análisis de Velocidad{% endblock %}
+{% block herosubtitle %}Evaluación y seguimiento del rendimiento de velocidad{% endblock %}
+
+{% block contenttitle %}Rendimiento de Velocidad{% endblock %}
+{% block contentsubtitle %}Pruebas y análisis de velocidad deportiva{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Formulario de Registro -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-plus-circle mr-2"></i>Registrar Prueba de Velocidad
+                </h3>
+            </div>
+            <div class="block-content">
+                <form id="form-velocidad">
+                    <!-- Tipo de Prueba -->
+                    <div class="form-group">
+                        <label class="font-w600">Tipo de Prueba</label>
+                        <select class="form-control" name="tipo_prueba" required>
+                            <option value="">Seleccionar tipo de prueba</option>
+                            <option value="10m">Sprint 10 metros</option>
+                            <option value="20m">Sprint 20 metros</option>
+                            <option value="30m">Sprint 30 metros</option>
+                            <option value="40m">Sprint 40 metros</option>
+                            <option value="100m">Sprint 100 metros</option>
+                            <option value="sprint_repeat">Sprints repetidos</option>
+                        </select>
+                    </div>
+
+                    <!-- Resultados de Tiempo -->
+                    <div class="form-group">
+                        <label class="font-w600">Resultados</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Tiempo (segundos)</label>
+                                <input type="number" class="form-control" name="tiempo_segundos" step="0.001" placeholder="5.280" required>
+                            </div>
+                            <div class="col-6">
+                                <label>Velocidad Máxima (km/h)</label>
+                                <input type="number" class="form-control" name="velocidad_max" step="0.1" placeholder="25.8">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Velocidad Promedio (km/h)</label>
+                                <input type="number" class="form-control" name="velocidad_promedio" step="0.1" placeholder="22.5">
+                            </div>
+                            <div class="col-6">
+                                <label>Número de Repeticiones</label>
+                                <input type="number" class="form-control" name="numero_repeticiones" value="1" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Condiciones de la Prueba -->
+                    <div class="form-group">
+                        <label class="font-w600">Condiciones de la Prueba</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Condiciones Ambientales</label>
+                                <select class="form-control" name="condiciones_ambientales">
+                                    <option value="interior">Interior</option>
+                                    <option value="exterior_optimo">Exterior - Óptimo</option>
+                                    <option value="exterior_viento">Exterior - Con viento</option>
+                                    <option value="exterior_lluvia">Exterior - Lluvia</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label>Superficie</label>
+                                <select class="form-control" name="superficie">
+                                    <option value="pista">Pista atlética</option>
+                                    <option value="cesped">Césped</option>
+                                    <option value="cemento">Cemento</option>
+                                    <option value="arena">Arena</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Calzado Utilizado</label>
+                                <input type="text" class="form-control" name="calzado" placeholder="Zapatillas de atletismo">
+                            </div>
+                            <div class="col-6">
+                                <label>Descanso entre series (seg)</label>
+                                <input type="number" class="form-control" name="descanso_segundos" placeholder="120">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos Fisiológicos -->
+                    <div class="form-group">
+                        <label class="font-w600">Datos Fisiológicos</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>FC Máxima (bpm)</label>
+                                <input type="number" class="form-control" name="frecuencia_cardiaca_max" placeholder="185">
+                            </div>
+                            <div class="col-6">
+                                <label>FC Recuperación (bpm)</label>
+                                <input type="number" class="form-control" name="frecuencia_cardiaca_recuperacion" placeholder="120">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Percepción de Esfuerzo (1-10)</label>
+                                <select class="form-control" name="percepcion_esfuerzo">
+                                    <option value="">Seleccionar</option>
+                                    <option value="1">1 - Muy fácil</option>
+                                    <option value="2">2 - Fácil</option>
+                                    <option value="3">3 - Moderado</option>
+                                    <option value="4">4 - Algo difícil</option>
+                                    <option value="5">5 - Difícil</option>
+                                    <option value="6">6 - Más difícil</option>
+                                    <option value="7">7 - Muy difícil</option>
+                                    <option value="8">8 - Extremo</option>
+                                    <option value="9">9 - Máximo</option>
+                                    <option value="10">10 - Exhaustivo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notas -->
+                    <div class="form-group">
+                        <label>Notas y Observaciones</label>
+                        <textarea class="form-control" name="notas" rows="3" placeholder="Observaciones sobre la prueba, sensaciones, etc..."></textarea>
+                    </div>
+
+                    <div class="form-group text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-save mr-2"></i>Registrar Prueba
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial y Análisis -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-line mr-2"></i>Historial de Pruebas
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="historial-velocidad">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Cargando historial...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mejores Marcas -->
+        <div class="block border-0 shadow-sm mt-4">
+            <div class="block-header bg-gradient-success text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-trophy mr-2"></i>Mejores Marcas
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="mejores-marcas">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-success" id="mejor-10m">-</h4>
+                            <small class="text-muted">10m</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-primary" id="mejor-20m">-</h4>
+                            <small class="text-muted">20m</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-info" id="mejor-30m">-</h4>
+                            <small class="text-muted">30m</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Progreso -->
+        <div class="block border-0 shadow-sm mt-4">
+            <div class="block-header bg-gradient-info text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-area mr-2"></i>Progreso
+                </h3>
+            </div>
+            <div class="block-content">
+                <canvas id="grafico-velocidad" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block customscripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let graficoVelocidad = null;
+
+$(document).ready(function() {
+    cargarHistorialVelocidad();
+    
+    $('#form-velocidad').on('submit', function(e) {
+        e.preventDefault();
+        registrarPruebaVelocidad();
+    });
+});
+
+function cargarHistorialVelocidad() {
+    fetch('/api/rendimiento-velocidad')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.pruebas) {
+                mostrarHistorial(data.pruebas);
+                actualizarMejoresMarcas(data.pruebas);
+                crearGraficoProgreso(data.pruebas);
+            } else {
+                $('#historial-velocidad').html(`
+                    <div class="text-center py-4">
+                        <i class="fa fa-inbox fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">No hay pruebas registradas</p>
+                        <p class="text-muted">Completa tu primera prueba de velocidad</p>
+                    </div>
+                `);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            $('#historial-velocidad').html(`
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle mr-2"></i>
+                    Error al cargar el historial
+                </div>
+            `);
+        });
+}
+
+function mostrarHistorial(pruebas) {
+    if (pruebas.length === 0) {
+        $('#historial-velocidad').html(`
+            <div class="text-center py-4">
+                <i class="fa fa-inbox fa-2x text-muted"></i>
+                <p class="mt-2 text-muted">No hay pruebas registradas</p>
+            </div>
+        `);
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm">';
+    html += '<thead><tr><th>Fecha</th><th>Tipo</th><th>Tiempo</th><th>Vel. Máx</th></tr></thead><tbody>';
+    
+    pruebas.slice(0, 10).forEach(prueba => {
+        const fecha = new Date(prueba[2]).toLocaleDateString();
+        const tipo = prueba[3] || '-';
+        const tiempo = prueba[4] ? parseFloat(prueba[4]).toFixed(3) + 's' : '-';
+        const velMax = prueba[5] ? parseFloat(prueba[5]).toFixed(1) + ' km/h' : '-';
+        
+        html += `<tr>
+            <td>${fecha}</td>
+            <td>${tipo}</td>
+            <td>${tiempo}</td>
+            <td>${velMax}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    $('#historial-velocidad').html(html);
+}
+
+function actualizarMejoresMarcas(pruebas) {
+    const marcas = {
+        '10m': null,
+        '20m': null,
+        '30m': null
+    };
+    
+    pruebas.forEach(prueba => {
+        const tipo = prueba[3];
+        const tiempo = parseFloat(prueba[4]);
+        
+        if (marcas[tipo] === null || tiempo < marcas[tipo]) {
+            marcas[tipo] = tiempo;
+        }
+    });
+    
+    $('#mejor-10m').text(marcas['10m'] ? marcas['10m'].toFixed(3) + 's' : '-');
+    $('#mejor-20m').text(marcas['20m'] ? marcas['20m'].toFixed(3) + 's' : '-');
+    $('#mejor-30m').text(marcas['30m'] ? marcas['30m'].toFixed(3) + 's' : '-');
+}
+
+function crearGraficoProgreso(pruebas) {
+    const ctx = document.getElementById('grafico-velocidad').getContext('2d');
+    
+    // Preparar datos para el gráfico
+    const datos10m = [];
+    const datos20m = [];
+    const fechas = [];
+    
+    pruebas.reverse().forEach(prueba => {
+        const fecha = new Date(prueba[2]).toLocaleDateString();
+        const tipo = prueba[3];
+        const tiempo = parseFloat(prueba[4]);
+        
+        if (tipo === '10m') {
+            datos10m.push({x: fecha, y: tiempo});
+        } else if (tipo === '20m') {
+            datos20m.push({x: fecha, y: tiempo});
+        }
+    });
+    
+    if (graficoVelocidad) {
+        graficoVelocidad.destroy();
+    }
+    
+    graficoVelocidad = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: '10m (segundos)',
+                data: datos10m,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }, {
+                label: '20m (segundos)',
+                data: datos20m,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Tiempo (segundos)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function registrarPruebaVelocidad() {
+    const formData = new FormData(document.getElementById('form-velocidad'));
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (value.trim() !== '') {
+            data[key] = ['tiempo_segundos', 'velocidad_max', 'velocidad_promedio', 'numero_repeticiones', 'descanso_segundos', 'frecuencia_cardiaca_max', 'frecuencia_cardiaca_recuperacion', 'percepcion_esfuerzo'].includes(key) 
+                       ? parseFloat(value) || parseInt(value) 
+                       : value;
+        }
+    }
+    
+    fetch('/api/rendimiento-velocidad', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Prueba de velocidad registrada exitosamente');
+            document.getElementById('form-velocidad').reset();
+            cargarHistorialVelocidad();
+        } else {
+            alert('Error al registrar prueba: ' + (result.error || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al registrar prueba de velocidad');
+    });
+}
+</script>
+{% endblock %}

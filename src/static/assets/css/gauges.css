@@ -1,0 +1,206 @@
+/* Gauges para Dashboard - Métricas Corporales (Estilo CodePen Mejorado) */
+
+* {
+  box-sizing: border-box;
+}
+
+.metric-gauge {
+  position: relative;
+  margin: 10px auto;
+  width: 320px;
+  height: 160px;
+  background: #f8f9fa;
+  border-radius: 320px 320px 0 0;
+  overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.metric-gauge:before {
+  display: block;
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  margin-left: -40%;
+  width: 80%;
+  height: 80%;
+  background: #f8f9fa;
+  box-shadow: 0 0 3px rgba(0,0,0,0.2);
+  border-radius: 256px 256px 0 0;
+}
+
+.metric-gauge:after {
+  display: block;
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 3;
+  margin-left: -25%;
+  width: 50%;
+  height: 50%;
+  background: #f8f9fa;
+  box-shadow: 0 3px 3px -2px rgba(0,0,0,0.2) inset;
+  border-radius: 160px 160px 0 0;
+}
+
+/* Aguja del gauge */
+.gauge-needle {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  z-index: 4;
+  margin-left: -4px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 120px solid #000;
+  border-radius: 0 0 5px 5px;
+  transform-origin: center bottom;
+  transition: transform 0.8s ease-in-out;
+}
+
+/* Categorías base */
+.gauge-category {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 128px;
+  height: 128px;
+  background: #ddd;
+  border-radius: 0 160px 0 0;
+  transform-origin: bottom left;
+}
+
+
+/* Categorías IMC */
+.imc-gauge .gauge-category.bajo-peso {
+  background: #87CEEB;
+  transform: rotate(-90deg);
+}
+
+.imc-gauge .gauge-category.normal {
+  background: #90EE90;
+  transform: rotate(-45deg);
+}
+.imc-gauge .gauge-category.sobrepeso {
+  background: #FFD700;
+  transform: rotate(0deg);
+}
+
+.imc-gauge .gauge-category.obesidad {  
+  background: #FF6B6B;
+  transform: rotate(45deg);
+}
+
+/* Categorías FFMI Mejoradas - Más colores distintivos */
+.ffmi-gauge .gauge-category.muy-pobre {
+  background: #8B0000; /* Rojo oscuro */
+  transform: rotate(-90deg);
+}
+.ffmi-gauge .gauge-category.pobre {
+  background: #FF4444; /* Rojo */
+  transform: rotate(-70deg);
+}
+
+.ffmi-gauge .gauge-category.bajo {
+  background: #FF8C00; /* Naranja oscuro */
+  transform: rotate(-50deg);
+}
+
+.ffmi-gauge .gauge-category.casi-normal {
+  background: #FFB347; /* Naranja claro */
+  transform: rotate(-30deg);
+}
+
+.ffmi-gauge .gauge-category.normal {
+  background: #FFD700; /* Amarillo */
+  transform: rotate(-10deg);
+}
+
+.ffmi-gauge .gauge-category.bueno {
+  background: #ADFF2F; /* Verde amarillo */
+  transform: rotate(10deg);
+}
+
+.ffmi-gauge .gauge-category.muy-bueno {
+  background: #32CD32; /* Verde lima */
+  transform: rotate(30deg);
+}
+
+.ffmi-gauge .gauge-category.excelente {
+  background: #228B22; /* Verde bosque */
+  transform: rotate(50deg);
+}
+
+.ffmi-gauge .gauge-category.superior {
+  background: #006400; /* Verde oscuro */
+  transform: rotate(70deg);
+}
+
+/* Categorías %BF */
+.bf-gauge .gauge-category.esencial {
+  background: #00CED1;
+  transform: rotate(-90deg);
+}
+.bf-gauge .gauge-category.atletico {
+  background: #32CD32;
+  transform: rotate(-60deg);
+}
+
+.bf-gauge .gauge-category.fitness {
+  background: #90EE90;
+  transform: rotate(-30deg);
+}
+
+.bf-gauge .gauge-category.promedio {
+  background: #FFD700;
+  transform: rotate(0deg);
+}
+
+.bf-gauge .gauge-category.alto {
+  background: #FFA500;
+  transform: rotate(30deg);
+}
+
+.bf-gauge .gauge-category.obesidad {
+  background: #FF6B6B;
+  transform: rotate(60deg);
+}
+
+
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .metric-gauge {
+    width: 250px;
+    height: 125px;
+  }
+  
+  .gauge-category {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .gauge-needle {
+    border-bottom-width: 95px;
+    margin-left: -3px;
+    border-left-width: 3px;
+    border-right-width: 3px;
+  }
+  
+  
+}
+
+/* Animación de entrada */
+@keyframes gauge-load {
+  0% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: var(--needle-rotation);
+  }
+}
+
+.gauge-needle.animate {
+  animation: gauge-load 1.5s ease-out;
+}

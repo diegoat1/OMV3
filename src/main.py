@@ -778,6 +778,9 @@ def api_past_lifts_user(username):
 # Crear la tabla de análisis de fuerza detallado si no existe
 functions.crear_tabla_analisis_fuerza_detallado()
 
+# Inicializar nuevas tablas para funcionalidades extendidas
+functions.inicializar_nuevas_tablas()
+
 @app.route('/api/submit-strength-results', methods=['POST'])
 @csrf.exempt
 def submit_strength_results():
@@ -1308,7 +1311,26 @@ def planner():
         functions.plannutricional(planner_form)
         success_message = 'Actualizado {} !'.format(planner_form.nameuser.data)
         flash(success_message)
-    return render_template('planner.html', title='Configuración de plan nutricional', form=planner_form, username=session['username'])
+    return render_template('planner_nuevo.html', title='Configuración de plan nutricional', form=planner_form, username=session['username'])
+
+# Endpoint API para obtener plan nutricional automático
+@app.route('/api/planner/plan-automatico/<string:nombre_usuario>')
+def api_plan_automatico(nombre_usuario):
+    """Obtiene el plan nutricional automático calculado para un usuario."""
+    if 'username' not in session:
+        return jsonify({"error": "No autorizado"}), 401
+    
+    # Solo Diego puede ver todos los usuarios, otros solo sus propios datos
+    if session['username'] != 'Toffaletti, Diego Alejandro' and session['username'] != nombre_usuario:
+        return jsonify({"error": "Acceso denegado"}), 403
+    
+    try:
+        # Obtener factor de actividad de query params (default 1.55)
+        factor_actividad = float(request.args.get('factor_actividad', 1.55))
+        resultado = functions.calcular_plan_nutricional_automatico(nombre_usuario, factor_actividad)
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
 
 ### FUNCIÓN PARA ELIMINAR DIETAS ###
 
@@ -1352,6 +1374,23 @@ def goal():
     if request.method == 'POST':
         functions.goal(goal_form)
     return render_template('goal.html', title='Configuración de objetivos', form=goal_form, username=session['username'])
+
+# Endpoint API para obtener objetivos automáticos
+@app.route('/api/goal/objetivos-automaticos/<string:nombre_usuario>')
+def api_objetivos_automaticos(nombre_usuario):
+    """Obtiene los objetivos automáticos calculados para un usuario."""
+    if 'username' not in session:
+        return jsonify({"error": "No autorizado"}), 401
+    
+    # Solo Diego puede ver todos los usuarios, otros solo sus propios datos
+    if session['username'] != 'Toffaletti, Diego Alejandro' and session['username'] != nombre_usuario:
+        return jsonify({"error": "Acceso denegado"}), 403
+    
+    try:
+        resultado = functions.calcular_objetivos_automaticos(nombre_usuario)
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
 
 ### FUNCIÓN PARA ELIMINAR UN OBJETIVO ###
 
@@ -2180,6 +2219,1097 @@ def programa_detalle(programa_id):
     # Si llega aquí, el programa no existe
     flash('Programa no encontrado.')
     return redirect(url_for('programas_entrenamientos'))
+
+@app.route('/plan-alimentario')
+def plan_alimentario():
+    """
+    Página del Plan Alimentario - Nueva funcionalidad en desarrollo
+    """
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    username = session['username']
+    return render_template('plan_alimentario.html', 
+                         title='Plan Alimentario',
+                         username=username)
+
+# APIs para el Plan Alimentario
+@app.route('/api/plan-alimentario/info')
+def api_plan_alimentario_info():
+    """Obtiene información del plan nutricional del usuario leyendo tabla DIETA"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    username = session['username']
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener plan nutricional actual con todas las columnas
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        plan_data = cursor.fetchone()
+        
+        if not plan_data:
+            return jsonify({
+                'success': False,
+                'error': 'No hay plan nutricional configurado. Por favor configura tu plan primero.'
+            })
+        
+        # Mapear columnas según estructura REAL de tabla DIETA (CORREGIDO)
+        # 0=ID, 1=NOMBRE_APELLIDO, 2=CALORIAS, 3=PROTEINA, 4=GRASA, 5=CH
+        # 6=DP, 7=DG, 8=DC (Desayuno %)
+        # 9=MMP, 10=MMG, 11=MMC (Media Mañana %)  
+        # 12=AP, 13=AG, 14=AC (Almuerzo %)
+        # 15=MP, 16=MG, 17=MC (Merienda %)
+        # 18=MTP, 19=MTG, 20=MTC (Media Tarde %)
+        # 21=CP, 22=CG, 23=CC (Cena %)
+        # 24=LIBERTAD
+        
+        plan = {
+            'usuario': username,
+            'calorias': plan_data[2] if len(plan_data) > 2 else 0,
+            'proteina_total': plan_data[3] if len(plan_data) > 3 else 0,
+            'grasa_total': plan_data[4] if len(plan_data) > 4 else 0,
+            'carbohidratos_total': plan_data[5] if len(plan_data) > 5 else 0,
+            'libertad': plan_data[24] if len(plan_data) > 24 else 0
+        }
+        
+        # Obtener totales para calcular gramos por comida
+        proteina_total = plan['proteina_total']
+        grasa_total = plan['grasa_total']
+        carbohidratos_total = plan['carbohidratos_total']
+        
+        # Definir las comidas en el ORDEN DESEADO
+        # Usamos OrderedDict para garantizar el orden en todas las versiones de Python
+        from collections import OrderedDict
+        comidas = OrderedDict()
+        
+        # ORDEN FIJO: Desayuno → Media Mañana → Almuerzo → Merienda → Media Tarde → Cena
+        
+        # 1. Desayuno (DP, DG, DC) - índices corregidos
+        dp = plan_data[6] if len(plan_data) > 6 else 0  # DP = Desayuno Proteína %
+        dg = plan_data[7] if len(plan_data) > 7 else 0  # DG = Desayuno Grasa %
+        dc = plan_data[8] if len(plan_data) > 8 else 0  # DC = Desayuno Carbohidratos %
+        if dp > 0 or dg > 0 or dc > 0:
+            comidas['desayuno'] = {
+                'activa': True,
+                'proteina': round(proteina_total * dp, 2),  # Calcular gramos reales
+                'grasa': round(grasa_total * dg, 2),
+                'carbohidratos': round(carbohidratos_total * dc, 2),
+                'proteina_pct': dp,
+                'grasa_pct': dg,
+                'carbohidratos_pct': dc,
+                'nombre': 'Desayuno',
+                'codigo': 'D',
+                'orden': 1
+            }
+        
+        # 2. Media Mañana (MMP, MMG, MMC) - índices corregidos
+        mmp = plan_data[9] if len(plan_data) > 9 else 0   # MMP = Media Mañana Proteína %
+        mmg = plan_data[10] if len(plan_data) > 10 else 0 # MMG = Media Mañana Grasa %
+        mmc = plan_data[11] if len(plan_data) > 11 else 0 # MMC = Media Mañana Carbohidratos %
+        if mmp > 0 or mmg > 0 or mmc > 0:
+            comidas['media_manana'] = {
+                'activa': True,
+                'proteina': round(proteina_total * mmp, 2),
+                'grasa': round(grasa_total * mmg, 2),
+                'carbohidratos': round(carbohidratos_total * mmc, 2),
+                'proteina_pct': mmp,
+                'grasa_pct': mmg,
+                'carbohidratos_pct': mmc,
+                'nombre': 'Media Mañana',
+                'codigo': 'MM',
+                'orden': 2
+            }
+        
+        # 3. Almuerzo (AP, AG, AC) - índices corregidos
+        ap = plan_data[12] if len(plan_data) > 12 else 0  # AP = Almuerzo Proteína %
+        ag = plan_data[13] if len(plan_data) > 13 else 0  # AG = Almuerzo Grasa %
+        ac = plan_data[14] if len(plan_data) > 14 else 0  # AC = Almuerzo Carbohidratos %
+        if ap > 0 or ag > 0 or ac > 0:
+            comidas['almuerzo'] = {
+                'activa': True,
+                'proteina': round(proteina_total * ap, 2),
+                'grasa': round(grasa_total * ag, 2),
+                'carbohidratos': round(carbohidratos_total * ac, 2),
+                'proteina_pct': ap,
+                'grasa_pct': ag,
+                'carbohidratos_pct': ac,
+                'nombre': 'Almuerzo',
+                'codigo': 'A',
+                'orden': 3
+            }
+        
+        # 4. Merienda (MP, MG, MC) - índices corregidos
+        mp = plan_data[15] if len(plan_data) > 15 else 0  # MP = Merienda Proteína %
+        mg = plan_data[16] if len(plan_data) > 16 else 0  # MG = Merienda Grasa %
+        mc = plan_data[17] if len(plan_data) > 17 else 0  # MC = Merienda Carbohidratos %
+        if mp > 0 or mg > 0 or mc > 0:
+            comidas['merienda'] = {
+                'activa': True,
+                'proteina': round(proteina_total * mp, 2),
+                'grasa': round(grasa_total * mg, 2),
+                'carbohidratos': round(carbohidratos_total * mc, 2),
+                'proteina_pct': mp,
+                'grasa_pct': mg,
+                'carbohidratos_pct': mc,
+                'nombre': 'Merienda',
+                'codigo': 'M',
+                'orden': 4
+            }
+        
+        # 5. Media Tarde (MTP, MTG, MTC) - índices corregidos
+        mtp = plan_data[18] if len(plan_data) > 18 else 0  # MTP = Media Tarde Proteína %
+        mtg = plan_data[19] if len(plan_data) > 19 else 0  # MTG = Media Tarde Grasa %
+        mtc = plan_data[20] if len(plan_data) > 20 else 0  # MTC = Media Tarde Carbohidratos %
+        if mtp > 0 or mtg > 0 or mtc > 0:
+            comidas['media_tarde'] = {
+                'activa': True,
+                'proteina': round(proteina_total * mtp, 2),
+                'grasa': round(grasa_total * mtg, 2),
+                'carbohidratos': round(carbohidratos_total * mtc, 2),
+                'proteina_pct': mtp,
+                'grasa_pct': mtg,
+                'carbohidratos_pct': mtc,
+                'nombre': 'Media Tarde',
+                'codigo': 'MT',
+                'orden': 5
+            }
+        
+        # 6. Cena (CP, CG, CC) - índices corregidos
+        cp = plan_data[21] if len(plan_data) > 21 else 0  # CP = Cena Proteína %
+        cg = plan_data[22] if len(plan_data) > 22 else 0  # CG = Cena Grasa %
+        cc = plan_data[23] if len(plan_data) > 23 else 0  # CC = Cena Carbohidratos %
+        if cp > 0 or cg > 0 or cc > 0:
+            comidas['cena'] = {
+                'activa': True,
+                'proteina': round(proteina_total * cp, 2),
+                'grasa': round(grasa_total * cg, 2),
+                'carbohidratos': round(carbohidratos_total * cc, 2),
+                'proteina_pct': cp,
+                'grasa_pct': cg,
+                'carbohidratos_pct': cc,
+                'nombre': 'Cena',
+                'codigo': 'C',
+                'orden': 6
+            }
+        
+        plan['comidas_activas'] = len(comidas)
+        
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'plan': plan,
+            'comidas': comidas
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/recetas')
+def api_plan_alimentario_recetas():
+    """Obtiene todas las recetas disponibles"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener todas las recetas usando el mismo campo que /recipe (NOMBRERECETA)
+        cursor.execute('SELECT ID, NOMBRERECETA FROM RECETAS ORDER BY NOMBRERECETA ASC')
+        recetas_raw = cursor.fetchall()
+        
+        recetas = []
+        for receta in recetas_raw:
+            recetas.append({
+                'id': receta[0],
+                'nombre': receta[1],
+                'value': receta[1]  # Para compatibilidad con sistema original
+            })
+        
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'recetas': recetas
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/guardar', methods=['POST'])
+@csrf.exempt
+def api_plan_alimentario_guardar():
+    """Guarda el plan alimentario con múltiples recetas por comida"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    username = session['username']
+    user_dni = session['DNI']
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Crear tabla si no existe (versión mejorada)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS PLANES_ALIMENTARIOS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                USER_DNI TEXT NOT NULL,
+                NOMBRE_APELLIDO TEXT NOT NULL,
+                TIPO_PLAN TEXT NOT NULL,
+                FECHA_CREACION DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FECHA_ACTUALIZACION DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PLAN_JSON TEXT NOT NULL,
+                ACTIVO INTEGER DEFAULT 1,
+                TOTAL_RECETAS INTEGER DEFAULT 0,
+                COMIDAS_CONFIGURADAS INTEGER DEFAULT 0
+            )
+        ''')
+        
+        # Verificar y agregar columnas faltantes si la tabla ya existía
+        cursor.execute("PRAGMA table_info(PLANES_ALIMENTARIOS)")
+        columnas_existentes = [col[1] for col in cursor.fetchall()]
+        
+        # Agregar TOTAL_RECETAS si no existe
+        if 'TOTAL_RECETAS' not in columnas_existentes:
+            cursor.execute('ALTER TABLE PLANES_ALIMENTARIOS ADD COLUMN TOTAL_RECETAS INTEGER DEFAULT 0')
+        
+        # Agregar COMIDAS_CONFIGURADAS si no existe
+        if 'COMIDAS_CONFIGURADAS' not in columnas_existentes:
+            cursor.execute('ALTER TABLE PLANES_ALIMENTARIOS ADD COLUMN COMIDAS_CONFIGURADAS INTEGER DEFAULT 0')
+        
+        # Desactivar planes anteriores
+        cursor.execute('''
+            UPDATE PLANES_ALIMENTARIOS 
+            SET ACTIVO = 0 
+            WHERE USER_DNI = ? AND TIPO_PLAN = ?
+        ''', (user_dni, data.get('tipo', 'recetas')))
+        
+        # Contar recetas y comidas
+        total_recetas = 0
+        comidas_configuradas = 0
+        
+        for comida, recetas in data.get('comidas', {}).items():
+            if recetas and len(recetas) > 0:
+                comidas_configuradas += 1
+                total_recetas += len(recetas)
+        
+        # Guardar nuevo plan
+        plan_json = json.dumps(data, ensure_ascii=False)
+        cursor.execute('''
+            INSERT INTO PLANES_ALIMENTARIOS 
+            (USER_DNI, NOMBRE_APELLIDO, TIPO_PLAN, PLAN_JSON, ACTIVO, 
+             TOTAL_RECETAS, COMIDAS_CONFIGURADAS)
+            VALUES (?, ?, ?, ?, 1, ?, ?)
+        ''', (user_dni, username, data.get('tipo', 'recetas'), plan_json, 
+              total_recetas, comidas_configuradas))
+        
+        basededatos.commit()
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Plan guardado con {total_recetas} recetas en {comidas_configuradas} comidas',
+            'total_recetas': total_recetas,
+            'comidas_configuradas': comidas_configuradas
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/plan-guardado')
+def api_plan_alimentario_plan_guardado():
+    """Obtiene el plan alimentario guardado del usuario y calcula todas las recetas"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    username = session['username']
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Verificar columnas disponibles para compatibilidad
+        cursor.execute("PRAGMA table_info(PLANES_ALIMENTARIOS)")
+        columnas_existentes = [col[1] for col in cursor.fetchall()]
+        
+        # Construir query dinámicamente según columnas disponibles
+        columnas_select = ['PLAN_JSON']
+        if 'TOTAL_RECETAS' in columnas_existentes:
+            columnas_select.append('TOTAL_RECETAS')
+        if 'COMIDAS_CONFIGURADAS' in columnas_existentes:
+            columnas_select.append('COMIDAS_CONFIGURADAS')
+        columnas_select.append('FECHA_CREACION')
+        
+        # Obtener plan activo del usuario
+        query = f'''
+            SELECT {", ".join(columnas_select)}
+            FROM PLANES_ALIMENTARIOS 
+            WHERE USER_DNI = ? AND ACTIVO = 1 AND TIPO_PLAN = 'recetas'
+            ORDER BY FECHA_CREACION DESC LIMIT 1
+        '''
+        cursor.execute(query, (user_dni,))
+        
+        plan_row = cursor.fetchone()
+        
+        if not plan_row:
+            return jsonify({
+                'success': False,
+                'error': 'No hay plan alimentario guardado'
+            })
+        
+        # Parsear el plan guardado
+        plan_data = json.loads(plan_row[0])
+        
+        # Obtener información nutricional del usuario (tabla DIETA)
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        dieta_data = cursor.fetchone()
+        
+        if not dieta_data:
+            return jsonify({
+                'success': False,
+                'error': 'No hay información nutricional configurada'
+            })
+        
+        # Obtener macros totales del usuario
+        proteina_total = dieta_data[3] if len(dieta_data) > 3 else 0
+        grasa_total = dieta_data[4] if len(dieta_data) > 4 else 0
+        carbohidratos_total = dieta_data[5] if len(dieta_data) > 5 else 0
+        libertad = dieta_data[24] if len(dieta_data) > 24 else 0
+        
+        # Mapeo de comida_id a columnas de la tabla DIETA
+        comidas_porcentajes = {
+            'desayuno': (6, 7, 8),  # DP, DG, DC
+            'media_manana': (9, 10, 11),  # MMP, MMG, MMC
+            'almuerzo': (12, 13, 14),  # AP, AG, AC
+            'merienda': (15, 16, 17),  # MP, MG, MC
+            'media_tarde': (18, 19, 20),  # MTP, MTG, MTC
+            'cena': (21, 22, 23)  # CP, CG, CC
+        }
+        
+        # Calcular todas las recetas del plan usando el SOLVER COMPLETO
+        recetas_calculadas = {}
+        
+        for comida_id, recetas_ids in plan_data.get('comidas', {}).items():
+            if not recetas_ids:
+                continue
+            
+            # Obtener porcentajes de esta comida
+            if comida_id not in comidas_porcentajes:
+                continue
+            
+            idx_p, idx_g, idx_c = comidas_porcentajes[comida_id]
+            pct_proteina = dieta_data[idx_p] if len(dieta_data) > idx_p else 0
+            pct_grasa = dieta_data[idx_g] if len(dieta_data) > idx_g else 0
+            pct_carbos = dieta_data[idx_c] if len(dieta_data) > idx_c else 0
+            
+            # Calcular gramos reales para esta comida
+            proteina_comida = proteina_total * pct_proteina
+            grasa_comida = grasa_total * pct_grasa
+            carbos_comida = carbohidratos_total * pct_carbos
+            
+            recetas_calculadas[comida_id] = {
+                'nombre_comida': comida_id.replace('_', ' ').title(),
+                'macros_objetivo': {
+                    'proteina': round(proteina_comida, 2),
+                    'grasa': round(grasa_comida, 2),
+                    'carbohidratos': round(carbos_comida, 2)
+                },
+                'recetas': []
+            }
+            
+            for receta_id in recetas_ids:
+                # Obtener datos de la receta
+                cursor.execute('SELECT ID, NOMBRERECETA FROM RECETAS WHERE ID = ?', (receta_id,))
+                receta = cursor.fetchone()
+                
+                if receta:
+                    # EJECUTAR EL SOLVER COMPLETO para esta receta
+                    resultado_calculo = functions.calculate_recipe_portions(
+                        nombrereceta=receta[1],
+                        p0=proteina_comida,
+                        g0=grasa_comida,
+                        ch0=carbos_comida,
+                        libertad=libertad
+                    )
+                    
+                    recetas_calculadas[comida_id]['recetas'].append({
+                        'id': receta[0],
+                        'nombre': receta[1],
+                        'calculo': resultado_calculo
+                    })
+        
+        basededatos.close()
+        
+        # Construir respuesta según columnas disponibles
+        plan_info = {}
+        if 'TOTAL_RECETAS' in columnas_existentes:
+            idx = columnas_select.index('TOTAL_RECETAS')
+            plan_info['total_recetas'] = plan_row[idx]
+        if 'COMIDAS_CONFIGURADAS' in columnas_existentes:
+            idx = columnas_select.index('COMIDAS_CONFIGURADAS')
+            plan_info['comidas_configuradas'] = plan_row[idx]
+        if 'FECHA_CREACION' in columnas_select:
+            idx = columnas_select.index('FECHA_CREACION')
+            plan_info['fecha_creacion'] = plan_row[idx]
+        
+        return jsonify({
+            'success': True,
+            'plan': plan_info,
+            'recetas_calculadas': recetas_calculadas
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/lista-compras', methods=['POST'])
+@csrf.exempt
+def api_plan_alimentario_lista_compras():
+    """Genera lista de compras basada en las recetas seleccionadas"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    username = session['username']
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener información del plan nutricional para cálculos
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        dieta_data = cursor.fetchone()
+        
+        if not dieta_data:
+            return jsonify({'success': False, 'error': 'No hay plan nutricional configurado'})
+        
+        lista_compras = {}
+        
+        # Para cada receta seleccionada, obtener los ingredientes
+        for comida, receta_id in data.get('comidas', {}).items():
+            cursor.execute('''
+                SELECT NOMBRERECETA FROM RECETAS WHERE ID = ?
+            ''', (receta_id,))
+            receta = cursor.fetchone()
+            
+            if receta:
+                # TODO: Implementar extracción de ingredientes de la estructura de columnas de RECETAS
+                # Por ahora, usar nombre de receta como placeholder
+                ingredientes = [{
+                    'nombre': receta[0],
+                    'cantidad': '1 porción',
+                    'categoria': 'General'
+                }]
+                
+                # Agrupar ingredientes por categoría
+                for ingrediente in ingredientes:
+                    categoria = ingrediente.get('categoria', 'General')
+                    if categoria not in lista_compras:
+                        lista_compras[categoria] = []
+                    
+                    # Buscar si ya existe el ingrediente en la categoría
+                    encontrado = False
+                    for item in lista_compras[categoria]:
+                        if item['nombre'].lower() == ingrediente.get('nombre', '').lower():
+                            # Si existe, aumentar cantidad (simplificado)
+                            item['cantidad'] = f"Múltiples porciones"
+                            encontrado = True
+                            break
+                    
+                    if not encontrado:
+                        lista_compras[categoria].append({
+                            'nombre': ingrediente.get('nombre', 'Ingrediente desconocido'),
+                            'cantidad': ingrediente.get('cantidad', '1 porción')
+                        })
+        
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'lista': lista_compras
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+##############################################
+### NUEVOS ENDPOINTS PARA FUNCIONALIDADES EXTENDIDAS ###
+##############################################
+
+### MEDIDAS CORPORALES ###
+
+@app.route('/medidas-corporales')
+def medidas_corporales():
+    """Página de registro y análisis de medidas corporales completas - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/medidas-corporales', methods=['GET', 'POST'])
+def api_medidas_corporales():
+    """API para medidas corporales"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        # Obtener historial de medidas
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM MEDIDAS_CORPORALES 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            medidas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'medidas': medidas
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        # Registrar nuevas medidas
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            # Campos a insertar (solo los que tienen valores)
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO MEDIDAS_CORPORALES ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Medidas registradas exitosamente'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+### RENDIMIENTO FÍSICO ###
+
+@app.route('/rendimiento-velocidad')
+def rendimiento_velocidad():
+    """Página de análisis de velocidad - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/rendimiento-velocidad', methods=['GET', 'POST'])
+def api_rendimiento_velocidad():
+    """API para pruebas de velocidad"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM RENDIMIENTO_VELOCIDAD 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            pruebas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'pruebas': pruebas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO RENDIMIENTO_VELOCIDAD ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Prueba de velocidad registrada'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/rendimiento-flexibilidad')
+def rendimiento_flexibilidad():
+    """Página de análisis de flexibilidad - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/rendimiento-flexibilidad', methods=['GET', 'POST'])
+def api_rendimiento_flexibilidad():
+    """API para pruebas de flexibilidad"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM RENDIMIENTO_FLEXIBILIDAD 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            pruebas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'pruebas': pruebas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO RENDIMIENTO_FLEXIBILIDAD ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Prueba de flexibilidad registrada'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/rendimiento-movilidad')
+def rendimiento_movilidad():
+    """Página de análisis de movilidad - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/rendimiento-movilidad', methods=['GET', 'POST'])
+def api_rendimiento_movilidad():
+    """API para pruebas de movilidad"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM RENDIMIENTO_MOVILIDAD 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            pruebas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'pruebas': pruebas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO RENDIMIENTO_MOVILIDAD ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Evaluación de movilidad registrada'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/rendimiento-resistencia')
+def rendimiento_resistencia():
+    """Página de análisis de resistencia - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/rendimiento-resistencia', methods=['GET', 'POST'])
+def api_rendimiento_resistencia():
+    """API para pruebas de resistencia"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM RENDIMIENTO_RESISTENCIA 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            pruebas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'pruebas': pruebas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO RENDIMIENTO_RESISTENCIA ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Prueba de resistencia registrada'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+### TELEMEDICINA ###
+
+@app.route('/telemedicina')
+def telemedicina():
+    """Página principal de telemedicina - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/historia-medica')
+def historia_medica():
+    """Página de historia médica - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/historia-medica', methods=['GET', 'POST'])
+def api_historia_medica():
+    """API para historia médica"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM HISTORIA_MEDICA 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            historia = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'historia': historia})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO HISTORIA_MEDICA ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Registro médico agregado'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/citas-medicas')
+def citas_medicas():
+    """Página de citas médicas - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/citas-medicas', methods=['GET', 'POST'])
+def api_citas_medicas():
+    """API para citas médicas"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM CITAS_MEDICAS 
+                WHERE user_id = ? 
+                ORDER BY fecha_cita DESC
+            """, (user_dni,))
+            citas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'citas': citas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO CITAS_MEDICAS ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Cita médica programada'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/signos-vitales')
+def signos_vitales():
+    """Página de registro de signos vitales - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/signos-vitales', methods=['GET', 'POST'])
+def api_signos_vitales():
+    """API para signos vitales"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM SIGNOS_VITALES 
+                WHERE user_id = ? 
+                ORDER BY fecha_registro DESC
+            """, (user_dni,))
+            signos = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'signos': signos})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO SIGNOS_VITALES ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Signos vitales registrados'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/programas-prevencion')
+def programas_prevencion():
+    """Página de programas de prevención - EN DESARROLLO"""
+    if 'DNI' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('mantenimiento.html')
+
+@app.route('/api/programas-prevencion', methods=['GET', 'POST'])
+def api_programas_prevencion():
+    """API para programas de prevención"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    if request.method == 'GET':
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM PROGRAMAS_PREVENCION 
+                WHERE user_id = ? 
+                ORDER BY fecha_creacion DESC
+            """, (user_dni,))
+            programas = cursor.fetchall()
+            conn.close()
+            
+            return jsonify({'success': True, 'programas': programas})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            conn = sqlite3.connect('src/Basededatos')
+            cursor = conn.cursor()
+            
+            campos = ['user_id']
+            valores = [user_dni]
+            placeholders = ['?']
+            
+            for campo, valor in data.items():
+                if valor is not None and valor != '':
+                    campos.append(campo)
+                    valores.append(valor)
+                    placeholders.append('?')
+            
+            query = f"""
+                INSERT INTO PROGRAMAS_PREVENCION ({', '.join(campos)})
+                VALUES ({', '.join(placeholders)})
+            """
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Programa de prevención creado'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
 ### FUNCIÓN PARA CORRER LA APLICACIÓN
 

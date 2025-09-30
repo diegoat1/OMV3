@@ -1147,6 +1147,499 @@ def goal(goal):
         success_message = 'Los objetivos de {} se han actualizados.'.format(goal.nameuser.data)
         flash(success_message)
 
+### FUNCIÓN PARA CALCULAR OBJETIVOS AUTOMÁTICOS ###
+
+def obtener_categoria_ffmi(ffmi, sexo):
+    """
+    Determina la categoría de FFMI según el dashboard
+    Categorías: Muy Pobre, Pobre, Bajo, Casi Normal, Normal, Bueno, Muy Bueno, Excelente, Superior
+    """
+    if sexo == "M":
+        # Rangos FFMI Hombres: [15, 17, 18.5, 20, 21.5, 23, 25, 28]
+        if ffmi < 15:
+            return "Muy Pobre"
+        elif ffmi < 17:
+            return "Pobre"
+        elif ffmi < 18.5:
+            return "Bajo"
+        elif ffmi < 20:
+            return "Casi Normal"
+        elif ffmi < 21.5:
+            return "Normal"
+        elif ffmi < 23:
+            return "Bueno"
+        elif ffmi < 25:
+            return "Muy Bueno"
+        elif ffmi < 28:
+            return "Excelente"
+        else:
+            return "Superior"
+    else:
+        # Rangos FFMI Mujeres: [12, 13, 14.5, 16, 17.5, 19, 21, 24]
+        if ffmi < 12:
+            return "Muy Pobre"
+        elif ffmi < 13:
+            return "Pobre"
+        elif ffmi < 14.5:
+            return "Bajo"
+        elif ffmi < 16:
+            return "Casi Normal"
+        elif ffmi < 17.5:
+            return "Normal"
+        elif ffmi < 19:
+            return "Bueno"
+        elif ffmi < 21:
+            return "Muy Bueno"
+        elif ffmi < 24:
+            return "Excelente"
+        else:
+            return "Superior"
+
+def calcular_objetivos_parciales(peso_actual, bf_actual, peso_magro_actual, peso_graso_actual, altura, sexo):
+    """
+    Calcula objetivos parciales progresivos usando fórmulas matemáticas correctas
+    
+    DEFINICIÓN: Del peso perdido Δ, 75% es grasa y 25% es músculo
+    Fórmula: Δ = (FM₀ - t·W₀) / (0.75 - t)
+    
+    VOLUMEN: Del peso ganado G, 50% es grasa y 50% es músculo  
+    Fórmula: G = (FM₁ - t·W₁) / (t - 0.5)
+    """
+    objetivos = []
+    
+    # Umbrales del dashboard (gauges.js línea 164)
+    if sexo == "M":
+        # Hombres: [10, 17, 24, 31]
+        umbrales_def_inicial = [31, 24, 17, 12]  # Definición inicial hasta 12%
+        categorias_def = ["Obesidad", "Alto", "Fitness/Promedio", "Base Fitness"]
+        bf_base = 12.0  # Base para empezar volúmenes
+        bf_volumen = 18.0  # Volumen hasta 18%
+        ffmi_limite = 25.0  # Límite natural (sospecha esteroides > 25)
+        bf_elite = 6.0
+    else:
+        # Mujeres: [18, 24, 31, 38]
+        umbrales_def_inicial = [38, 31, 24, 20]  # Definición inicial hasta 20%
+        categorias_def = ["Obesidad", "Alto", "Fitness/Promedio", "Base Fitness"]
+        bf_base = 20.0  # Base para empezar volúmenes
+        bf_volumen = 25.0  # Volumen hasta 25%
+        ffmi_limite = 21.0  # Límite natural para mujeres
+        bf_elite = 14.0
+    
+    # Estado actual
+    W = peso_actual  # Peso total
+    FM = peso_graso_actual  # Masa grasa
+    LM = peso_magro_actual  # Masa magra
+    altura_m = altura / 100
+    FFMI_actual = LM / (altura_m ** 2)
+    
+    # FASE 1: Definir hasta la base (12% H / 20% M) SIN volúmenes
+    for i, bf_target in enumerate(umbrales_def_inicial):
+        if (bf_actual * 100) > bf_target:
+            t = bf_target / 100
+            
+            # Δ = (FM - t·W) / (0.75 - t)
+            delta = (FM - t * W) / (0.75 - t)
+            
+            if delta > 0:
+                W_new = W - delta
+                FM_new = t * W_new
+                LM_new = W_new - FM_new
+                FFMI_new = LM_new / (altura_m ** 2)
+                
+                categoria_ffmi = obtener_categoria_ffmi(FFMI_new, sexo)
+                objetivos.append({
+                    "tipo": "definicion",
+                    "bf_objetivo": bf_target,
+                    "ffmi_objetivo": round(FFMI_new, 1),
+                    "ffmi_categoria": categoria_ffmi,
+                    "peso_objetivo": round(W_new, 1),
+                    "peso_magro_objetivo": round(LM_new, 1),
+                    "peso_graso_objetivo": round(FM_new, 1),
+                    "cambio_peso": round(-delta, 1),
+                    "cambio_musculo": round(LM_new - LM, 1),
+                    "cambio_grasa": round(FM_new - FM, 1),
+                    "descripcion": f"Definición → {bf_target}% BF",
+                    "categoria": categorias_def[i],
+                    "fase": f"Corte inicial (75% grasa / 25% músculo)",
+                    "prioridad": "alta" if bf_target >= 24 else "media"
+                })
+                
+                W, FM, LM = W_new, FM_new, LM_new
+    
+    # FASE 2: Ciclos Volumen → Definición hasta alcanzar FFMI límite genético
+    FFMI_current = LM / (altura_m ** 2)
+    ciclo = 1
+    max_ciclos = 10  # Seguridad para evitar loop infinito
+    
+    while FFMI_current < ffmi_limite and ciclo <= max_ciclos:
+        # Guardar estado ANTES del volumen para cálculos correctos
+        W_antes_vol = W
+        LM_antes_vol = LM
+        FM_antes_vol = FM
+        
+        # === VOLUMEN ===
+        t_vol = bf_volumen / 100
+        ganancia = (FM - t_vol * W) / (t_vol - 0.5)
+        
+        if ganancia > 0:
+            # Si NO alcanzamos el límite, usar fórmula normal
+            W_vol = W + ganancia
+            FM_vol = t_vol * W_vol
+            LM_vol = W_vol - FM_vol
+            FFMI_vol = LM_vol / (altura_m ** 2)
+            
+            # Si alcanzamos o pasamos el límite, ajustar manteniendo 50/50
+            if FFMI_vol > ffmi_limite:
+                # Calcular cuánto músculo necesitamos para llegar al límite
+                LM_vol = ffmi_limite * (altura_m ** 2)
+                ganancia_musculo = LM_vol - LM_antes_vol
+                
+                # En volumen 50/50: si ganamos X músculo, ganamos X grasa
+                ganancia_grasa = ganancia_musculo
+                FM_vol = FM_antes_vol + ganancia_grasa
+                
+                # Calcular peso y BF final
+                W_vol = LM_vol + FM_vol
+                ganancia = W_vol - W
+                FFMI_vol = ffmi_limite
+            
+            # Calcular cambios correctos desde el estado anterior
+            cambio_musculo_vol = LM_vol - LM_antes_vol
+            cambio_grasa_vol = FM_vol - FM_antes_vol
+            
+            categoria_ffmi = obtener_categoria_ffmi(FFMI_vol, sexo)
+            objetivos.append({
+                "tipo": "volumen",
+                "bf_objetivo": round((FM_vol / W_vol) * 100, 1),
+                "ffmi_objetivo": round(FFMI_vol, 1),
+                "ffmi_categoria": categoria_ffmi,
+                "peso_objetivo": round(W_vol, 1),
+                "peso_magro_objetivo": round(LM_vol, 1),
+                "peso_graso_objetivo": round(FM_vol, 1),
+                "cambio_peso": round(ganancia, 1),
+                "cambio_musculo": round(cambio_musculo_vol, 1),
+                "cambio_grasa": round(cambio_grasa_vol, 1),
+                "descripcion": f"Volumen #{ciclo} → {bf_volumen}% BF",
+                "categoria": "Construcción Muscular",
+                "fase": f"Volumen (50% grasa / 50% músculo)",
+                "prioridad": "media"
+            })
+            
+            W, FM, LM = W_vol, FM_vol, LM_vol
+            FFMI_current = FFMI_vol
+            
+            # Si ya alcanzamos el límite, salir
+            if FFMI_current >= ffmi_limite:
+                break
+            
+            # === DEFINICIÓN de vuelta a la base ===
+            # Guardar estado ANTES de la definición
+            W_antes_def = W
+            LM_antes_def = LM
+            FM_antes_def = FM
+            
+            t_base = bf_base / 100
+            delta_base = (FM - t_base * W) / (0.75 - t_base)
+            
+            if delta_base > 0:
+                W_base = W - delta_base
+                FM_base = t_base * W_base
+                LM_base = W_base - FM_base
+                FFMI_base = LM_base / (altura_m ** 2)
+                
+                # Calcular cambios desde el estado anterior
+                cambio_musculo_def = LM_base - LM_antes_def
+                cambio_grasa_def = FM_base - FM_antes_def
+                
+                categoria_ffmi = obtener_categoria_ffmi(FFMI_base, sexo)
+                objetivos.append({
+                    "tipo": "definicion",
+                    "bf_objetivo": bf_base,
+                    "ffmi_objetivo": round(FFMI_base, 1),
+                    "ffmi_categoria": categoria_ffmi,
+                    "peso_objetivo": round(W_base, 1),
+                    "peso_magro_objetivo": round(LM_base, 1),
+                    "peso_graso_objetivo": round(FM_base, 1),
+                    "cambio_peso": round(-delta_base, 1),
+                    "cambio_musculo": round(cambio_musculo_def, 1),
+                    "cambio_grasa": round(cambio_grasa_def, 1),
+                    "descripcion": f"Definición #{ciclo} → {bf_base}% BF",
+                    "categoria": "Mantenimiento",
+                    "fase": f"Corte (75% grasa / 25% músculo)",
+                    "prioridad": "media"
+                })
+                
+                W, FM, LM = W_base, FM_base, LM_base
+                FFMI_current = FFMI_base
+        
+        ciclo += 1
+    
+    # FASE 3: RECORTE FINAL AL ÉLITE (solo si ya alcanzamos el límite genético)
+    if FFMI_current >= ffmi_limite * 0.95:  # Al menos 95% del límite
+        # Guardar estado ANTES del recorte
+        W_antes_elite = W
+        LM_antes_elite = LM
+        FM_antes_elite = FM
+        
+        # Aplicar fórmula de definición normal (75% grasa / 25% músculo)
+        t_elite = bf_elite / 100
+        delta_elite = (FM - t_elite * W) / (0.75 - t_elite)
+        
+        if delta_elite > 0:
+            W_elite = W - delta_elite
+            FM_elite = t_elite * W_elite
+            LM_elite = W_elite - FM_elite
+            FFMI_elite = LM_elite / (altura_m ** 2)
+            
+            # Calcular cambios correctos
+            cambio_musculo_elite = LM_elite - LM_antes_elite
+            cambio_grasa_elite = FM_elite - FM_antes_elite
+            
+            # VERIFICAR que el FFMI final sea >= score 100 (23.7 H / 18.9 M)
+            ffmi_score_100 = 23.7 if sexo == "M" else 18.9
+            
+            if FFMI_elite >= ffmi_score_100:  # Solo si mantiene score 100+
+                categoria_ffmi = obtener_categoria_ffmi(FFMI_elite, sexo)
+                objetivos.append({
+                    "tipo": "definicion",
+                    "bf_objetivo": bf_elite,
+                    "ffmi_objetivo": round(FFMI_elite, 1),
+                    "ffmi_categoria": categoria_ffmi,
+                    "peso_objetivo": round(W_elite, 1),
+                    "peso_magro_objetivo": round(LM_elite, 1),
+                    "peso_graso_objetivo": round(FM_elite, 1),
+                    "cambio_peso": round(-delta_elite, 1),
+                    "cambio_musculo": round(cambio_musculo_elite, 1),
+                    "cambio_grasa": round(cambio_grasa_elite, 1),
+                    "descripcion": f"Recorte Final Élite → {bf_elite}% BF",
+                    "categoria": "Élite",
+                    "fase": f"Corte extremo (75% grasa / 25% músculo) - Solo si FFMI final ≥ {ffmi_score_100}",
+                    "prioridad": "baja"
+                })
+    
+    return objetivos
+
+def calcular_objetivos_automaticos(nombre_usuario):
+    """
+    Calcula objetivos automáticos basados en límites genéticos de FFMI y grasa esencial
+    """
+    import math
+    from datetime import datetime
+    
+    basededatos = sqlite3.connect("src/Basededatos")
+    cursor = basededatos.cursor()
+    
+    try:
+        # Obtener datos del perfil estático
+        cursor.execute("SELECT SEXO, ALTURA, FECHA_NACIMIENTO, CIRC_CUELLO FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [nombre_usuario])
+        perfil_estatico = cursor.fetchone()
+        
+        if not perfil_estatico:
+            return {"error": "No se encontró perfil estático para el usuario"}
+        
+        sexo, altura, fecha_nacimiento, circ_cuello = perfil_estatico
+        
+        # Normalizar el valor de sexo
+        if sexo and isinstance(sexo, str):
+            sexo = sexo.upper().strip()
+            if sexo.startswith('M') or sexo == 'MASCULINO':
+                sexo = 'M'
+            elif sexo.startswith('F') or sexo == 'FEMENINO':
+                sexo = 'F'
+        
+        # Calcular edad
+        edad = None
+        if fecha_nacimiento:
+            try:
+                if isinstance(fecha_nacimiento, str):
+                    nacimiento = datetime.strptime(fecha_nacimiento, '%Y-%m-%d')
+                else:
+                    nacimiento = fecha_nacimiento
+                hoy = datetime.now()
+                edad = hoy.year - nacimiento.year - ((hoy.month, hoy.day) < (nacimiento.month, nacimiento.day))
+            except:
+                edad = None
+        
+        # Obtener datos del perfil dinámico más reciente
+        cursor.execute("""
+            SELECT PESO, BF, IMMC, PESO_GRASO, PESO_MAGRO, CIRC_ABD, CIRC_CIN, CIRC_CAD, FECHA_REGISTRO
+            FROM PERFILDINAMICO 
+            WHERE NOMBRE_APELLIDO=? 
+            ORDER BY FECHA_REGISTRO DESC 
+            LIMIT 1
+        """, [nombre_usuario])
+        
+        perfil_dinamico = cursor.fetchone()
+        
+        if not perfil_dinamico:
+            return {"error": "No se encontró perfil dinámico para el usuario"}
+        
+        peso_actual, bf_actual, ffmi_actual, peso_graso_actual, peso_magro_actual, circ_abd_actual, circ_cin_actual, circ_cad_actual, fecha_registro = perfil_dinamico
+        
+        # Límites genéticos según las categorías del dashboard
+        if sexo == "M":
+            ffmi_limite_genetico = 23.7  # Límite masculino (score 100)
+            bf_esencial = 6.0  # BF límite masculino (score 100)
+        else:
+            ffmi_limite_genetico = 18.9  # Límite femenino (score 100)
+            bf_esencial = 14.0  # BF límite femenino (score 100)
+        
+        # Calcular peso objetivo basado en FFMI límite
+        # FFMI = (peso_magro) / (altura_m^2)
+        # peso_magro = FFMI * altura_m^2
+        altura_m = altura / 100
+        peso_magro_objetivo = ffmi_limite_genetico * (altura_m ** 2)
+        
+        # Peso total objetivo con grasa esencial
+        peso_objetivo = peso_magro_objetivo / (1 - bf_esencial / 100)
+        peso_graso_objetivo = peso_objetivo - peso_magro_objetivo
+        
+        # Calcular circunferencias objetivo usando las fórmulas del sistema
+        circ_abd_objetivo = 0
+        circ_cin_objetivo = 0
+        circ_cad_objetivo = 0
+        
+        if sexo == "M":
+            # Fórmula para abdomen en hombres (línea 426 del código original)
+            circ_abd_objetivo = circ_cuello + math.exp(
+                5152 * math.log(altura) / 6359 + 
+                103240 * math.log(10) / 19077 - 
+                16500000 * math.log(10) / (6359 * (bf_esencial + 450))
+            )
+        else:
+            # Para mujeres: cadera y cintura (líneas 428-429 del código original)
+            circ_cad_objetivo = (10 * circ_cuello + 10 * math.exp(
+                (5525 * math.log(altura) / 8751) + 
+                (43193 * math.log(10) / 11668) - 
+                (4125000 * math.log(10) / (2917 * (bf_esencial + 450)))
+            )) / 17
+            circ_cin_objetivo = circ_cad_objetivo * 0.7
+        
+        # Cambios necesarios
+        cambio_peso = peso_objetivo - peso_actual
+        cambio_peso_graso = peso_graso_objetivo - peso_graso_actual
+        cambio_peso_magro = peso_magro_objetivo - peso_magro_actual
+        
+        # Cambios en medidas según sexo
+        cambio_abdomen = 0
+        cambio_cintura = 0
+        cambio_cadera = 0
+        
+        if sexo == "M":
+            cambio_abdomen = circ_abd_objetivo - (circ_abd_actual if circ_abd_actual else 0)
+        else:
+            cambio_cintura = circ_cin_objetivo - (circ_cin_actual if circ_cin_actual else 0)
+            cambio_cadera = circ_cad_objetivo - (circ_cad_actual if circ_cad_actual else 0)
+        
+        # Tiempo estimado (basado en tasas seguras)
+        # Ganancia de músculo: ~0.25-0.5 kg/mes para hombres, ~0.125-0.25 kg/mes para mujeres
+        # Pérdida de grasa: ~0.5-1% peso corporal/semana
+        
+        if sexo == "M":
+            ganancia_musculo_mes = 0.375  # kg/mes promedio
+        else:
+            ganancia_musculo_mes = 0.188  # kg/mes promedio
+        
+        meses_musculo = abs(cambio_peso_magro) / ganancia_musculo_mes if cambio_peso_magro > 0 else 0
+        
+        # Para pérdida de grasa (0.75% peso corporal por semana promedio)
+        perdida_grasa_semanal = peso_actual * 0.0075
+        semanas_grasa = abs(cambio_peso_graso) / perdida_grasa_semanal if cambio_peso_graso < 0 else 0
+        
+        # Tiempo total estimado (el mayor de los dos procesos)
+        tiempo_estimado_meses = max(meses_musculo, semanas_grasa / 4.33)
+        
+        # Calcular objetivos parciales progresivos
+        objetivos_parciales = calcular_objetivos_parciales(peso_actual, bf_actual, peso_magro_actual, peso_graso_actual, altura, sexo)
+        
+        # Calcular métricas adicionales para cada objetivo parcial
+        objetivos_detallados = []
+        for objetivo in objetivos_parciales:
+            # Calcular circunferencias objetivo para este objetivo
+            if sexo == "M":
+                circ_obj_parcial = circ_cuello + math.exp(
+                    5152 * math.log(altura) / 6359 + 
+                    103240 * math.log(10) / 19077 - 
+                    16500000 * math.log(10) / (6359 * (objetivo["bf_objetivo"] + 450))
+                )
+                medida_nombre = "abdomen"
+                medida_valor = round(circ_obj_parcial, 1)
+            else:
+                circ_cad_obj_parcial = (10 * circ_cuello + 10 * math.exp(
+                    (5525 * math.log(altura) / 8751) + 
+                    (43193 * math.log(10) / 11668) - 
+                    (4125000 * math.log(10) / (2917 * (objetivo["bf_objetivo"] + 450)))
+                )) / 17
+                circ_cin_obj_parcial = circ_cad_obj_parcial * 0.7
+                medida_nombre = "cintura_cadera"
+                medida_valor = {"cintura": round(circ_cin_obj_parcial, 1), "cadera": round(circ_cad_obj_parcial, 1)}
+            
+            # Tiempo estimado para este objetivo
+            if objetivo["tipo"] == "definicion":
+                # 1% peso corporal por semana
+                tiempo_parcial = abs(objetivo["cambio_peso"]) / (peso_actual * 0.01 * 4.33)
+            else:  # volumen
+                # Basado en ganancia de músculo
+                tiempo_parcial = abs(objetivo["cambio_musculo"]) / ganancia_musculo_mes
+            
+            objetivos_detallados.append({
+                **objetivo,
+                f"medida_{medida_nombre}": medida_valor,
+                "tiempo_meses": round(tiempo_parcial, 1),
+                "tiempo_años": round(tiempo_parcial / 12, 1)
+            })
+        
+        resultado = {
+            "datos_actuales": {
+                "peso": round(peso_actual, 1),
+                "bf": round(bf_actual, 1),
+                "ffmi": round(ffmi_actual, 1),
+                "peso_magro": round(peso_magro_actual, 1),
+                "peso_graso": round(peso_graso_actual, 1),
+                "circ_abdomen": round(circ_abd_actual, 1) if circ_abd_actual else "N/D",
+                "circ_cintura": round(circ_cin_actual, 1) if circ_cin_actual else "N/D",
+                "circ_cadera": round(circ_cad_actual, 1) if circ_cad_actual else "N/D"
+            },
+            "objetivos_geneticos": {
+                "ffmi_limite": ffmi_limite_genetico,
+                "bf_esencial": bf_esencial,
+                "peso_objetivo": round(peso_objetivo, 1),
+                "peso_magro_objetivo": round(peso_magro_objetivo, 1),
+                "peso_graso_objetivo": round(peso_graso_objetivo, 1),
+                "circ_abdomen_objetivo": round(circ_abd_objetivo, 1) if sexo == "M" else None,
+                "circ_cintura_objetivo": round(circ_cin_objetivo, 1) if sexo == "F" else None,
+                "circ_cadera_objetivo": round(circ_cad_objetivo, 1) if sexo == "F" else None
+            },
+            "cambios_necesarios": {
+                "peso": round(cambio_peso, 1),
+                "peso_magro": round(cambio_peso_magro, 1),
+                "peso_graso": round(cambio_peso_graso, 1),
+                "abdomen": round(cambio_abdomen, 1) if sexo == "M" else 0,
+                "cintura": round(cambio_cintura, 1) if sexo == "F" else 0,
+                "cadera": round(cambio_cadera, 1) if sexo == "F" else 0
+            },
+            "tiempo_estimado": {
+                "meses": round(tiempo_estimado_meses, 1),
+                "años": round(tiempo_estimado_meses / 12, 1)
+            },
+            "objetivos_parciales": objetivos_detallados,
+            "metadata": {
+                "sexo": sexo,
+                "edad": edad,
+                "altura": altura,
+                "fecha_ultimo_registro": fecha_registro
+            }
+        }
+        
+        return resultado
+        
+    except Exception as e:
+        return {"error": f"Error al calcular objetivos: {str(e)}"}
+    
+    finally:
+        cursor.close()
+        basededatos.close()
+
 ### FUNCIÓN PARA ARMAR PLANES ###
 
 def plannutricional(planner):
@@ -1297,6 +1790,297 @@ def plannutricional(planner):
         cursor.execute("UPDATE DIETA SET CALORIAS=?, PROTEINA=?, GRASA=?, CH=?, DP=?, DG=?, DC=?, MMP=?, MMG=?, MMC=?, AP=?, AG=?, AC=?, MP=?, MG=?, MC=?, MTP=?, MTG=?, MTC=?, CP=?, CG=?, CC=?, LIBERTAD=? WHERE NOMBRE_APELLIDO=?", (planner.cal.data, proteina, grasa, ch, dp, dg, dc, mmp, mmg, mmc, ap, ag, ac, mp, mg, mc, mtp, mtg, mtc, cp, cg, cc, libertad, planner.nameuser.data))
         
     basededatos.commit()
+
+### FUNCIÓN PARA CALCULAR PLAN NUTRICIONAL AUTOMÁTICO ###
+
+def calcular_plan_nutricional_automatico(nombre_usuario, factor_actividad=1.55):
+    """
+    Calcula un plan nutricional automático basado en:
+    - Datos actuales del usuario (peso, FFM, grasa)
+    - Objetivo definido en tabla OBJETIVO
+    - Velocidad de pérdida/ganancia segura
+    - Disponibilidad Energética (EA) mínima
+    - Factor de actividad personalizable
+    """
+    import json
+    from datetime import datetime
+    
+    basededatos = sqlite3.connect("src/Basededatos")
+    cursor = basededatos.cursor()
+    
+    try:
+        # 1. OBTENER DATOS ACTUALES DEL USUARIO
+        cursor.execute("""
+            SELECT pd.PESO, pd.PESO_MAGRO, pd.PESO_GRASO, pd.BF, pd.IMMC, pe.SEXO, pe.FECHA_NACIMIENTO, pe.ALTURA
+            FROM PERFILDINAMICO pd
+            JOIN PERFILESTATICO pe ON pd.NOMBRE_APELLIDO = pe.NOMBRE_APELLIDO
+            WHERE pd.NOMBRE_APELLIDO=?
+            ORDER BY pd.FECHA_REGISTRO DESC LIMIT 1
+        """, [nombre_usuario])
+        
+        datos_actuales = cursor.fetchone()
+        if not datos_actuales:
+            return {"error": "No se encontraron datos del usuario"}
+        
+        peso_actual = float(datos_actuales[0])
+        peso_magro = float(datos_actuales[1])
+        peso_graso = float(datos_actuales[2])
+        bf_actual = float(datos_actuales[3])
+        ffmi_actual = float(datos_actuales[4])
+        sexo = datos_actuales[5]
+        fecha_nacimiento = datos_actuales[6]
+        
+        # Calcular edad desde fecha de nacimiento
+        from datetime import datetime
+        if fecha_nacimiento:
+            try:
+                fecha_nac = datetime.strptime(fecha_nacimiento, '%Y-%m-%d')
+                edad = (datetime.now() - fecha_nac).days // 365
+            except:
+                edad = 30
+        else:
+            edad = 30
+            
+        altura = float(datos_actuales[7]) if datos_actuales[7] else 170
+        
+        # 2. OBTENER OBJETIVO DEFINIDO
+        cursor.execute("""
+            SELECT GOALIMMC, GOALBF
+            FROM OBJETIVO
+            WHERE NOMBRE_APELLIDO=?
+        """, [nombre_usuario])
+        
+        objetivo = cursor.fetchone()
+        if not objetivo:
+            return {"error": "No se encontró un objetivo definido para este usuario. Define uno en /goal"}
+        
+        ffmi_objetivo = float(objetivo[0])
+        bf_objetivo = float(objetivo[1])
+        
+        # Calcular peso objetivo a partir de FFMI y BF objetivo
+        # FFMI = (peso_magro / (altura_m^2))
+        altura_m = altura / 100
+        peso_magro_objetivo = ffmi_objetivo * (altura_m ** 2)
+        peso_graso_objetivo = peso_magro_objetivo * (bf_objetivo / (100 - bf_objetivo))
+        peso_objetivo = peso_magro_objetivo + peso_graso_objetivo
+        
+        # 3. CALCULAR TMB Y TDEE (usando Katch-McArdle)
+        peso_magro_lbs = peso_magro * 2.20462
+        tmb = 370 + (9.8 * peso_magro_lbs)
+        
+        # Usar factor de actividad proporcionado
+        tdee_mantenimiento = round(tmb * factor_actividad)
+        
+        # 4. DETERMINAR TIPO DE OBJETIVO
+        cambio_peso = peso_objetivo - peso_actual
+        cambio_grasa = peso_graso_objetivo - peso_graso
+        cambio_musculo = peso_magro_objetivo - peso_magro
+        
+        if abs(cambio_peso) < 1:
+            tipo_objetivo = "mantenimiento"
+        elif cambio_peso < 0:
+            tipo_objetivo = "perdida"
+        else:
+            tipo_objetivo = "ganancia"
+        
+        # 5. CALCULAR VELOCIDADES SEGURAS
+        # Los datos ya están en kg desde PERFILDINAMICO
+        peso_kg = peso_actual
+        
+        opciones_velocidad = []
+        
+        if tipo_objetivo == "perdida":
+            # Conservadora: 0.25% peso/semana
+            vel_conservadora_kg = peso_kg * 0.0025
+            deficit_conservador = vel_conservadora_kg * 7700 / 7  # 7700 kcal por kg
+            
+            # Moderada: 0.5% peso/semana
+            vel_moderada_kg = peso_kg * 0.005
+            deficit_moderado = vel_moderada_kg * 7700 / 7
+            
+            # Agresiva: 0.75% peso/semana
+            vel_agresiva_kg = peso_kg * 0.0075
+            deficit_agresivo = vel_agresiva_kg * 7700 / 7
+            
+            # EA mínima (límite BAJO): 25 mujeres, 20 hombres
+            ea_limite = 25 if sexo == "F" else 20
+            ingesta_minima_ea = (ea_limite * peso_magro) + 300
+            
+            # Calcular opciones con velocidad REAL ajustada si alcanzan el límite
+            opciones = []
+            for nombre, vel_kg, porcentaje, riesgo, descripcion in [
+                ("Conservadora", vel_conservadora_kg, "0.25%", "Muy bajo", "Pérdida lenta y sostenible. Máxima preservación muscular."),
+                ("Moderada", vel_moderada_kg, "0.5%", "Bajo", "Equilibrio óptimo entre velocidad y preservación muscular."),
+                ("Agresiva", vel_agresiva_kg, "0.75%", "Moderado-Alto", "Pérdida rápida. Mayor riesgo de perder masa magra.")
+            ]:
+                deficit_ideal = vel_kg * 7700 / 7
+                calorias_ideales = tdee_mantenimiento - deficit_ideal
+                
+                if calorias_ideales < ingesta_minima_ea:
+                    # Ajustar velocidad al máximo posible con EA límite
+                    calorias_real = round(ingesta_minima_ea)
+                    deficit_real = tdee_mantenimiento - calorias_real
+                    vel_kg_real = (deficit_real * 7) / 7700
+                    porcentaje_real = f"{round((vel_kg_real / peso_kg) * 100, 2)}%"
+                else:
+                    calorias_real = round(calorias_ideales)
+                    vel_kg_real = vel_kg
+                    porcentaje_real = porcentaje
+                
+                opciones.append({
+                    "nombre": nombre,
+                    "velocidad_semanal_kg": round(vel_kg_real, 3),
+                    "velocidad_semanal_lb": round(vel_kg_real * 2.20462, 3),
+                    "porcentaje_peso": porcentaje_real,
+                    "calorias": calorias_real,
+                    "deficit_diario": round(tdee_mantenimiento - calorias_real),
+                    "semanas_estimadas": round(abs(cambio_peso) / vel_kg_real) if vel_kg_real > 0 else 0,
+                    "riesgo_masa_magra": riesgo,
+                    "descripcion": descripcion
+                })
+            
+            opciones_velocidad = opciones
+            
+        elif tipo_objetivo == "ganancia":
+            # Conservadora: 0.25% peso/semana
+            vel_conservadora_kg = peso_kg * 0.0025
+            superavit_conservador = vel_conservadora_kg * 7700 / 7
+            
+            # Moderada: 0.5% peso/semana
+            vel_moderada_kg = peso_kg * 0.005
+            superavit_moderado = vel_moderada_kg * 7700 / 7
+            
+            opciones_velocidad = [
+                {
+                    "nombre": "Conservadora",
+                    "velocidad_semanal_kg": round(vel_conservadora_kg, 3),
+                    "velocidad_semanal_lb": round(vel_conservadora_kg * 2.20462, 3),
+                    "porcentaje_peso": "0.25%",
+                    "calorias": round(tdee_mantenimiento + superavit_conservador),
+                    "superavit_diario": round(superavit_conservador),
+                    "semanas_estimadas": round(abs(cambio_peso) / vel_conservadora_kg) if vel_conservadora_kg > 0 else 0,
+                    "ganancia_grasa": "Mínima",
+                    "descripcion": "Ganancia muscular limpia. Mínima acumulación de grasa."
+                },
+                {
+                    "nombre": "Moderada",
+                    "velocidad_semanal_kg": round(vel_moderada_kg, 3),
+                    "velocidad_semanal_lb": round(vel_moderada_kg * 2.20462, 3),
+                    "porcentaje_peso": "0.5%",
+                    "calorias": round(tdee_mantenimiento + superavit_moderado),
+                    "superavit_diario": round(superavit_moderado),
+                    "semanas_estimadas": round(abs(cambio_peso) / vel_moderada_kg) if vel_moderada_kg > 0 else 0,
+                    "ganancia_grasa": "Moderada",
+                    "descripcion": "Ganancia más rápida. Mayor acumulación de grasa."
+                }
+            ]
+        else:
+            opciones_velocidad = [{
+                "nombre": "Mantenimiento",
+                "velocidad_semanal_kg": 0,
+                "velocidad_semanal_lb": 0,
+                "porcentaje_peso": "0%",
+                "calorias": tdee_mantenimiento,
+                "deficit_diario": 0,
+                "semanas_estimadas": 0,
+                "descripcion": "Mantener peso y composición corporal actual."
+            }]
+        
+        # 6. CALCULAR MACROS Y EA PARA CADA OPCIÓN
+        for opcion in opciones_velocidad:
+            calorias = opcion["calorias"]
+            
+            # Proteína: fórmula del sistema
+            proteina_g = round(2.513244 * peso_magro, 2)
+            proteina_kcal = proteina_g * 4
+            
+            # Grasa: 30% con piso mínimo de 0.6 g/kg BW para hormonas/saciedad
+            grasa_30pct = (calorias * 0.3) / 9
+            grasa_minima = peso_actual * 0.6
+            grasa_g = round(max(grasa_30pct, grasa_minima), 2)
+            grasa_kcal = grasa_g * 9
+            
+            # Carbohidratos: resto de calorías
+            ch_kcal = calorias - proteina_kcal - grasa_kcal
+            ch_g = round(ch_kcal / 4, 2) if ch_kcal > 0 else 0
+            
+            # Calcular EA
+            gasto_ejercicio_estimado = 300
+            ea = round((calorias - gasto_ejercicio_estimado) / peso_magro, 1)
+            
+            if sexo == "F":
+                if ea >= 45:
+                    ea_status = "Óptima"
+                elif ea >= 30:
+                    ea_status = "Adecuada"
+                elif ea >= 25:
+                    ea_status = "Límite bajo"
+                else:
+                    ea_status = "Muy baja - Riesgo RED-S"
+            else:
+                if ea >= 35:
+                    ea_status = "Óptima"
+                elif ea >= 25:
+                    ea_status = "Adecuada"
+                elif ea >= 20:
+                    ea_status = "Límite bajo"
+                else:
+                    ea_status = "Muy baja - Riesgo LEA"
+            
+            opcion["macros"] = {
+                "proteina_g": proteina_g,
+                "grasa_g": grasa_g,
+                "carbohidratos_g": ch_g,
+                "proteina_porcentaje": round((proteina_kcal / calorias) * 100, 1),
+                "grasa_porcentaje": 30.0,
+                "carbohidratos_porcentaje": round((ch_kcal / calorias) * 100, 1) if ch_kcal > 0 else 0
+            }
+            opcion["disponibilidad_energetica"] = {
+                "ea_valor": ea,
+                "ea_status": ea_status,
+                "ea_minima": 30 if sexo == "F" else 25
+            }
+        
+        # 7. PREPARAR RESPUESTA
+        resultado = {
+            "datos_actuales": {
+                "peso": peso_actual,
+                "peso_magro": peso_magro,
+                "peso_graso": peso_graso,
+                "bf": bf_actual,
+                "ffmi": ffmi_actual
+            },
+            "objetivo": {
+                "peso": peso_objetivo,
+                "peso_magro": peso_magro_objetivo,
+                "peso_graso": peso_graso_objetivo,
+                "bf": bf_objetivo,
+                "ffmi": ffmi_objetivo
+            },
+            "cambios_necesarios": {
+                "peso": round(cambio_peso, 2),
+                "grasa": round(cambio_grasa, 2),
+                "musculo": round(cambio_musculo, 2)
+            },
+            "tipo_objetivo": tipo_objetivo,
+            "tdee_mantenimiento": tdee_mantenimiento,
+            "tmb": round(tmb),
+            "factor_actividad": factor_actividad,
+            "opciones_velocidad": opciones_velocidad,
+            "metadata": {
+                "sexo": sexo,
+                "edad": edad,
+                "altura": altura,
+                "fecha_calculo": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+        
+        return resultado
+        
+    except Exception as e:
+        return {"error": f"Error: {str(e)}"}
+    finally:
+        basededatos.close()
     
 #En este espacio tiene que estar el creador de la lista de receta similar al creador de la lista de nombres para los formularios
 #Copie las recetas creadas anteriormente en MONDO, hace falta armar el creador de recetas
@@ -1612,6 +2396,183 @@ def recipe(recipeform, nameuser):
         error_message= "NO FUNCIONA - AVISE POR FAVOR"
         flash(error_message)
         redirect ( url_for('recipe') )
+
+def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
+    """
+    Ejecuta el solver completo para una receta específica y retorna los resultados.
+    Esta es una versión adaptada de la función solver() que retorna datos en lugar de usar flash().
+    
+    Args:
+        nombrereceta: Nombre de la receta
+        p0: Proteína objetivo en gramos
+        g0: Grasa objetivo en gramos
+        ch0: Carbohidratos objetivo en gramos
+        libertad: Porcentaje de libertad en el cálculo
+    
+    Returns:
+        dict: Diccionario con los resultados del cálculo
+    """
+    try:
+        basededatos = sqlite3.connect("src/Basededatos")
+        cursor = basededatos.cursor()
+        cursor.execute("SELECT * FROM RECETAS WHERE NOMBRERECETA=?", [nombrereceta])
+        receta = cursor.fetchall()[0]
+        alimentos = []
+        alimentosnovar = []
+        proteina = {}
+        grasa = {}
+        carbos = {}
+        medida_casera = {}
+        porcionesnovar = {}
+        mcdescripcion = {}
+        met = 0
+
+        # Procesar alimentos variables (índices 5-10)
+        for i in range(5, 10, 2):
+            if receta[i] != "" and receta[i] != " ":
+                cursor.execute("SELECT P FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                pi = cursor.fetchone()[0]
+                cursor.execute("SELECT G FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                gi = cursor.fetchone()[0]
+                cursor.execute("SELECT CH FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                ci = cursor.fetchone()[0]
+                if receta[i+1] == 0:
+                    cursor.execute("SELECT Gramo1 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mi = cursor.fetchone()[0]
+                    cursor.execute("SELECT Medidacasera1 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mc = cursor.fetchone()[0]
+                elif receta[i+1] == 1:
+                    cursor.execute("SELECT Gramo2 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mi = cursor.fetchone()[0]
+                    cursor.execute("SELECT Medidacasera2 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mc = cursor.fetchone()[0]
+
+                alimentos.append(receta[i])
+                proteina[receta[i]] = pi
+                grasa[receta[i]] = gi
+                carbos[receta[i]] = ci
+                medida_casera[receta[i]] = mi
+                mcdescripcion[receta[i]] = mc
+
+        porciones = LpVariable.dicts("Alim", alimentos, 0)
+
+        # Procesar alimentos no variables (índices 11-57)
+        for i in range(11, 57, 5):
+            if receta[i] != "" and receta[i] != " ":
+                cursor.execute("SELECT P FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                pi = cursor.fetchone()[0]
+                cursor.execute("SELECT G FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                gi = cursor.fetchone()[0]
+                cursor.execute("SELECT CH FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                ci = cursor.fetchone()[0]
+                if receta[i+1] == 0:
+                    cursor.execute("SELECT Gramo1 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mi = cursor.fetchone()[0]
+                    cursor.execute("SELECT Medidacasera1 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mc = cursor.fetchone()[0]
+                elif receta[i+1] == 1:
+                    cursor.execute("SELECT Gramo2 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mi = cursor.fetchone()[0]
+                    cursor.execute("SELECT Medidacasera2 FROM ALIMENTOS WHERE Largadescripcion=?", [receta[i]])
+                    mc = cursor.fetchone()[0]
+                if receta[i+2] == 0:
+                    porcionesnovar[receta[i]] = porciones[alimentos[receta[i+3]-1]]*receta[i+4]
+                elif receta[i+2] == 1:
+                    porcionesnovar[receta[i]] = receta[i+4]
+
+                alimentosnovar.append(receta[i])
+                proteina[receta[i]] = pi
+                grasa[receta[i]] = gi
+                carbos[receta[i]] = ci
+                medida_casera[receta[i]] = mi
+                mcdescripcion[receta[i]] = mc
+
+        # Método 1: Completo
+        metodo1 = LpProblem("metodo1", LpMaximize)
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]), "Total de calorias"
+        
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) <= p0*(1+(libertad/100))
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-(libertad/100))
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*grasa[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*grasa[i]/100 for i in alimentosnovar]) <= g0*(1+(libertad/100))
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*grasa[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*grasa[i]/100 for i in alimentosnovar]) >= g0*(1-(libertad/100))
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) <= ch0*(1+(libertad/100))
+        metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) >= ch0*(1-(libertad/100))
+        
+        metodo1.solve()  # Usar solver por defecto
+
+        if LpStatus[metodo1.status] == "Optimal":
+            met = 1
+            metodo_usado = metodo1
+        else:
+            # Método 2: Solo proteínas
+            metodo2 = LpProblem("metodo2", LpMaximize)
+            metodo2 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar])
+            metodo2 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
+            metodo2 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
+            metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-libertad/100)
+            metodo2.solve()
+
+            if LpStatus[metodo2.status] == "Optimal":
+                met = 2
+                metodo_usado = metodo2
+            else:
+                # Método 3: Solo calorías
+                metodo3 = LpProblem("metodo3", LpMaximize)
+                metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar])
+                metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
+                metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
+                metodo3.solve()
+                met = 3
+                metodo_usado = metodo3
+
+        # Construir resultado
+        resultado = {
+            'status': 'success',
+            'metodo': ['Sin resolver', 'Completo', 'Proteínas', 'Calorías'][met],
+            'calorias_totales': round(value(metodo_usado.objective), 2) if met > 0 else 0,
+            'alimentos_variables': [],
+            'alimentos_fijos': []
+        }
+
+        if met > 0:
+            # Calcular calidad - Usar value() en lpSum también
+            proteina_calc = value(lpSum([medida_casera[i]*value(porciones[i])*proteina[i]/100 for i in alimentos]+[medida_casera[i]*value(porcionesnovar[i])*proteina[i]/100 for i in alimentosnovar]))
+            objetivo_calorias = value(metodo_usado.objective)
+            
+            if objetivo_calorias > 0:
+                calidad = round((proteina_calc / objetivo_calorias) / (p0 / (p0*4+ch0*4+g0*9)) * 10, 2)
+                # Limitar calidad entre 0 y 10
+                calidad = max(0, min(10, calidad))
+                resultado['calidad'] = calidad
+
+            for i in alimentos:
+                if porciones[i].varValue and porciones[i].varValue > 0:
+                    resultado['alimentos_variables'].append({
+                        'nombre': i,
+                        'porciones': round(porciones[i].varValue, 2),
+                        'medida': mcdescripcion[i],
+                        'total_gramos': round(porciones[i].varValue * medida_casera[i], 2)
+                    })
+            
+            for i in alimentosnovar:
+                valor_porcion = value(porcionesnovar[i])
+                if valor_porcion and valor_porcion > 0:
+                    resultado['alimentos_fijos'].append({
+                        'nombre': i,
+                        'porciones': round(valor_porcion, 2),
+                        'medida': mcdescripcion[i],
+                        'total_gramos': round(valor_porcion * medida_casera[i], 2)
+                    })
+        
+        basededatos.close()
+        return resultado
+        
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': str(e)
+        }
 
 def get_training_plan(user_id):
     conn = sqlite3.connect('src/Basededatos')
@@ -2520,6 +3481,501 @@ def process_diet(diet_form, nameuser):
         #        flash(mensaje, "mb-0 font-size-sm")
 
     calcular_plan_optimo(datos_alimentos, requerimientos, alimentos_incluidos, nutrientes_incluidos, margen_libertad, porciones_consumidas)
+
+
+### FUNCIONES PARA NUEVAS CARACTERÍSTICAS ###
+
+def crear_tablas_medidas_corporales():
+    """Crea la tabla de medidas corporales completas"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS MEDIDAS_CORPORALES (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                peso DECIMAL(5,2),
+                altura DECIMAL(5,2),
+                -- Circunferencias básicas
+                circ_cuello DECIMAL(5,2),
+                circ_torax DECIMAL(5,2),
+                circ_cintura DECIMAL(5,2),
+                circ_cadera DECIMAL(5,2),
+                circ_brazo_relajado DECIMAL(5,2),
+                circ_brazo_flexionado DECIMAL(5,2),
+                circ_antebrazo DECIMAL(5,2),
+                circ_muneca DECIMAL(5,2),
+                circ_muslo DECIMAL(5,2),
+                circ_pantorrilla DECIMAL(5,2),
+                circ_tobillo DECIMAL(5,2),
+                -- Pliegues cutáneos
+                pliegue_triceps DECIMAL(5,2),
+                pliegue_biceps DECIMAL(5,2),
+                pliegue_subescapular DECIMAL(5,2),
+                pliegue_suprailiaco DECIMAL(5,2),
+                pliegue_abdominal DECIMAL(5,2),
+                pliegue_muslo DECIMAL(5,2),
+                pliegue_pantorrilla DECIMAL(5,2),
+                -- Diámetros óseos
+                diametro_biestiloideo DECIMAL(5,2),
+                diametro_bicondilio DECIMAL(5,2),
+                diametro_biepicondileo DECIMAL(5,2),
+                diametro_bicrestal DECIMAL(5,2),
+                -- Longitudes
+                longitud_brazo DECIMAL(5,2),
+                longitud_antebrazo DECIMAL(5,2),
+                longitud_mano DECIMAL(5,2),
+                longitud_muslo DECIMAL(5,2),
+                longitud_pierna DECIMAL(5,2),
+                longitud_pie DECIMAL(5,2),
+                -- Composición corporal calculada
+                porcentaje_grasa DECIMAL(5,2),
+                masa_grasa DECIMAL(5,2),
+                masa_magra DECIMAL(5,2),
+                masa_muscular DECIMAL(5,2),
+                masa_osea DECIMAL(5,2),
+                agua_corporal DECIMAL(5,2),
+                -- Índices antropométricos
+                imc DECIMAL(5,2),
+                indice_cintura_cadera DECIMAL(5,2),
+                indice_cintura_altura DECIMAL(5,2),
+                -- Notas adicionales
+                notas TEXT,
+                evaluador TEXT
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Error al crear tabla MEDIDAS_CORPORALES: {e}")
+    finally:
+        conn.close()
+
+def crear_tablas_rendimiento_fisico():
+    """Crea las tablas para análisis de rendimiento físico"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        # Tabla para pruebas de velocidad
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS RENDIMIENTO_VELOCIDAD (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_prueba TEXT NOT NULL, -- '10m', '20m', '30m', '40m', '100m', 'sprint_repeat'
+                tiempo_segundos DECIMAL(6,3),
+                velocidad_max DECIMAL(5,2), -- km/h
+                velocidad_promedio DECIMAL(5,2), -- km/h
+                numero_repeticiones INTEGER DEFAULT 1,
+                descanso_segundos INTEGER,
+                condiciones_ambientales TEXT, -- 'interior', 'exterior', 'viento', etc.
+                superficie TEXT, -- 'pista', 'cesped', 'cemento', etc.
+                calzado TEXT,
+                frecuencia_cardiaca_max INTEGER,
+                frecuencia_cardiaca_recuperacion INTEGER,
+                percepcion_esfuerzo INTEGER, -- Escala RPE 1-10
+                notas TEXT
+            )
+        """)
+
+        # Tabla para pruebas de flexibilidad
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS RENDIMIENTO_FLEXIBILIDAD (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_prueba TEXT NOT NULL, -- 'sit_reach', 'shoulder_flex', 'hip_flex', 'ankle_flex', etc.
+                medida_cm DECIMAL(5,2),
+                angulo_grados DECIMAL(5,2),
+                lado TEXT, -- 'izquierdo', 'derecho', 'bilateral'
+                dolor_presente BOOLEAN DEFAULT FALSE,
+                nivel_dolor INTEGER, -- Escala 1-10
+                temperatura_muscular TEXT, -- 'frio', 'tibio', 'caliente'
+                momento_dia TEXT, -- 'mañana', 'tarde', 'noche'
+                actividad_previa TEXT,
+                notas TEXT
+            )
+        """)
+
+        # Tabla para pruebas de movilidad
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS RENDIMIENTO_MOVILIDAD (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_evaluacion TEXT NOT NULL, -- 'fms', 'overhead_squat', 'single_leg', etc.
+                puntuacion_total INTEGER,
+                puntuacion_detalle TEXT, -- JSON con puntuaciones por movimiento
+                limitaciones_identificadas TEXT, -- JSON con limitaciones
+                asimetrias_detectadas TEXT, -- JSON con asimetrías
+                dolor_durante_prueba BOOLEAN DEFAULT FALSE,
+                areas_dolor TEXT, -- JSON con áreas de dolor
+                recomendaciones TEXT,
+                evaluador TEXT,
+                notas TEXT
+            )
+        """)
+
+        # Tabla para pruebas de resistencia
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS RENDIMIENTO_RESISTENCIA (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_prueba TEXT NOT NULL, -- 'vo2_max', 'cooper_12min', 'step_test', 'ruffier', etc.
+                duracion_minutos DECIMAL(8,2),
+                distancia_metros DECIMAL(8,2),
+                vo2_max_estimado DECIMAL(5,2),
+                vo2_max_medido DECIMAL(5,2),
+                frecuencia_cardiaca_reposo INTEGER,
+                frecuencia_cardiaca_max INTEGER,
+                frecuencia_cardiaca_promedio INTEGER,
+                frecuencia_cardiaca_recuperacion_1min INTEGER,
+                frecuencia_cardiaca_recuperacion_3min INTEGER,
+                presion_arterial_sistolica INTEGER,
+                presion_arterial_diastolica INTEGER,
+                lactato_sangre DECIMAL(4,2), -- mmol/L
+                percepcion_esfuerzo INTEGER, -- Escala RPE 1-10
+                temperatura_corporal DECIMAL(4,2),
+                hidratacion_previa TEXT,
+                alimentacion_previa TEXT,
+                sueño_horas DECIMAL(3,1),
+                condiciones_ambientales TEXT,
+                notas TEXT
+            )
+        """)
+
+        conn.commit()
+    except Exception as e:
+        print(f"Error al crear tablas de rendimiento físico: {e}")
+    finally:
+        conn.close()
+
+def crear_tablas_telemedicina():
+    """Crea las tablas para el sistema de telemedicina"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        # Tabla para historia médica
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS HISTORIA_MEDICA (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_registro TEXT NOT NULL, -- 'antecedente', 'diagnostico', 'tratamiento', 'cirugia', etc.
+                categoria TEXT, -- 'cardiovascular', 'respiratorio', 'digestivo', 'endocrino', etc.
+                descripcion TEXT NOT NULL,
+                fecha_evento DATE,
+                medico_tratante TEXT,
+                institucion TEXT,
+                medicamentos TEXT, -- JSON con medicamentos relacionados
+                dosis TEXT,
+                duracion_tratamiento TEXT,
+                resultado_tratamiento TEXT,
+                documentos_adjuntos TEXT, -- JSON con rutas de documentos
+                estado TEXT DEFAULT 'activo', -- 'activo', 'resuelto', 'cronico'
+                importancia TEXT DEFAULT 'media', -- 'baja', 'media', 'alta', 'critica'
+                notas TEXT
+            )
+        """)
+
+        # Tabla para citas médicas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS CITAS_MEDICAS (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_cita DATETIME NOT NULL,
+                tipo_cita TEXT NOT NULL, -- 'consulta', 'control', 'emergencia', 'telemedicina'
+                especialidad TEXT, -- 'medicina_general', 'cardiologia', 'nutricion', etc.
+                medico_nombre TEXT,
+                medico_especialidad TEXT,
+                institucion TEXT,
+                direccion TEXT,
+                telefono TEXT,
+                modalidad TEXT DEFAULT 'presencial', -- 'presencial', 'virtual', 'telefonica'
+                link_videollamada TEXT,
+                motivo_consulta TEXT,
+                sintomas_actuales TEXT,
+                medicamentos_actuales TEXT, -- JSON
+                examenes_solicitados TEXT, -- JSON
+                diagnosticos TEXT, -- JSON
+                tratamiento_prescrito TEXT,
+                proxima_cita DATE,
+                costo DECIMAL(10,2),
+                obra_social TEXT,
+                numero_autorizacion TEXT,
+                estado TEXT DEFAULT 'programada', -- 'programada', 'confirmada', 'realizada', 'cancelada', 'reagendada'
+                recordatorio_enviado BOOLEAN DEFAULT FALSE,
+                notas_medico TEXT,
+                notas_paciente TEXT,
+                calificacion_atencion INTEGER, -- 1-5
+                documentos_adjuntos TEXT -- JSON con rutas de documentos
+            )
+        """)
+
+        # Tabla para registros de signos vitales
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS SIGNOS_VITALES (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                presion_sistolica INTEGER,
+                presion_diastolica INTEGER,
+                frecuencia_cardiaca INTEGER,
+                frecuencia_respiratoria INTEGER,
+                temperatura DECIMAL(4,2),
+                saturacion_oxigeno INTEGER,
+                glucosa_sangre INTEGER,
+                peso DECIMAL(5,2),
+                nivel_dolor INTEGER, -- Escala 1-10
+                nivel_fatiga INTEGER, -- Escala 1-10
+                nivel_estres INTEGER, -- Escala 1-10
+                calidad_sueño INTEGER, -- Escala 1-10
+                horas_sueño DECIMAL(3,1),
+                apetito TEXT, -- 'malo', 'regular', 'bueno', 'excelente'
+                estado_animo TEXT, -- 'deprimido', 'triste', 'normal', 'alegre', 'euferico'
+                medicamentos_tomados TEXT, -- JSON
+                sintomas_presentes TEXT, -- JSON
+                actividad_fisica TEXT,
+                alimentacion_especial TEXT,
+                notas TEXT,
+                medido_por TEXT, -- 'paciente', 'enfermero', 'medico', 'dispositivo'
+                dispositivo_utilizado TEXT
+            )
+        """)
+
+        # Tabla para programas de prevención
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PROGRAMAS_PREVENCION (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_programa TEXT NOT NULL, -- 'vacunacion', 'screening', 'chequeo', 'seguimiento'
+                nombre_programa TEXT NOT NULL,
+                descripcion TEXT,
+                categoria_riesgo TEXT, -- 'bajo', 'medio', 'alto'
+                edad_inicio INTEGER,
+                edad_fin INTEGER,
+                frecuencia TEXT, -- 'anual', 'bianual', 'cada_5_años', etc.
+                proxima_fecha DATE,
+                ultima_realizacion DATE,
+                resultado_ultimo TEXT,
+                examenes_incluidos TEXT, -- JSON con lista de exámenes
+                vacunas_incluidas TEXT, -- JSON con vacunas
+                recomendaciones TEXT,
+                contraindicaciones TEXT,
+                costo_estimado DECIMAL(10,2),
+                cobertura_obra_social BOOLEAN DEFAULT FALSE,
+                estado TEXT DEFAULT 'pendiente', -- 'pendiente', 'en_proceso', 'completado', 'vencido'
+                recordatorios_activados BOOLEAN DEFAULT TRUE,
+                notas TEXT
+            )
+        """)
+
+        # Tabla para documentos médicos
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS DOCUMENTOS_MEDICOS (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tipo_documento TEXT NOT NULL, -- 'laboratorio', 'imagen', 'informe', 'receta', etc.
+                nombre_archivo TEXT NOT NULL,
+                ruta_archivo TEXT NOT NULL,
+                tamaño_archivo INTEGER,
+                formato_archivo TEXT, -- 'pdf', 'jpg', 'png', 'doc', etc.
+                fecha_documento DATE,
+                medico_emisor TEXT,
+                institucion_emisora TEXT,
+                categoria TEXT, -- 'analisis', 'radiologia', 'cardiologia', etc.
+                descripcion TEXT,
+                palabras_clave TEXT, -- JSON para búsquedas
+                relacionado_cita_id INTEGER,
+                relacionado_historia_id INTEGER,
+                confidencial BOOLEAN DEFAULT FALSE,
+                compartido_con TEXT, -- JSON con lista de médicos autorizados
+                notas TEXT
+            )
+        """)
+
+        conn.commit()
+    except Exception as e:
+        print(f"Error al crear tablas de telemedicina: {e}")
+    finally:
+        conn.close()
+
+def inicializar_nuevas_tablas():
+    """Inicializa todas las nuevas tablas"""
+    crear_tablas_medidas_corporales()
+    crear_tablas_rendimiento_fisico()
+    crear_tablas_telemedicina()
+    crear_tabla_planes_alimentarios()
+
+def crear_tabla_planes_alimentarios():
+    """Crea la tabla para almacenar los planes alimentarios de los usuarios"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS PLANES_ALIMENTARIOS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                USER_DNI TEXT NOT NULL,
+                NOMBRE_APELLIDO TEXT NOT NULL,
+                TIPO_PLAN TEXT NOT NULL, -- 'recetas', 'simplificado'
+                FECHA_CREACION DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FECHA_ACTUALIZACION DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PLAN_JSON TEXT NOT NULL, -- Almacena el plan completo en JSON
+                ACTIVO INTEGER DEFAULT 1, -- 1 = activo, 0 = inactivo
+                CALORIAS_TOTALES INTEGER,
+                COMIDAS_ACTIVAS INTEGER,
+                NOTAS TEXT
+            )
+        ''')
+        
+        # Crear índices para mejorar rendimiento
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_planes_user_dni ON PLANES_ALIMENTARIOS(USER_DNI)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_planes_activo ON PLANES_ALIMENTARIOS(ACTIVO)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_planes_tipo ON PLANES_ALIMENTARIOS(TIPO_PLAN)')
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error al crear tabla PLANES_ALIMENTARIOS: {e}")
+    finally:
+        conn.close()
+
+def obtener_plan_alimentario_activo(user_dni):
+    """Obtiene el plan alimentario activo de un usuario"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT * FROM PLANES_ALIMENTARIOS 
+            WHERE USER_DNI = ? AND ACTIVO = 1 
+            ORDER BY FECHA_CREACION DESC 
+            LIMIT 1
+        ''', (user_dni,))
+        
+        plan = cursor.fetchone()
+        if plan:
+            # Convertir a diccionario para facilitar el uso
+            columnas = [description[0] for description in cursor.description]
+            plan_dict = dict(zip(columnas, plan))
+            
+            # Parsear el JSON del plan
+            if plan_dict['PLAN_JSON']:
+                plan_dict['plan_data'] = json.loads(plan_dict['PLAN_JSON'])
+            
+            return plan_dict
+        return None
+    except Exception as e:
+        print(f"Error al obtener plan alimentario: {e}")
+        return None
+    finally:
+        conn.close()
+
+def calcular_porciones_receta_plan(receta_id, calorias_objetivo, username):
+    """
+    Calcula las porciones necesarias de una receta para alcanzar las calorías objetivo
+    Integra con el sistema existente de cálculo de recetas
+    """
+    try:
+        # Usar la función existente como base, pero adaptada para el plan alimentario
+        basededatos = sqlite3.connect(DATABASE_PATH)
+        cursor = basededatos.cursor()
+        
+        # Obtener datos de la receta
+        cursor.execute("SELECT * FROM RECETAS WHERE ID = ?", (receta_id,))
+        receta = cursor.fetchone()
+        
+        if not receta:
+            return None
+        
+        # Obtener información nutricional del usuario
+        cursor.execute("SELECT PROTEINA, GRASA, CH, LIBERTAD FROM DIETA WHERE NOMBRE_APELLIDO=?", [username])
+        dieta_data = cursor.fetchone()
+        
+        if not dieta_data:
+            return None
+        
+        # Calcular factor de escala basado en calorías objetivo
+        # Esta es una simplificación - se puede mejorar con cálculos más precisos
+        calorias_receta_base = 100  # Asumir 100 kcal como base, ajustar según datos reales
+        factor_escala = calorias_objetivo / calorias_receta_base
+        
+        resultado = {
+            'receta_id': receta_id,
+            'receta_nombre': receta[1] if len(receta) > 1 else 'Sin nombre',
+            'factor_escala': factor_escala,
+            'calorias_calculadas': calorias_objetivo,
+            'ingredientes_calculados': []
+        }
+        
+        # Aquí se integraría con la lógica existente de cálculo de ingredientes
+        # Por ahora, retornamos la estructura básica
+        
+        basededatos.close()
+        return resultado
+        
+    except Exception as e:
+        print(f"Error calculando porciones de receta: {e}")
+        return None
+
+def recipe_simple_calculation(receta_id, username, comida_id, dieta_data):
+    """
+    Función simplificada para calcular porciones de recetas en el plan alimentario
+    Integra con el sistema existente pero adaptado para múltiples recetas
+    """
+    try:
+        basededatos = sqlite3.connect(DATABASE_PATH)
+        cursor = basededatos.cursor()
+        
+        # Obtener datos de la receta
+        cursor.execute("SELECT * FROM RECETAS WHERE ID = ?", (receta_id,))
+        receta = cursor.fetchone()
+        
+        if not receta or not dieta_data:
+            return None
+        
+        # Mapeo de comidas a índices en dieta_data (CORREGIDO)
+        macros_mapping = {
+            'desayuno': {'proteina': 6, 'grasa': 7, 'carbohidratos': 8},    # DP, DG, DC
+            'media_manana': {'proteina': 9, 'grasa': 10, 'carbohidratos': 11},  # MMP, MMG, MMC
+            'almuerzo': {'proteina': 12, 'grasa': 13, 'carbohidratos': 14},    # AP, AG, AC
+            'merienda': {'proteina': 15, 'grasa': 16, 'carbohidratos': 17},    # MP, MG, MC
+            'media_tarde': {'proteina': 18, 'grasa': 19, 'carbohidratos': 20}, # MTP, MTG, MTC
+            'cena': {'proteina': 21, 'grasa': 22, 'carbohidratos': 23}         # CP, CG, CC
+        }
+        
+        # Obtener macros objetivo para esta comida
+        macros_objetivo = {}
+        if comida_id in macros_mapping:
+            mapping = macros_mapping[comida_id]
+            macros_objetivo = {
+                'proteina': dieta_data[mapping['proteina']] if len(dieta_data) > mapping['proteina'] else 0,
+                'grasa': dieta_data[mapping['grasa']] if len(dieta_data) > mapping['grasa'] else 0,
+                'carbohidratos': dieta_data[mapping['carbohidratos']] if len(dieta_data) > mapping['carbohidratos'] else 0
+            }
+        
+        # Resultado del cálculo (simplificado)
+        resultado = {
+            'receta_id': receta_id,
+            'receta_nombre': receta[1] if len(receta) > 1 else 'Sin nombre',
+            'macros_objetivo': macros_objetivo,
+            'ingredientes_calculados': 'Cálculos disponibles',
+            'factor_porcion': 1.0,  # Por defecto
+            'status': 'calculado'
+        }
+        
+        basededatos.close()
+        return resultado
+        
+    except Exception as e:
+        print(f"Error en recipe_simple_calculation: {e}")
+        return {
+            'receta_id': receta_id,
+            'error': str(e),
+            'status': 'error'
+        }
 
 
 

@@ -1,0 +1,632 @@
+{% extends 'base/base.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block herotitle %} Configuración del plan nutricional {% endblock %}
+{% block herosubtitle %} {% endblock %}
+{% block contenttitle %} {% endblock %}
+{% block contentsubtitle %} {% endblock %}
+
+{% block content %}
+
+{% from "_macro.html" import render_field %}
+
+<div>
+    <!-- Mensaje -->
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-danger alert-dismissable" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+                <p class="mb-0">{{ message }}</p>
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <!-- END Mensaje -->
+</div>
+
+<!-- Selector de Usuario Fijo -->
+<div class="block block-rounded">
+    <div class="block-content pb-3">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="font-w600 mb-2">Seleccionar Usuario:</label>
+                {{ render_field(form.nameuser, class='form-control', id='select_usuario_planner') }}
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="font-w600 mb-2">Factor de Actividad:</label>
+                <select class="form-control" id="factor_actividad">
+                    <option value="1.2">Sedentario (1.2)</option>
+                    <option value="1.375">Ligero (1.375)</option>
+                    <option value="1.55" selected>Moderado (1.55)</option>
+                    <option value="1.725">Intenso (1.725)</option>
+                    <option value="1.9">Muy Intenso (1.9)</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="font-w600 mb-2">&nbsp;</label>
+                <button type="button" class="btn btn-primary btn-block" onclick="recargarPlanAutomatico()">
+                    <i class="fa fa-sync me-2"></i>Recalcular
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PLAN AUTOMÁTICO (NUEVO) -->
+<div class="block block-rounded" id="planAutomaticoSection" style="display: none;">
+    <div class="block-header block-header-default">
+        <h3 class="block-title">
+            <i class="fa fa-magic text-primary me-2"></i>Plan Nutricional Automático
+        </h3>
+        <div class="block-options">
+            <button type="button" class="btn-block-option" onclick="togglePlanAutomatico()">
+                <i class="si si-arrow-up"></i>
+            </button>
+        </div>
+    </div>
+    <div class="block-content" id="planAutomaticoContent">
+        <div class="alert alert-info">
+            <i class="fa fa-info-circle me-2"></i>
+            <strong>Cálculo Automático:</strong> Basado en tu objetivo definido, datos actuales y principios de disponibilidad energética.
+        </div>
+
+        <!-- Resumen de datos -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border">
+                    <div class="card-header bg-light">
+                        <strong>Datos Actuales</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Peso:</strong> <span id="auto_peso_actual">-</span> kg</p>
+                        <p class="mb-1"><strong>Grasa Corporal:</strong> <span id="auto_bf_actual">-</span>%</p>
+                        <p class="mb-1"><strong>Peso Magro:</strong> <span id="auto_peso_magro_actual">-</span> kg</p>
+                        <p class="mb-0"><strong>FFMI:</strong> <span id="auto_ffmi_actual">-</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border">
+                    <div class="card-header bg-light">
+                        <strong>Objetivo Definido</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Peso:</strong> <span id="auto_peso_objetivo">-</span> kg</p>
+                        <p class="mb-1"><strong>Grasa Corporal:</strong> <span id="auto_bf_objetivo">-</span>%</p>
+                        <p class="mb-1"><strong>Cambio necesario:</strong> <span id="auto_cambio_peso">-</span> kg</p>
+                        <p class="mb-0"><strong>Tipo:</strong> <span id="auto_tipo_objetivo" class="badge bg-info">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información metabólica -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <strong><i class="fa fa-fire me-2"></i>Metabolismo Base</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p class="mb-0 text-center">
+                                    <strong>TMB</strong><br>
+                                    <span class="h4 text-primary" id="auto_tmb">-</span> kcal/día
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-0 text-center">
+                                    <strong>TDEE Mantenimiento</strong><br>
+                                    <span class="h4 text-success" id="auto_tdee">-</span> kcal/día
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-0 text-center">
+                                    <strong>Factor Actividad</strong><br>
+                                    <span class="h4 text-info" id="auto_factor">-</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opciones de velocidad -->
+        <h4 class="mb-4 mt-4"><i class="fa fa-tachometer-alt text-warning me-2"></i>Selecciona tu Estrategia</h4>
+        <div id="opcionesVelocidadContainer" class="row">
+            <!-- Se llenará dinámicamente con JavaScript -->
+        </div>
+        
+        <!-- Opción Personalizada con Slider -->
+        <div class="row mt-4" id="opcionPersonalizadaContainer" style="display: none;">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <strong><i class="fa fa-sliders-h me-2"></i>Opción Personalizada</strong>
+                    </div>
+                    <div class="card-body">
+                        <label class="font-w600">Velocidad de cambio: <span id="velocidad_personalizada_display">0.5%</span> del peso/semana</label>
+                        <input type="range" class="form-range" id="slider_velocidad" min="0.1" max="1.5" step="0.05" value="0.5">
+                        <small class="text-muted" id="slider_hint">0.1% (muy lento) ← → 1.5% (muy rápido)</small>
+                        <div id="ea_warning" class="alert alert-warning mt-2" style="display: none;">
+                            <i class="fa fa-exclamation-triangle me-2"></i><strong>Límite alcanzado:</strong> No se puede reducir más las calorías sin comprometer la salud (EA mínima).
+                        </div>
+                        <hr>
+                        <div id="resultado_personalizado" class="mt-3">
+                            <p class="mb-1"><strong>Calorías:</strong> <span id="custom_calorias">-</span> kcal/día</p>
+                            <p class="mb-1"><strong>Velocidad:</strong> <span id="custom_velocidad_g">-</span> g/sem</p>
+                            <p class="mb-1"><strong>Tiempo estimado:</strong> <span id="custom_semanas">-</span> semanas</p>
+                            <p class="mb-0"><strong>EA:</strong> <span id="custom_ea" class="badge bg-secondary">-</span></p>
+                        </div>
+                        <button type="button" class="btn btn-info mt-3" onclick="seleccionarPersonalizado()">
+                            <i class="fa fa-check me-2"></i>Usar Plan Personalizado
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón para usar el plan seleccionado -->
+        <div class="row mt-4 mb-5">
+            <div class="col-12 text-center">
+                <button type="button" class="btn btn-lg btn-success" id="btnUsarPlanAutomatico" disabled>
+                    <i class="fa fa-check-circle me-2"></i>Usar Este Plan Automáticamente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FORMULARIO MANUAL (EXISTENTE) -->
+<div class="block block-rounded">
+    <div class="block-header block-header-default">
+        <h3 class="block-title">
+            <i class="fa fa-edit text-success me-2"></i>Configuración Manual
+        </h3>
+    </div>
+    <div class="block-content block-content-full">
+        <form name="sentMessage" id="plannerForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="row push">
+                <div class="col-lg-2">
+                    <p class="font-size-sm text-muted">
+                        Planificador
+                    </p>
+                </div>
+                <div class="col-lg-8 col-xl-10">
+                    <input type="hidden" name="nameuser" id="hidden_nameuser" value="">
+                    <div class="form-row">
+                        <div class="form-group col-md-12 font-size-sm">
+                            <label>Calorías</label>
+                            {{ render_field(form.cal, class='form-control', value=defcal, id='input_calorias_manual') }}  
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>Desayuna</label>
+                            {{ render_field(form.desplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño del desayuno</label>
+                            {{ render_field(form.tamdes, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>MM</label>
+                            {{ render_field(form.mmplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño de la Media-mañana</label>
+                            {{ render_field(form.tammm, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>Almuerza</label>
+                            {{ render_field(form.almplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño del Almuerzo</label>
+                            {{ render_field(form.tamalm, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>Merienda</label>
+                            {{ render_field(form.merplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño de la Merienda</label>
+                            {{ render_field(form.tammer, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>MT</label>
+                            {{ render_field(form.mtplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño de la Media-tarde</label>
+                            {{ render_field(form.tammt, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-1 font-size-sm">
+                            <label>Cena</label>
+                            {{ render_field(form.cenplan, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-3 font-size-sm">
+                            <label>Tamaño de la cena</label>
+                            {{ render_field(form.tamcen, class='form-control') }}
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6 font-size-sm">
+                            <label>Entrenamiento despues de:</label>
+                            {{ render_field(form.entreno, class='form-control') }}
+                        </div>
+                        <div class="form-group col-md-6 font-size-sm">
+                            <label>Grado de libertad</label>
+                            {{ render_field(form.libertad, class='form-control') }}
+                        </div>
+                    </div>
+                    <div id="success" class="form-group row justify-content-center mb-0">
+                        <div class="col-md-6 col-xl-5">
+                            <button type="submit" class="btn btn-block btn-primary">
+                                <i class="fa fa-fw fa-calendar-check mr-1"></i> Planificar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div>
+<!-- END Page Content -->
+
+{% endblock %}
+
+{% block customscripts %}
+<script>
+let planAutomaticoData = null;
+let opcionSeleccionada = null;
+let planPersonalizado = null;
+
+// Función para recargar con nuevo factor de actividad (GLOBAL)
+function recargarPlanAutomatico() {
+    const nombreUsuario = document.getElementById('select_usuario_planner').value;
+    const factorActividad = document.getElementById('factor_actividad').value;
+    if (nombreUsuario) {
+        cargarPlanAutomatico(nombreUsuario, factorActividad);
+    }
+}
+
+function cargarPlanAutomatico(nombreUsuario, factorActividad = 1.55) {
+    fetch(`/api/planner/plan-automatico/${encodeURIComponent(nombreUsuario)}?factor_actividad=${factorActividad}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error:', data.error);
+                return;
+            }
+            planAutomaticoData = data;
+            mostrarPlanAutomatico(data);
+        })
+        .catch(error => {
+            console.error('Error al cargar plan automático:', error);
+        });
+}
+
+// Event listeners después de que el DOM esté listo
+window.addEventListener('DOMContentLoaded', function() {
+    // Cargar plan automático cuando se selecciona un usuario
+    document.getElementById('select_usuario_planner').addEventListener('change', function() {
+        const nombreUsuario = this.value;
+        document.getElementById('hidden_nameuser').value = nombreUsuario;
+        if (nombreUsuario) {
+            const factorActividad = document.getElementById('factor_actividad').value;
+            cargarPlanAutomatico(nombreUsuario, factorActividad);
+        } else {
+            document.getElementById('planAutomaticoSection').style.display = 'none';
+            document.getElementById('opcionPersonalizadaContainer').style.display = 'none';
+        }
+    });
+    
+    // Auto-cargar si ya hay un usuario seleccionado
+    const select = document.getElementById('select_usuario_planner');
+    if (select && select.value) {
+        document.getElementById('hidden_nameuser').value = select.value;
+        const factorActividad = document.getElementById('factor_actividad').value;
+        cargarPlanAutomatico(select.value, factorActividad);
+    }
+});
+
+function mostrarPlanAutomatico(data) {
+    document.getElementById('planAutomaticoSection').style.display = 'block';
+    document.getElementById('opcionPersonalizadaContainer').style.display = 'block';
+    
+    // Los datos ya están en kg
+    document.getElementById('auto_peso_actual').textContent = data.datos_actuales.peso.toFixed(1);
+    document.getElementById('auto_bf_actual').textContent = data.datos_actuales.bf.toFixed(1);
+    document.getElementById('auto_peso_magro_actual').textContent = data.datos_actuales.peso_magro.toFixed(1);
+    document.getElementById('auto_ffmi_actual').textContent = data.datos_actuales.ffmi.toFixed(1);
+    
+    document.getElementById('auto_peso_objetivo').textContent = data.objetivo.peso.toFixed(1);
+    document.getElementById('auto_bf_objetivo').textContent = data.objetivo.bf.toFixed(1);
+    document.getElementById('auto_cambio_peso').textContent = data.cambios_necesarios.peso.toFixed(1);
+    
+    const tipoObjetivo = data.tipo_objetivo;
+    let tipoTexto = tipoObjetivo === 'perdida' ? 'Pérdida' : (tipoObjetivo === 'ganancia' ? 'Ganancia' : 'Mantenimiento');
+    let tipoColor = tipoObjetivo === 'perdida' ? 'danger' : (tipoObjetivo === 'ganancia' ? 'success' : 'info');
+    document.getElementById('auto_tipo_objetivo').className = `badge bg-${tipoColor}`;
+    document.getElementById('auto_tipo_objetivo').textContent = tipoTexto;
+    
+    document.getElementById('auto_tmb').textContent = data.tmb;
+    document.getElementById('auto_tdee').textContent = data.tdee_mantenimiento;
+    
+    const factorNames = {'1.2':'Sedentario (1.2)','1.375':'Ligero (1.375)','1.55':'Moderado (1.55)','1.725':'Intenso (1.725)','1.9':'Muy Intenso (1.9)'};
+    document.getElementById('auto_factor').textContent = factorNames[data.factor_actividad.toString()] || data.factor_actividad.toFixed(2);
+    
+    const container = document.getElementById('opcionesVelocidadContainer');
+    container.innerHTML = '';
+    
+    // Si solo hay una opción (mantenimiento), centrarla
+    const soloUnaOpcion = data.opciones_velocidad.length === 1;
+    if (soloUnaOpcion) {
+        container.classList.add('justify-content-center');
+    } else {
+        container.classList.remove('justify-content-center');
+    }
+    
+    data.opciones_velocidad.forEach((opcion, index) => {
+        container.appendChild(crearCardOpcion(opcion, index, tipoObjetivo, soloUnaOpcion));
+    });
+    
+    inicializarSliderPersonalizado(data);
+}
+
+function crearCardOpcion(opcion, index, tipoObjetivo, soloUnaOpcion = false) {
+    const col = document.createElement('div');
+    // Si es solo una opción, usar col-md-6 para que quede centrada y no muy ancha
+    col.className = soloUnaOpcion ? 'col-md-6 mb-3' : 'col-md-4 mb-3';
+    
+    // Determinar color del borde
+    let borderColor = 'secondary';
+    if (opcion.nombre.includes('Conservadora')) borderColor = 'success';
+    else if (opcion.nombre.includes('Moderada')) borderColor = 'primary';
+    else if (opcion.nombre.includes('Agresiva')) borderColor = 'warning';
+    
+    col.innerHTML = `
+        <div class="card border-${borderColor} h-100 opcion-card" data-index="${index}" onclick="seleccionarOpcion(${index})">
+            <div class="card-header bg-${borderColor} text-white">
+                <strong>${opcion.nombre}</strong>
+                ${opcion.nombre.includes('Recomendada') ? '<span class="badge bg-light text-dark float-end">⭐ Recomendada</span>' : ''}
+            </div>
+            <div class="card-body">
+                <p class="text-center mb-2">
+                    <span class="h3 text-${borderColor}">${opcion.calorias}</span><br>
+                    <small>kcal/día</small>
+                </p>
+                <hr>
+                <p class="mb-1"><strong>Velocidad:</strong> ${Math.round(opcion.velocidad_semanal_kg * 1000)} g/sem</p>
+                <p class="mb-1"><strong>Porcentaje:</strong> ${opcion.porcentaje_peso} del peso</p>
+                ${tipoObjetivo === 'perdida' ? `
+                    <p class="mb-1"><strong>Déficit:</strong> ${opcion.deficit_diario} kcal/día</p>
+                    <p class="mb-1"><strong>Riesgo M.Magra:</strong> <span class="badge bg-${opcion.riesgo_masa_magra.includes('bajo') ? 'success' : 'warning'}">${opcion.riesgo_masa_magra}</span></p>
+                ` : tipoObjetivo === 'ganancia' ? `
+                    <p class="mb-1"><strong>Superávit:</strong> ${opcion.superavit_diario} kcal/día</p>
+                    <p class="mb-1"><strong>Ganancia Grasa:</strong> <span class="badge bg-info">${opcion.ganancia_grasa}</span></p>
+                ` : ''}
+                <p class="mb-1"><strong>Tiempo estimado:</strong> ${opcion.semanas_estimadas} semanas</p>
+                <hr>
+                <p class="mb-2 font-size-sm"><strong>Macronutrientes:</strong></p>
+                <ul class="font-size-sm mb-2">
+                    <li>Proteína: ${opcion.macros.proteina_g}g (${opcion.macros.proteina_porcentaje}%)</li>
+                    <li>Grasa: ${opcion.macros.grasa_g}g (30%)</li>
+                    <li>Carbohidratos: ${opcion.macros.carbohidratos_g}g (${opcion.macros.carbohidratos_porcentaje}%)</li>
+                </ul>
+                <hr>
+                <p class="mb-1 font-size-sm"><strong>Disponibilidad Energética:</strong></p>
+                <p class="mb-0 text-center">
+                    <span class="badge bg-${opcion.disponibilidad_energetica.ea_status.includes('Óptima') ? 'success' : opcion.disponibilidad_energetica.ea_status.includes('Adecuada') ? 'primary' : 'warning'}">
+                        ${opcion.disponibilidad_energetica.ea_valor} kcal/kg FFM/día
+                    </span><br>
+                    <small>${opcion.disponibilidad_energetica.ea_status}</small>
+                </p>
+                <hr>
+                <p class="font-size-sm text-muted mb-0">${opcion.descripcion}</p>
+            </div>
+        </div>
+    `;
+    
+    return col;
+}
+
+function inicializarSliderPersonalizado(data) {
+    const slider = document.getElementById('slider_velocidad');
+    const display = document.getElementById('velocidad_personalizada_display');
+    
+    // Calcular límite máximo (se recalcula cada vez que cambia el factor de actividad)
+    const pesoKg = data.datos_actuales.peso;
+    const pesoMagroKg = data.datos_actuales.peso_magro;
+    const sexo = data.metadata.sexo;
+    const tdee = data.tdee_mantenimiento;
+    const tipoObjetivo = data.tipo_objetivo;
+    // Límite BAJO: 25 mujeres, 20 hombres
+    const eaLimite = sexo === 'F' ? 25 : 20;
+    const ingestaMinima = (eaLimite * pesoMagroKg) + 300;
+    
+    let porcentajeMaximo = 1.5;
+    if (tipoObjetivo === 'perdida') {
+        const deficitMaximo = tdee - ingestaMinima;
+        if (deficitMaximo > 0) {
+            const velocidadMaxKg = (deficitMaximo * 7) / 7700;
+            porcentajeMaximo = Math.min((velocidadMaxKg / pesoKg) * 100, 1.5);
+            console.log(`🔄 Slider reinicializado - TDEE: ${tdee}, Déficit Máx: ${deficitMaximo}, Porcentaje Máx: ${porcentajeMaximo.toFixed(2)}%`);
+        }
+    }
+    
+    // LIMPIAR listeners anteriores clonando el elemento
+    const nuevoSlider = slider.cloneNode(true);
+    slider.parentNode.replaceChild(nuevoSlider, slider);
+    
+    // Agregar listener al nuevo slider
+    nuevoSlider.addEventListener('input', function() {
+        let porcentaje = parseFloat(this.value);
+        // Limitar valor sin cambiar el max del slider
+        if (porcentaje > porcentajeMaximo) {
+            console.log(`⚠️ Limitando ${porcentaje}% a ${porcentajeMaximo.toFixed(2)}%`);
+            porcentaje = porcentajeMaximo;
+            this.value = porcentaje;
+        }
+        display.textContent = porcentaje.toFixed(2) + '%';
+        calcularPersonalizado(porcentaje, data, porcentajeMaximo);
+    });
+    
+    // Resetear slider a valor inicial si excede el nuevo límite
+    const valorActual = parseFloat(nuevoSlider.value);
+    if (valorActual > porcentajeMaximo) {
+        nuevoSlider.value = Math.min(0.5, porcentajeMaximo);
+    }
+    
+    calcularPersonalizado(parseFloat(nuevoSlider.value), data, porcentajeMaximo);
+}
+
+function calcularPersonalizado(porcentajeSemanal, data, porcentajeMaximo) {
+    const pesoKg = data.datos_actuales.peso;
+    const pesoMagroKg = data.datos_actuales.peso_magro;
+    const pesoMagroLbs = data.datos_actuales.peso_magro; // Ya en lbs desde backend
+    const sexo = data.metadata.sexo;
+    const tdee = data.tdee_mantenimiento;
+    const tipoObjetivo = data.tipo_objetivo;
+    const velocidadKgIdeal = pesoKg * (porcentajeSemanal / 100);
+    const velocidadLbsIdeal = velocidadKgIdeal * 2.20462;
+    
+    let calorias, velocidadKgReal, limitAlcanzado = false;
+    // Límite BAJO: 25 mujeres, 20 hombres (mínimo saludable)
+    const eaLimite = sexo === 'F' ? 25 : 20;
+    const ingestaMinima = (eaLimite * pesoMagroKg) + 300;
+    
+    if (tipoObjetivo === 'perdida') {
+        const deficitIdeal = velocidadKgIdeal * 7700 / 7;
+        const caloriasIdeales = tdee - deficitIdeal;
+        
+        if (caloriasIdeales < ingestaMinima) {
+            // Límite de EA alcanzado
+            calorias = Math.round(ingestaMinima);
+            const deficitReal = tdee - calorias;
+            velocidadKgReal = (deficitReal * 7) / 7700;
+            limitAlcanzado = true;
+        } else {
+            calorias = Math.round(caloriasIdeales);
+            velocidadKgReal = velocidadKgIdeal;
+        }
+    } else if (tipoObjetivo === 'ganancia') {
+        const superavit = velocidadKgIdeal * 7700 / 7;
+        calorias = Math.round(tdee + superavit);
+        velocidadKgReal = velocidadKgIdeal;
+    } else {
+        calorias = tdee;
+        velocidadKgReal = 0;
+    }
+    
+    // Calcular EA real
+    const ea = ((calorias - 300) / pesoMagroKg).toFixed(1);
+    let eaStatus, eaColor;
+    if (sexo === 'F') {
+        if (ea >= 45) { eaStatus = 'Óptima'; eaColor = 'success'; }
+        else if (ea >= 30) { eaStatus = 'Adecuada'; eaColor = 'primary'; }
+        else if (ea >= 25) { eaStatus = 'Límite bajo'; eaColor = 'warning'; }
+        else if (ea >= 20) { eaStatus = 'Muy bajo'; eaColor = 'danger'; }
+        else { eaStatus = 'Riesgo RED-S'; eaColor = 'danger'; }
+    } else {
+        if (ea >= 35) { eaStatus = 'Óptima'; eaColor = 'success'; }
+        else if (ea >= 25) { eaStatus = 'Adecuada'; eaColor = 'primary'; }
+        else if (ea >= 20) { eaStatus = 'Límite bajo'; eaColor = 'warning'; }
+        else { eaStatus = 'Riesgo LEA'; eaColor = 'danger'; }
+    }
+    
+    // Calcular semanas con velocidad REAL
+    const cambioPesoKg = Math.abs(data.cambios_necesarios.peso);
+    const semanas = velocidadKgReal > 0 ? Math.round(cambioPesoKg / velocidadKgReal) : 0;
+    
+    // Mostrar en gramos
+    const velocidadGramos = Math.round(velocidadKgReal * 1000);
+    
+    document.getElementById('custom_calorias').textContent = calorias;
+    document.getElementById('custom_velocidad_g').textContent = velocidadGramos;
+    document.getElementById('custom_semanas').textContent = semanas;
+    document.getElementById('custom_ea').textContent = `${ea} kcal/kg FFM - ${eaStatus}`;
+    document.getElementById('custom_ea').className = `badge bg-${eaColor}`;
+    
+    // Mostrar/ocultar advertencia de límite (sin tocar el slider)
+    const warningDiv = document.getElementById('ea_warning');
+    if (limitAlcanzado && tipoObjetivo === 'perdida') {
+        warningDiv.style.display = 'block';
+    } else {
+        warningDiv.style.display = 'none';
+    }
+    
+    planPersonalizado = {nombre:'Personalizado',calorias:calorias,velocidad_semanal_kg:velocidadKgReal,porcentaje:porcentajeSemanal,semanas:semanas,ea:ea,ea_status:eaStatus};
+}
+
+function seleccionarPersonalizado() {
+    if (!planPersonalizado) return;
+    document.querySelectorAll('.opcion-card').forEach(card => {
+        card.classList.remove('border-dark', 'shadow-lg');
+        card.style.transform = 'scale(1)';
+    });
+    opcionSeleccionada = planPersonalizado;
+    document.getElementById('btnUsarPlanAutomatico').disabled = false;
+    document.getElementById('btnUsarPlanAutomatico').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('btnUsarPlanAutomatico').focus();
+}
+
+function seleccionarOpcion(index) {
+    document.querySelectorAll('.opcion-card').forEach(card => {
+        card.classList.remove('border-dark', 'shadow-lg');
+        card.style.transform = 'scale(1)';
+    });
+    const cards = document.querySelectorAll('.opcion-card');
+    if (cards[index]) {
+        cards[index].classList.add('border-dark', 'shadow-lg');
+        cards[index].style.transform = 'scale(1.05)';
+        cards[index].style.transition = 'all 0.3s';
+    }
+    opcionSeleccionada = planAutomaticoData.opciones_velocidad[index];
+    planPersonalizado = null;
+    document.getElementById('btnUsarPlanAutomatico').disabled = false;
+    document.getElementById('btnUsarPlanAutomatico').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.getElementById('btnUsarPlanAutomatico').addEventListener('click', function() {
+    if (!opcionSeleccionada) return;
+    document.getElementById('input_calorias_manual').value = opcionSeleccionada.calorias;
+    document.getElementById('hidden_nameuser').value = document.getElementById('select_usuario_planner').value;
+    this.classList.remove('btn-success');
+    this.classList.add('btn-primary');
+    this.innerHTML = '<i class="fa fa-check me-2"></i>Plan Aplicado - Completa la configuración';
+    setTimeout(() => {
+        document.getElementById('plannerForm').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('input_calorias_manual').focus();
+        document.getElementById('input_calorias_manual').classList.add('is-valid');
+        setTimeout(() => document.getElementById('input_calorias_manual').classList.remove('is-valid'), 3000);
+    }, 500);
+});
+
+function togglePlanAutomatico() {
+    const content = document.getElementById('planAutomaticoContent');
+    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+
+<style>
+.opcion-card {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.opcion-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+</style>
+{% endblock %}

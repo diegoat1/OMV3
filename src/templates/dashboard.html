@@ -7,7 +7,15 @@
 {% block contenttitle %} {% endblock %}
 {% block contentsubtitle %} {% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/gauges.css') }}">
+{% endblock %}
+
 {% block content %}
+<script>
+    // Variable global para el sexo del usuario (para los cálculos de los gauges)
+    window.userSex = '{{ estaticodata[0][4] if estaticodata else "M" }}';
+</script>
     <div>
         <!-- Mensaje -->
         {% with messages = get_flashed_messages() %}
@@ -171,9 +179,140 @@
     </div>
     <!-- END Overview -->
 
+    <!-- Gauges Horizontales -->
+    <div class="row row-deck">
+        <!-- IMC Gauge -->
+        <div class="col-lg-4 col-md-6 col-sm-12">
+            <div class="block block-rounded d-flex flex-column">
+                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
+                    <dl class="mb-0">
+                        <dt class="font-size-h2 font-w700">
+                            {{ imc }}
+                            {% if deltaimc>=0 %}
+                            <span class="font-size-sm font-w600 text-success ml-2">
+                                <i class="fa fa-caret-up"></i> {{ deltaimc }}%
+                            </span>
+                            {% else %}
+                            <span class="font-size-sm font-w600 text-danger ml-2">
+                                <i class="fa fa-caret-down"></i> {{ deltaimc }}%
+                            </span>
+                            {% endif %}
+                        </dt>
+                        <dd class="text-muted mb-0">Índice de masa corporal</dd>
+                    </dl>
+                    <div class="item item-rounded bg-body">
+                        <i class="fa fa-weight font-size-h3 text-primary"></i>
+                    </div>
+                </div>
+                <div class="block-content text-center overflow-hidden">
+                    <!-- IMC Gauge -->
+                    <div class="metric-gauge imc-gauge" data-value="{{ imc }}">
+                        <div class="gauge-category bajo-peso"></div>
+                        <div class="gauge-category normal"></div>
+                        <div class="gauge-category sobrepeso"></div>
+                        <div class="gauge-category obesidad"></div>
+                    </div>
+                </div>
+                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                    <a class="font-w500 d-flex align-items-center">
+                        {{ imccat }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- FFMI Gauge -->
+        <div class="col-lg-4 col-md-6 col-sm-12">
+            <div class="block block-rounded d-flex flex-column">
+                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
+                    <dl class="mb-0">
+                        <dt class="font-size-h2 font-w700">
+                            {{ ffmi }}
+                            {% if deltaffmi>=0 %}
+                            <span class="font-size-sm font-w600 text-success ml-2">
+                                <i class="fa fa-caret-up"></i> {{ deltaffmi }}%
+                            </span>
+                            {% else %}
+                            <span class="font-size-sm font-w600 text-danger ml-2">
+                                <i class="fa fa-caret-down"></i> {{ deltaffmi }}%
+                            </span>
+                            {% endif %}
+                        </dt>
+                        <dd class="text-muted mb-0">Índice de masa magra corporal</dd>
+                    </dl>
+                    <div class="item item-rounded bg-body">
+                        <i class="fa fa-dumbbell font-size-h3 text-primary"></i>
+                    </div>
+                </div>
+                <div class="block-content text-center overflow-hidden">
+                    <!-- FFMI Gauge -->
+                    <div class="metric-gauge ffmi-gauge" data-value="{{ ffmi }}">
+                        <div class="gauge-category muy-pobre"></div>
+                        <div class="gauge-category pobre"></div>
+                        <div class="gauge-category bajo"></div>
+                        <div class="gauge-category casi-normal"></div>
+                        <div class="gauge-category normal"></div>
+                        <div class="gauge-category bueno"></div>
+                        <div class="gauge-category muy-bueno"></div>
+                        <div class="gauge-category excelente"></div>
+                        <div class="gauge-category superior"></div>
+                    </div>
+                </div>
+                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                    <a class="font-w500 d-flex align-items-center">
+                        {{ immccat }}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- %BF Gauge -->
+        <div class="col-lg-4 col-md-12 col-sm-12">
+            <div class="block block-rounded d-flex flex-column">
+                <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between align-items-center">
+                    <dl class="mb-0">
+                        <dt class="font-size-h2 font-w700">
+                            {{ bf }}%
+                            {% if deltabf<=0 %}
+                            <span class="font-size-sm font-w600 text-success ml-2">
+                                <i class="fa fa-caret-down"></i> {{ deltabf }}%
+                            </span>
+                            {% else %}
+                            <span class="font-size-sm font-w600 text-danger ml-2">
+                                <i class="fa fa-caret-up"></i> {{ deltabf }}%
+                            </span>
+                            {% endif %}
+                        </dt>
+                        <dd class="text-muted mb-0">Porcentaje de grasa corporal</dd>
+                    </dl>
+                    <div class="item item-rounded bg-body">
+                        <i class="fa fa-chart-pie font-size-h3 text-primary"></i>
+                    </div>
+                </div>
+                <div class="block-content text-center overflow-hidden">
+                    <!-- %BF Gauge -->
+                    <div class="metric-gauge bf-gauge" data-value="{{ bf }}">
+                        <div class="gauge-category esencial"></div>
+                        <div class="gauge-category atletico"></div>
+                        <div class="gauge-category fitness"></div>
+                        <div class="gauge-category promedio"></div>
+                        <div class="gauge-category alto"></div>
+                        <div class="gauge-category obesidad"></div>
+                    </div>
+                </div>
+                <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
+                    <a class="font-w500 d-flex align-items-center">
+                        {{ bfcat }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END Gauges Horizontales -->
+
     <!-- Statistics -->
     <div class="row">
-        <div class="col-xl-8 d-flex flex-column">
+        <div class="col-12">
             <!-- Earnings Summary -->
             <div class="block block-rounded flex-grow-1 d-flex flex-column">
                 <div class="block-header block-header-default">
@@ -232,164 +371,6 @@
                 </div>
             </div>
             <!-- END Earnings Summary -->
-        </div>
-        <div class="col-xl-4 d-flex flex-column">
-            <!-- Last 2 Weeks -->
-            <!-- Sparkline Charts (.js-sparkline class is initialized in Helpers.sparkline() -->
-            <!-- For more info and examples you can check out http://omnipotent.net/jquery.sparkline/#s-about -->
-            <div class="row row-deck flex-grow-1">
-                <div class="col-md-6 col-xl-12">
-                    <div class="block block-rounded d-flex flex-column">
-                        <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between">
-                            <dl class="mb-0">
-                                <dt class="font-size-h2 font-w700">{{ imc }}</dt>
-                                <dd class="text-muted mb-0">Índice de masa corporal</dd>
-                            </dl>
-                            <div>
-                                {% if deltaimc>=0 %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-success bg-success-light">
-                                    <i class="fa fa-caret-up mr-1"></i>
-                                {% else %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-danger bg-danger-light">
-                                    <i class="fa fa-caret-down mr-1"></i>
-                                {% endif %}
-                                    {{ deltaimc }}%
-                                </div>
-                            </div>
-
-                        </div>
-                        <div class="block-content p-1 text-center overflow-hidden">
-                            <!-- Sparkline Line: Orders -->
-                            <span class="js-sparkline" data-type="line"
-                                data-points="{{ listaimc }}"
-                                data-width="100%"
-                                data-height="70px"
-                                data-chart-range-min="20"
-                                data-spot-color="transparent"
-                                data-min-spot-color="transparent"
-                                data-max-spot-color="transparent"
-                            {% if deltaimc>=0 %}
-                                data-line-color="rgba(70,195,123, .4)"
-                                data-fill-color="rgba(70,195,123, .15)"
-                                data-highlight-spot-color="#46C37B"
-                                data-highlight-line-color="#46C37B"
-                            {% else %}
-                                data-line-color="rgba(210, 108, 122, .4)"
-                                data-fill-color="rgba(210, 108, 122, .15)"
-                                data-highlight-spot-color="#D26C7A"
-                                data-highlight-line-color="#D26C7A"
-                            {% endif %}
-                                data-tooltip-suffix="IMC"></span>
-                            <!-- <span class="js-range-slider"> 
-                            </span> -->
-                        </div>
-                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                            <a class="font-w500 d-flex align-items-center">
-                                {{ imccat }}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-xl-12">
-                    <div class="block block-rounded d-flex flex-column">
-                        <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between">
-                            <dl class="mb-0">
-                                <dt class="font-size-h2 font-w700">{{ ffmi }}</dt>
-                                <dd class="text-muted mb-0">Índice de masa magra corporal</dd>
-                            </dl>
-                            <div>
-                                {% if deltaffmi>=0 %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-success bg-success-light">
-                                    <i class="fa fa-caret-up mr-1"></i>
-                                {% else %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-danger bg-danger-light">
-                                    <i class="fa fa-caret-down mr-1"></i>
-                                {% endif %}
-                                    {{ deltaffmi }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="block-content p-1 text-center oveflow-hidden">
-                            <!-- Sparkline Line: Earnings -->
-                            <span class="js-sparkline" data-type="line"
-                                data-points="{{ listaffmi }}"
-                                data-width="100%"
-                                data-height="70px"
-                                data-chart-range-min="300"
-                                data-spot-color="transparent"
-                                data-min-spot-color="transparent"
-                                data-max-spot-color="transparent"
-                            {% if deltaffmi>=0 %}
-                                data-line-color="rgba(70,195,123, .4)"
-                                data-fill-color="rgba(70,195,123, .15)"
-                                data-highlight-spot-color="#46C37B"
-                                data-highlight-line-color="#46C37B"
-                            {% else %}
-                                data-line-color="rgba(210, 108, 122, .4)"
-                                data-fill-color="rgba(210, 108, 122, .15)"
-                                data-highlight-spot-color="#D26C7A"
-                                data-highlight-line-color="#D26C7A"
-                            {% endif %}
-                                data-tooltip-prefix="FFMI"></span>
-                        </div>
-                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                            <a class="font-w500 d-flex align-items-center">
-                                {{ immccat }}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-12">
-                    <div class="block block-rounded d-flex flex-column">
-                        <div class="block-content block-content-full flex-grow-1 d-flex justify-content-between">
-                            <dl class="mb-0">
-                                <dt class="font-size-h2 font-w700">{{ bf }} %</dt>
-                                <dd class="text-muted mb-0">Porcentaje de grasa corporal</dd>
-                            </dl>
-                            <div>
-                                {% if deltabf<=0 %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-success bg-success-light">
-                                    <i class="fa fa-caret-down mr-1"></i>
-                                {% else %}
-                                <div class="d-inline-block px-2 py-1 rounded-lg font-size-sm font-w600 text-danger bg-danger-light">
-                                    <i class="fa fa-caret-up mr-1"></i>
-                                {% endif %}
-                                    {{ deltabf }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="block-content p-1 text-center oveflow-hidden">
-                            <!-- Sparkline Line: New Customers -->
-                            <span class="js-sparkline" data-type="line"
-                                data-points="{{ listabf }}"
-                                data-width="100%"
-                                data-height="70px"
-                                data-chart-range-min="0"
-                                data-spot-color="transparent"
-                                data-min-spot-color="transparent"
-                                data-max-spot-color="transparent"
-                            {% if deltabf<=0 %}
-                                data-line-color="rgba(70,195,123, .4)"
-                                data-fill-color="rgba(70,195,123, .15)"
-                                data-highlight-spot-color="#46C37B"
-                                data-highlight-line-color="#46C37B"
-                            {% else %}
-                                data-line-color="rgba(210, 108, 122, .4)"
-                                data-fill-color="rgba(210, 108, 122, .15)"
-                                data-highlight-spot-color="#D26C7A"
-                                data-highlight-line-color="#D26C7A"
-                            {% endif %}
-                                data-tooltip-prefix="%BF"></span>
-                        </div>
-                        <div class="block-content block-content-full block-content-sm bg-body-light font-size-sm">
-                            <a class="font-w500 d-flex align-items-center">
-                                {{ bfcat }}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- END Last 2 Weeks -->
         </div>
     </div>
     <!-- END Statistics -->
@@ -769,17 +750,7 @@
         }
     });
 </script>
-<script>var $range = $(".js-range-slider");
-
-    $range.ionRangeSlider({
-        background: "blue",
-        type: "single",
-        grid: false,
-        grid_snap: false,
-        min: 0,
-        max: 50,
-        from: {{ imc }},
-        from_fixed: true,
-    });</script>
+<!-- Gauges JavaScript -->
+<script src="{{ url_for('static', filename='assets/js/gauges.js') }}"></script>
 {% endblock %}
 

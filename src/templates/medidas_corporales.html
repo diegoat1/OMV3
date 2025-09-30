@@ -1,0 +1,329 @@
+{% extends "base/base.html" %}
+
+{% block title %}Medidas Corporales - Omega Medicina{% endblock %}
+
+{% block herotitle %}Medidas Corporales{% endblock %}
+{% block herosubtitle %}Registro y análisis antropométrico completo{% endblock %}
+
+{% block contenttitle %}Análisis Antropométrico{% endblock %}
+{% block contentsubtitle %}Seguimiento detallado de tu composición corporal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Formulario de Registro -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-plus-circle mr-2"></i>Registrar Nuevas Medidas
+                </h3>
+            </div>
+            <div class="block-content">
+                <form id="form-medidas">
+                    <!-- Medidas Básicas -->
+                    <div class="form-group">
+                        <label class="font-w600">Medidas Básicas</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Peso (kg)</label>
+                                <input type="number" class="form-control" name="peso" step="0.1" placeholder="70.5">
+                            </div>
+                            <div class="col-6">
+                                <label>Altura (cm)</label>
+                                <input type="number" class="form-control" name="altura" step="0.1" placeholder="175.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Circunferencias -->
+                    <div class="form-group">
+                        <label class="font-w600">Circunferencias (cm)</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Cuello</label>
+                                <input type="number" class="form-control" name="circ_cuello" step="0.1" placeholder="38.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Tórax</label>
+                                <input type="number" class="form-control" name="circ_torax" step="0.1" placeholder="95.0">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Cintura</label>
+                                <input type="number" class="form-control" name="circ_cintura" step="0.1" placeholder="85.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Cadera</label>
+                                <input type="number" class="form-control" name="circ_cadera" step="0.1" placeholder="98.0">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Brazo Relajado</label>
+                                <input type="number" class="form-control" name="circ_brazo_relajado" step="0.1" placeholder="32.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Brazo Flexionado</label>
+                                <input type="number" class="form-control" name="circ_brazo_flexionado" step="0.1" placeholder="35.0">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Muslo</label>
+                                <input type="number" class="form-control" name="circ_muslo" step="0.1" placeholder="58.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Pantorrilla</label>
+                                <input type="number" class="form-control" name="circ_pantorrilla" step="0.1" placeholder="38.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pliegues Cutáneos -->
+                    <div class="form-group">
+                        <label class="font-w600">Pliegues Cutáneos (mm)</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Tríceps</label>
+                                <input type="number" class="form-control" name="pliegue_triceps" step="0.1" placeholder="12.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Subescapular</label>
+                                <input type="number" class="form-control" name="pliegue_subescapular" step="0.1" placeholder="15.0">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Supraílíaco</label>
+                                <input type="number" class="form-control" name="pliegue_suprailiaco" step="0.1" placeholder="18.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Abdominal</label>
+                                <input type="number" class="form-control" name="pliegue_abdominal" step="0.1" placeholder="20.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Composición Corporal -->
+                    <div class="form-group">
+                        <label class="font-w600">Composición Corporal</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>% Grasa Corporal</label>
+                                <input type="number" class="form-control" name="porcentaje_grasa" step="0.1" placeholder="15.5">
+                            </div>
+                            <div class="col-6">
+                                <label>Masa Muscular (kg)</label>
+                                <input type="number" class="form-control" name="masa_muscular" step="0.1" placeholder="55.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notas -->
+                    <div class="form-group">
+                        <label>Notas y Observaciones</label>
+                        <textarea class="form-control" name="notas" rows="3" placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+
+                    <div class="form-group text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-save mr-2"></i>Registrar Medidas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial y Análisis -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-line mr-2"></i>Historial de Medidas
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="historial-medidas">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Cargando historial...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicadores Clave -->
+        <div class="block border-0 shadow-sm mt-4">
+            <div class="block-header bg-gradient-success text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-calculator mr-2"></i>Indicadores Clave
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="indicadores-clave">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-primary" id="imc-actual">-</h4>
+                            <small class="text-muted">IMC</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-success" id="icc-actual">-</h4>
+                            <small class="text-muted">ICC</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-info" id="grasa-actual">-</h4>
+                            <small class="text-muted">% Grasa</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block customscripts %}
+<script>
+$(document).ready(function() {
+    cargarHistorialMedidas();
+    
+    $('#form-medidas').on('submit', function(e) {
+        e.preventDefault();
+        registrarMedidas();
+    });
+});
+
+function cargarHistorialMedidas() {
+    fetch('/api/medidas-corporales')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.medidas) {
+                mostrarHistorial(data.medidas);
+                actualizarIndicadores(data.medidas);
+            } else {
+                $('#historial-medidas').html(`
+                    <div class="text-center py-4">
+                        <i class="fa fa-inbox fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">No hay registros de medidas</p>
+                        <p class="text-muted">Completa el formulario para comenzar tu seguimiento</p>
+                    </div>
+                `);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            $('#historial-medidas').html(`
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle mr-2"></i>
+                    Error al cargar el historial
+                </div>
+            `);
+        });
+}
+
+function mostrarHistorial(medidas) {
+    if (medidas.length === 0) {
+        $('#historial-medidas').html(`
+            <div class="text-center py-4">
+                <i class="fa fa-inbox fa-2x text-muted"></i>
+                <p class="mt-2 text-muted">No hay registros de medidas</p>
+            </div>
+        `);
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm">';
+    html += '<thead><tr><th>Fecha</th><th>Peso</th><th>IMC</th><th>% Grasa</th></tr></thead><tbody>';
+    
+    medidas.slice(0, 10).forEach(medida => {
+        const fecha = new Date(medida[2]).toLocaleDateString();
+        const peso = medida[3] || '-';
+        const imc = medida[30] || '-';
+        const grasa = medida[23] || '-';
+        
+        html += `<tr>
+            <td>${fecha}</td>
+            <td>${peso} kg</td>
+            <td>${imc}</td>
+            <td>${grasa}%</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    $('#historial-medidas').html(html);
+}
+
+function actualizarIndicadores(medidas) {
+    if (medidas.length > 0) {
+        const ultimaMediacion = medidas[0];
+        
+        // IMC
+        const imc = ultimaMediacion[30];
+        if (imc) {
+            $('#imc-actual').text(parseFloat(imc).toFixed(1));
+        }
+        
+        // ICC (Índice Cintura-Cadera)
+        const icc = ultimaMediacion[31];
+        if (icc) {
+            $('#icc-actual').text(parseFloat(icc).toFixed(2));
+        }
+        
+        // % Grasa
+        const grasa = ultimaMediacion[23];
+        if (grasa) {
+            $('#grasa-actual').text(parseFloat(grasa).toFixed(1) + '%');
+        }
+    }
+}
+
+function registrarMedidas() {
+    const formData = new FormData(document.getElementById('form-medidas'));
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (value.trim() !== '') {
+            data[key] = parseFloat(value) || value;
+        }
+    }
+    
+    // Calcular índices si tenemos los datos necesarios
+    if (data.peso && data.altura) {
+        const alturaM = data.altura / 100;
+        data.imc = (data.peso / (alturaM * alturaM)).toFixed(2);
+    }
+    
+    if (data.circ_cintura && data.circ_cadera) {
+        data.indice_cintura_cadera = (data.circ_cintura / data.circ_cadera).toFixed(3);
+    }
+    
+    if (data.circ_cintura && data.altura) {
+        data.indice_cintura_altura = (data.circ_cintura / data.altura).toFixed(3);
+    }
+    
+    fetch('/api/medidas-corporales', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Medidas registradas exitosamente');
+            document.getElementById('form-medidas').reset();
+            cargarHistorialMedidas();
+        } else {
+            alert('Error al registrar medidas: ' + (result.error || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al registrar medidas');
+    });
+}
+</script>
+{% endblock %}

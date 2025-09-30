@@ -1,0 +1,519 @@
+{% extends "base/base.html" %}
+
+{% block title %}Signos Vitales - Omega Medicina{% endblock %}
+
+{% block herotitle %}Signos Vitales{% endblock %}
+{% block herosubtitle %}Monitoreo y registro de parámetros vitales{% endblock %}
+
+{% block contenttitle %}Registro de Signos Vitales{% endblock %}
+{% block contentsubtitle %}Controla tu salud día a día{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Formulario de Registro -->
+    <div class="col-lg-6">
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-plus-circle mr-2"></i>Registrar Signos Vitales
+                </h3>
+            </div>
+            <div class="block-content">
+                <form id="form-signos">
+                    <!-- Signos Básicos -->
+                    <div class="form-group">
+                        <label class="font-w600">Signos Vitales Básicos</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Presión Sistólica (mmHg)</label>
+                                <input type="number" class="form-control" name="presion_sistolica" min="80" max="200" placeholder="120">
+                            </div>
+                            <div class="col-6">
+                                <label>Presión Diastólica (mmHg)</label>
+                                <input type="number" class="form-control" name="presion_diastolica" min="40" max="120" placeholder="80">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Frecuencia Cardíaca (bpm)</label>
+                                <input type="number" class="form-control" name="frecuencia_cardiaca" min="40" max="200" placeholder="72">
+                            </div>
+                            <div class="col-6">
+                                <label>Frecuencia Respiratoria (rpm)</label>
+                                <input type="number" class="form-control" name="frecuencia_respiratoria" min="8" max="40" placeholder="16">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Temperatura (°C)</label>
+                                <input type="number" class="form-control" name="temperatura" step="0.1" min="35" max="42" placeholder="36.5">
+                            </div>
+                            <div class="col-6">
+                                <label>Saturación de Oxígeno (%)</label>
+                                <input type="number" class="form-control" name="saturacion_oxigeno" min="80" max="100" placeholder="98">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medidas Complementarias -->
+                    <div class="form-group">
+                        <label class="font-w600">Medidas Complementarias</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Glucosa en Sangre (mg/dL)</label>
+                                <input type="number" class="form-control" name="glucosa_sangre" min="40" max="400" placeholder="90">
+                            </div>
+                            <div class="col-6">
+                                <label>Peso (kg)</label>
+                                <input type="number" class="form-control" name="peso" step="0.1" min="30" max="200" placeholder="70.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Escalas Subjetivas -->
+                    <div class="form-group">
+                        <label class="font-w600">Escalas de Bienestar (1-10)</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Nivel de Dolor</label>
+                                <select class="form-control" name="nivel_dolor">
+                                    <option value="">Sin dolor</option>
+                                    <option value="1">1 - Muy leve</option>
+                                    <option value="2">2 - Leve</option>
+                                    <option value="3">3 - Molesto</option>
+                                    <option value="4">4 - Moderado</option>
+                                    <option value="5">5 - Considerable</option>
+                                    <option value="6">6 - Fuerte</option>
+                                    <option value="7">7 - Muy fuerte</option>
+                                    <option value="8">8 - Intenso</option>
+                                    <option value="9">9 - Severo</option>
+                                    <option value="10">10 - Insoportable</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label>Nivel de Fatiga</label>
+                                <select class="form-control" name="nivel_fatiga">
+                                    <option value="">Sin fatiga</option>
+                                    <option value="1">1 - Muy energético</option>
+                                    <option value="2">2 - Energético</option>
+                                    <option value="3">3 - Normal</option>
+                                    <option value="4">4 - Ligeramente cansado</option>
+                                    <option value="5">5 - Moderadamente cansado</option>
+                                    <option value="6">6 - Cansado</option>
+                                    <option value="7">7 - Muy cansado</option>
+                                    <option value="8">8 - Extremadamente cansado</option>
+                                    <option value="9">9 - Agotado</option>
+                                    <option value="10">10 - Completamente exhausto</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label>Nivel de Estrés</label>
+                                <select class="form-control" name="nivel_estres">
+                                    <option value="">Sin estrés</option>
+                                    <option value="1">1 - Muy relajado</option>
+                                    <option value="2">2 - Relajado</option>
+                                    <option value="3">3 - Tranquilo</option>
+                                    <option value="4">4 - Ligeramente estresado</option>
+                                    <option value="5">5 - Moderadamente estresado</option>
+                                    <option value="6">6 - Estresado</option>
+                                    <option value="7">7 - Muy estresado</option>
+                                    <option value="8">8 - Extremadamente estresado</option>
+                                    <option value="9">9 - Abrumado</option>
+                                    <option value="10">10 - En crisis</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label>Calidad del Sueño</label>
+                                <select class="form-control" name="calidad_sueño">
+                                    <option value="">No evaluado</option>
+                                    <option value="1">1 - Muy mala</option>
+                                    <option value="2">2 - Mala</option>
+                                    <option value="3">3 - Regular</option>
+                                    <option value="4">4 - Aceptable</option>
+                                    <option value="5">5 - Buena</option>
+                                    <option value="6">6 - Muy buena</option>
+                                    <option value="7">7 - Excelente</option>
+                                    <option value="8">8 - Perfecta</option>
+                                    <option value="9">9 - Reparadora</option>
+                                    <option value="10">10 - Ideal</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información Adicional -->
+                    <div class="form-group">
+                        <label class="font-w600">Información Adicional</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Horas de Sueño</label>
+                                <input type="number" class="form-control" name="horas_sueño" step="0.5" min="2" max="12" placeholder="8.0">
+                            </div>
+                            <div class="col-6">
+                                <label>Apetito</label>
+                                <select class="form-control" name="apetito">
+                                    <option value="">No evaluado</option>
+                                    <option value="malo">Malo</option>
+                                    <option value="regular">Regular</option>
+                                    <option value="bueno">Bueno</option>
+                                    <option value="excelente">Excelente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <label>Estado de Ánimo</label>
+                                <select class="form-control" name="estado_animo">
+                                    <option value="">No evaluado</option>
+                                    <option value="deprimido">Deprimido</option>
+                                    <option value="triste">Triste</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="alegre">Alegre</option>
+                                    <option value="euferico">Eufórico</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medicamentos y Síntomas -->
+                    <div class="form-group">
+                        <label>Medicamentos Tomados Hoy</label>
+                        <input type="text" class="form-control" name="medicamentos_tomados" placeholder="Ej: Paracetamol 500mg, Vitamina D">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Síntomas Presentes</label>
+                        <input type="text" class="form-control" name="sintomas_presentes" placeholder="Ej: Dolor de cabeza, mareos">
+                    </div>
+
+                    <!-- Información del Registro -->
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-6">
+                                <label>Medido por</label>
+                                <select class="form-control" name="medido_por">
+                                    <option value="paciente" selected>Paciente</option>
+                                    <option value="enfermero">Enfermero</option>
+                                    <option value="medico">Médico</option>
+                                    <option value="dispositivo">Dispositivo automático</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label>Dispositivo Utilizado</label>
+                                <input type="text" class="form-control" name="dispositivo_utilizado" placeholder="Ej: Tensiómetro digital">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notas -->
+                    <div class="form-group">
+                        <label>Notas y Observaciones</label>
+                        <textarea class="form-control" name="notas" rows="3" placeholder="Observaciones adicionales, contexto de la medición..."></textarea>
+                    </div>
+
+                    <div class="form-group text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-save mr-2"></i>Registrar Signos Vitales
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial y Gráficos -->
+    <div class="col-lg-6">
+        <!-- Últimas Mediciones -->
+        <div class="block border-0 shadow-sm">
+            <div class="block-header bg-gradient-primary text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-line mr-2"></i>Últimas Mediciones
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="ultimas-mediciones">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Cargando datos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicadores de Alerta -->
+        <div class="block border-0 shadow-sm mt-4">
+            <div class="block-header bg-gradient-warning text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-exclamation-triangle mr-2"></i>Indicadores de Alerta
+                </h3>
+            </div>
+            <div class="block-content">
+                <div id="indicadores-alerta">
+                    <div class="text-center py-4">
+                        <i class="fa fa-shield-alt fa-2x text-success"></i>
+                        <p class="mt-2 text-success">Todos los parámetros normales</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tendencias -->
+        <div class="block border-0 shadow-sm mt-4">
+            <div class="block-header bg-gradient-info text-white">
+                <h3 class="block-title">
+                    <i class="fa fa-chart-area mr-2"></i>Tendencias
+                </h3>
+            </div>
+            <div class="block-content">
+                <canvas id="grafico-tendencias" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block customscripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let graficoTendencias = null;
+
+$(document).ready(function() {
+    cargarSignosVitales();
+    
+    $('#form-signos').on('submit', function(e) {
+        e.preventDefault();
+        registrarSignosVitales();
+    });
+});
+
+function cargarSignosVitales() {
+    fetch('/api/signos-vitales')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.signos) {
+                mostrarUltimasMediciones(data.signos);
+                evaluarIndicadoresAlerta(data.signos);
+                crearGraficoTendencias(data.signos);
+            } else {
+                $('#ultimas-mediciones').html(`
+                    <div class="text-center py-4">
+                        <i class="fa fa-inbox fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">No hay registros de signos vitales</p>
+                        <p class="text-muted">Registra tus primeros signos vitales</p>
+                    </div>
+                `);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            $('#ultimas-mediciones').html(`
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle mr-2"></i>
+                    Error al cargar los signos vitales
+                </div>
+            `);
+        });
+}
+
+function mostrarUltimasMediciones(signos) {
+    if (signos.length === 0) {
+        $('#ultimas-mediciones').html(`
+            <div class="text-center py-4">
+                <i class="fa fa-inbox fa-2x text-muted"></i>
+                <p class="mt-2 text-muted">No hay registros</p>
+            </div>
+        `);
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm">';
+    html += '<thead><tr><th>Fecha</th><th>Presión</th><th>FC</th><th>Temp</th><th>SatO2</th></tr></thead><tbody>';
+    
+    signos.slice(0, 10).forEach(signo => {
+        const fecha = new Date(signo[2]).toLocaleDateString();
+        const presion = signo[3] && signo[4] ? `${signo[3]}/${signo[4]}` : '-';
+        const fc = signo[5] || '-';
+        const temp = signo[7] ? parseFloat(signo[7]).toFixed(1) + '°C' : '-';
+        const sat = signo[8] ? signo[8] + '%' : '-';
+        
+        html += `<tr>
+            <td>${fecha}</td>
+            <td>${presion}</td>
+            <td>${fc}</td>
+            <td>${temp}</td>
+            <td>${sat}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    $('#ultimas-mediciones').html(html);
+}
+
+function evaluarIndicadoresAlerta(signos) {
+    if (signos.length === 0) return;
+    
+    const ultimoSigno = signos[0];
+    const alertas = [];
+    
+    // Evaluar presión arterial
+    const sistolica = ultimoSigno[3];
+    const diastolica = ultimoSigno[4];
+    if (sistolica > 140 || diastolica > 90) {
+        alertas.push({
+            tipo: 'danger',
+            mensaje: 'Presión arterial elevada',
+            valor: `${sistolica}/${diastolica} mmHg`
+        });
+    }
+    
+    // Evaluar frecuencia cardíaca
+    const fc = ultimoSigno[5];
+    if (fc > 100) {
+        alertas.push({
+            tipo: 'warning',
+            mensaje: 'Frecuencia cardíaca elevada',
+            valor: `${fc} bpm`
+        });
+    } else if (fc < 60) {
+        alertas.push({
+            tipo: 'info',
+            mensaje: 'Frecuencia cardíaca baja',
+            valor: `${fc} bpm`
+        });
+    }
+    
+    // Evaluar temperatura
+    const temp = ultimoSigno[7];
+    if (temp > 37.5) {
+        alertas.push({
+            tipo: 'danger',
+            mensaje: 'Fiebre',
+            valor: `${temp}°C`
+        });
+    }
+    
+    // Evaluar saturación
+    const sat = ultimoSigno[8];
+    if (sat < 95) {
+        alertas.push({
+            tipo: 'danger',
+            mensaje: 'Saturación de oxígeno baja',
+            valor: `${sat}%`
+        });
+    }
+    
+    if (alertas.length === 0) {
+        $('#indicadores-alerta').html(`
+            <div class="text-center py-4">
+                <i class="fa fa-shield-alt fa-2x text-success"></i>
+                <p class="mt-2 text-success">Todos los parámetros normales</p>
+            </div>
+        `);
+    } else {
+        let html = '';
+        alertas.forEach(alerta => {
+            html += `
+                <div class="alert alert-${alerta.tipo} mb-2">
+                    <strong>${alerta.mensaje}:</strong> ${alerta.valor}
+                </div>
+            `;
+        });
+        $('#indicadores-alerta').html(html);
+    }
+}
+
+function crearGraficoTendencias(signos) {
+    const ctx = document.getElementById('grafico-tendencias').getContext('2d');
+    
+    // Preparar datos
+    const datos = signos.reverse().slice(-30).map(signo => ({
+        fecha: new Date(signo[2]).toLocaleDateString(),
+        sistolica: signo[3],
+        diastolica: signo[4],
+        fc: signo[5],
+        temp: signo[7]
+    }));
+    
+    if (graficoTendencias) {
+        graficoTendencias.destroy();
+    }
+    
+    graficoTendencias = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: datos.map(d => d.fecha),
+            datasets: [{
+                label: 'Presión Sistólica',
+                data: datos.map(d => d.sistolica),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Presión Diastólica',
+                data: datos.map(d => d.diastolica),
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Freq. Cardíaca',
+                data: datos.map(d => d.fc),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+function registrarSignosVitales() {
+    const formData = new FormData(document.getElementById('form-signos'));
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+        if (value.trim() !== '') {
+            // Convertir números apropiadamente
+            if (['presion_sistolica', 'presion_diastolica', 'frecuencia_cardiaca', 'frecuencia_respiratoria', 'saturacion_oxigeno', 'glucosa_sangre', 'nivel_dolor', 'nivel_fatiga', 'nivel_estres', 'calidad_sueño'].includes(key)) {
+                data[key] = parseInt(value);
+            } else if (['temperatura', 'peso', 'horas_sueño'].includes(key)) {
+                data[key] = parseFloat(value);
+            } else {
+                data[key] = value;
+            }
+        }
+    }
+    
+    fetch('/api/signos-vitales', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Signos vitales registrados exitosamente');
+            document.getElementById('form-signos').reset();
+            cargarSignosVitales();
+        } else {
+            alert('Error al registrar signos vitales: ' + (result.error || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al registrar signos vitales');
+    });
+}
+</script>
+{% endblock %}

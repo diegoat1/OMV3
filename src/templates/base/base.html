@@ -233,50 +233,96 @@
                             </li>
                             {% endif %}
 
-                            <li class="nav-main-heading">Funciones</li>
-                            <li class="nav-main-item">
-                                <a class="nav-main-link" href="/historial-fuerza">
-                                    <i class="nav-main-link-icon fa fa-chart-line"></i>
-                                    <span class="nav-main-link-name">Historial de Fuerza</span>
-                                </a>
-                            </li>
-                            <li class="nav-main-item">
-                                <a class="nav-main-link" href="/plan_entrenamiento">
-                                    <i class="nav-main-link-icon fa fa-calendar-alt"></i>
-                                    <span class="nav-main-link-name">Plan de Entrenamiento</span>
-                                </a>
-                            </li>
+                            <li class="nav-main-heading">Nutrición</li>
                             <li class="nav-main-item">
                                 <a class="nav-main-link" href="/recipe">
-                                    <i class="nav-main-link-icon fa fa-blender"></i>
+                                    <i class="nav-main-link-icon fa fa-blender text-success"></i>
                                     <span class="nav-main-link-name">Recetas</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
                                 <a class="nav-main-link" href="/diet">
-                                    <i class="nav-main-link-icon fa fa-apple-alt"></i>
+                                    <i class="nav-main-link-icon fa fa-seedling text-success"></i>
                                     <span class="nav-main-link-name">Dieta</span>
                                 </a>
                             </li>
                             <li class="nav-main-item">
+                                <a class="nav-main-link" href="/plan-alimentario">
+                                    <i class="nav-main-link-icon fa fa-calendar-day text-success"></i>
+                                    <span class="nav-main-link-name">Plan Alimentario</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-main-heading">Entrenamiento</li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/plan_entrenamiento">
+                                    <i class="nav-main-link-icon fa fa-calendar-alt text-primary"></i>
+                                    <span class="nav-main-link-name">Plan de Entrenamiento</span>
+                                </a>
+                            </li>
+                            <li class="nav-main-item">
                                 <a class="nav-main-link" href="/entrenamiento_actual">
-                                    <i class="nav-main-link-icon fa fa-dumbbell"></i>
-                                    <span class="nav-main-link-name">Entrenamiento</span>
+                                    <i class="nav-main-link-icon fa fa-dumbbell text-primary"></i>
+                                    <span class="nav-main-link-name">Entrenamiento Actual</span>
+                                </a>
+                            </li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/historial-fuerza">
+                                    <i class="nav-main-link-icon fa fa-chart-line text-primary"></i>
+                                    <span class="nav-main-link-name">Historial de Fuerza</span>
+                                </a>
+                            </li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/mantenimiento" style="pointer-events: all;">
+                                    <i class="nav-main-link-icon fa fa-ruler-combined text-muted"></i>
+                                    <span class="nav-main-link-name">Medidas Corporales</span>
+                                    <span class="badge badge-pill badge-secondary ml-auto" style="font-size: 0.65rem; padding: 0.25rem 0.5rem;">
+                                        <i class="fa fa-tools"></i> En desarrollo
+                                    </span>
+                                </a>
+                            </li>
+
+                            <li class="nav-main-heading">En Desarrollo</li>
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/mantenimiento">
+                                    <i class="nav-main-link-icon fa fa-tachometer-alt text-muted"></i>
+                                    <span class="nav-main-link-name">Rendimiento Físico</span>
+                                    <span class="badge badge-pill badge-info ml-auto" style="font-size: 0.65rem; padding: 0.25rem 0.5rem;">
+                                        <i class="fa fa-clock"></i> Próximamente
+                                    </span>
+                                </a>
+                            </li>
+
+                            <li class="nav-main-item">
+                                <a class="nav-main-link" href="/mantenimiento">
+                                    <i class="nav-main-link-icon fa fa-user-md text-muted"></i>
+                                    <span class="nav-main-link-name">Telemedicina</span>
+                                    <span class="badge badge-pill badge-info ml-auto" style="font-size: 0.65rem; padding: 0.25rem 0.5rem;">
+                                        <i class="fa fa-clock"></i> Próximamente
+                                    </span>
                                 </a>
                             </li>
 
                             <li class="nav-main-heading">Recursos Gratuitos</li>
                             <li class="nav-main-item">
-                                <a class="nav-main-link" href="/programas-entrenamientos">
-                                    <i class="nav-main-link-icon fa fa-list-alt"></i>
-                                    <span class="nav-main-link-name">Programas de Entrenamientos</span>
-                                </a>
-                            </li>
-                            <li class="nav-main-item">
-                                <a class="nav-main-link" href="/caloriescal">
-                                    <i class="nav-main-link-icon fa fa-calculator"></i>
-                                    <span class="nav-main-link-name">Calculadora de Calorías</span>
-                                </a>
+                              <a class="nav-main-link nav-main-link-submenu" data-toggle="submenu" aria-haspopup="true" aria-expanded="false" href="#">
+                                <i class="nav-main-link-icon fa fa-gift text-secondary"></i>
+                                <span class="nav-main-link-name">Herramientas</span>
+                              </a>
+                                <ul class="nav-main-submenu">
+                                    <li class="nav-main-item">
+                                        <a class="nav-main-link" href="/programas-entrenamientos">
+                                            <i class="nav-main-link-icon fa fa-list-alt"></i>
+                                            <span class="nav-main-link-name">Programas de Entrenamientos</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-main-item">
+                                        <a class="nav-main-link" href="/caloriescal">
+                                            <i class="nav-main-link-icon fa fa-calculator"></i>
+                                            <span class="nav-main-link-name">Calculadora de Calorías</span>
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                         </ul>
                     </div>

@@ -53,3 +53,7 @@ Thumbs.db
 
 # Project specific
 _gsdata_/
+
+# Node.js
+node_modules/
+package-lock.json
