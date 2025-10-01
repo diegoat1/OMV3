@@ -403,6 +403,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variable global para almacenar el plan actual
     let planActualGuardado = null;
     
+    // DELEGACIÓN DE EVENTOS GLOBAL para botones de eliminar recetas
+    // Esto maneja TODOS los botones, incluso los cargados dinámicamente
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-remove-recipe')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const btn = e.target.closest('.btn-remove-recipe');
+            const recetaItem = btn.closest('.receta-item');
+            if (recetaItem) {
+                recetaItem.remove();
+            }
+        }
+    });
+    
     // Botón modificar plan
     document.getElementById('modificar-plan-btn').addEventListener('click', function() {
         document.getElementById('panel-plan-guardado').style.display = 'none';
@@ -905,11 +919,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         container.innerHTML += recetaHtml;
         
-        // Agregar event listener al botón de eliminar
-        const removeBtn = container.lastElementChild.querySelector('.btn-remove-recipe');
-        removeBtn.addEventListener('click', function() {
-            this.closest('.receta-item').remove();
-        });
+        // No necesitamos agregar event listeners aquí
+        // La delegación de eventos global (línea 408) maneja todos los botones
     }
     
     function cargarRecetasDisponibles() {

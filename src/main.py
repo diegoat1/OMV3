@@ -2483,6 +2483,10 @@ def api_plan_alimentario_guardar():
         if 'COMIDAS_CONFIGURADAS' not in columnas_existentes:
             cursor.execute('ALTER TABLE PLANES_ALIMENTARIOS ADD COLUMN COMIDAS_CONFIGURADAS INTEGER DEFAULT 0')
         
+        # Agregar CALCULOS_JSON si no existe (cache de cálculos)
+        if 'CALCULOS_JSON' not in columnas_existentes:
+            cursor.execute('ALTER TABLE PLANES_ALIMENTARIOS ADD COLUMN CALCULOS_JSON TEXT')
+        
         # Desactivar planes anteriores
         cursor.execute('''
             UPDATE PLANES_ALIMENTARIOS 
@@ -2499,15 +2503,90 @@ def api_plan_alimentario_guardar():
                 comidas_configuradas += 1
                 total_recetas += len(recetas)
         
-        # Guardar nuevo plan
+        # CALCULAR UNA SOLA VEZ y cachear los resultados
+        print(f"Calculando plan con {total_recetas} recetas...")
+        
+        # Obtener información nutricional del usuario (tabla DIETA)
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        dieta_data = cursor.fetchone()
+        
+        recetas_calculadas = None
+        if dieta_data:
+            proteina_total = dieta_data[3] if len(dieta_data) > 3 else 0
+            grasa_total = dieta_data[4] if len(dieta_data) > 4 else 0
+            carbohidratos_total = dieta_data[5] if len(dieta_data) > 5 else 0
+            libertad = dieta_data[24] if len(dieta_data) > 24 else 0
+            
+            comidas_porcentajes = {
+                'desayuno': (6, 7, 8),
+                'media_manana': (9, 10, 11),
+                'almuerzo': (12, 13, 14),
+                'merienda': (15, 16, 17),
+                'media_tarde': (18, 19, 20),
+                'cena': (21, 22, 23)
+            }
+            
+            recetas_calculadas = {}
+            
+            for comida_id, recetas_ids in data.get('comidas', {}).items():
+                if not recetas_ids:
+                    continue
+                
+                if comida_id not in comidas_porcentajes:
+                    continue
+                
+                idx_p, idx_g, idx_c = comidas_porcentajes[comida_id]
+                pct_proteina = dieta_data[idx_p] if len(dieta_data) > idx_p else 0
+                pct_grasa = dieta_data[idx_g] if len(dieta_data) > idx_g else 0
+                pct_carbos = dieta_data[idx_c] if len(dieta_data) > idx_c else 0
+                
+                proteina_comida = proteina_total * pct_proteina
+                grasa_comida = grasa_total * pct_grasa
+                carbos_comida = carbohidratos_total * pct_carbos
+                
+                recetas_calculadas[comida_id] = {
+                    'nombre_comida': comida_id.replace('_', ' ').title(),
+                    'macros_objetivo': {
+                        'proteina': round(proteina_comida, 2),
+                        'grasa': round(grasa_comida, 2),
+                        'carbohidratos': round(carbos_comida, 2)
+                    },
+                    'recetas': []
+                }
+                
+                for receta_id in recetas_ids:
+                    cursor.execute('SELECT ID, NOMBRERECETA FROM RECETAS WHERE ID = ?', (receta_id,))
+                    receta = cursor.fetchone()
+                    
+                    if receta:
+                        # EJECUTAR EL SOLVER para esta receta
+                        resultado_calculo = functions.calculate_recipe_portions(
+                            nombrereceta=receta[1],
+                            p0=proteina_comida,
+                            g0=grasa_comida,
+                            ch0=carbos_comida,
+                            libertad=libertad
+                        )
+                        
+                        recetas_calculadas[comida_id]['recetas'].append({
+                            'id': receta[0],
+                            'nombre': receta[1],
+                            'calculo': resultado_calculo
+                        })
+            
+            print(f"✓ Cálculos completados y cacheados")
+        
+        # Guardar nuevo plan CON los cálculos cacheados
         plan_json = json.dumps(data, ensure_ascii=False)
+        calculos_json = json.dumps(recetas_calculadas, ensure_ascii=False) if recetas_calculadas else None
+        
         cursor.execute('''
             INSERT INTO PLANES_ALIMENTARIOS 
             (USER_DNI, NOMBRE_APELLIDO, TIPO_PLAN, PLAN_JSON, ACTIVO, 
-             TOTAL_RECETAS, COMIDAS_CONFIGURADAS)
-            VALUES (?, ?, ?, ?, 1, ?, ?)
+             TOTAL_RECETAS, COMIDAS_CONFIGURADAS, CALCULOS_JSON)
+            VALUES (?, ?, ?, ?, 1, ?, ?, ?)
         ''', (user_dni, username, data.get('tipo', 'recetas'), plan_json, 
-              total_recetas, comidas_configuradas))
+              total_recetas, comidas_configuradas, calculos_json))
         
         basededatos.commit()
         basededatos.close()
@@ -2545,6 +2624,8 @@ def api_plan_alimentario_plan_guardado():
             columnas_select.append('TOTAL_RECETAS')
         if 'COMIDAS_CONFIGURADAS' in columnas_existentes:
             columnas_select.append('COMIDAS_CONFIGURADAS')
+        if 'CALCULOS_JSON' in columnas_existentes:
+            columnas_select.append('CALCULOS_JSON')
         columnas_select.append('FECHA_CREACION')
         
         # Obtener plan activo del usuario
@@ -2567,83 +2648,94 @@ def api_plan_alimentario_plan_guardado():
         # Parsear el plan guardado
         plan_data = json.loads(plan_row[0])
         
-        # Obtener información nutricional del usuario (tabla DIETA)
-        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
-        dieta_data = cursor.fetchone()
+        # INTENTAR USAR CACHE DE CÁLCULOS si existe
+        recetas_calculadas = None
+        if 'CALCULOS_JSON' in columnas_existentes:
+            idx_calculos = columnas_select.index('CALCULOS_JSON')
+            if plan_row[idx_calculos]:
+                try:
+                    recetas_calculadas = json.loads(plan_row[idx_calculos])
+                    print(f"✓ Usando cálculos cacheados (carga instantánea)")
+                except:
+                    print("⚠ Error leyendo cache, recalculando...")
+                    recetas_calculadas = None
         
-        if not dieta_data:
-            return jsonify({
-                'success': False,
-                'error': 'No hay información nutricional configurada'
-            })
-        
-        # Obtener macros totales del usuario
-        proteina_total = dieta_data[3] if len(dieta_data) > 3 else 0
-        grasa_total = dieta_data[4] if len(dieta_data) > 4 else 0
-        carbohidratos_total = dieta_data[5] if len(dieta_data) > 5 else 0
-        libertad = dieta_data[24] if len(dieta_data) > 24 else 0
-        
-        # Mapeo de comida_id a columnas de la tabla DIETA
-        comidas_porcentajes = {
-            'desayuno': (6, 7, 8),  # DP, DG, DC
-            'media_manana': (9, 10, 11),  # MMP, MMG, MMC
-            'almuerzo': (12, 13, 14),  # AP, AG, AC
-            'merienda': (15, 16, 17),  # MP, MG, MC
-            'media_tarde': (18, 19, 20),  # MTP, MTG, MTC
-            'cena': (21, 22, 23)  # CP, CG, CC
-        }
-        
-        # Calcular todas las recetas del plan usando el SOLVER COMPLETO
-        recetas_calculadas = {}
-        
-        for comida_id, recetas_ids in plan_data.get('comidas', {}).items():
-            if not recetas_ids:
-                continue
+        # Si no hay cache, recalcular (compatibilidad con planes viejos)
+        if not recetas_calculadas:
+            print("ℹ No hay cache, recalculando plan...")
             
-            # Obtener porcentajes de esta comida
-            if comida_id not in comidas_porcentajes:
-                continue
+            # Obtener información nutricional del usuario (tabla DIETA)
+            cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+            dieta_data = cursor.fetchone()
             
-            idx_p, idx_g, idx_c = comidas_porcentajes[comida_id]
-            pct_proteina = dieta_data[idx_p] if len(dieta_data) > idx_p else 0
-            pct_grasa = dieta_data[idx_g] if len(dieta_data) > idx_g else 0
-            pct_carbos = dieta_data[idx_c] if len(dieta_data) > idx_c else 0
+            if not dieta_data:
+                return jsonify({
+                    'success': False,
+                    'error': 'No hay información nutricional configurada'
+                })
             
-            # Calcular gramos reales para esta comida
-            proteina_comida = proteina_total * pct_proteina
-            grasa_comida = grasa_total * pct_grasa
-            carbos_comida = carbohidratos_total * pct_carbos
+            # Obtener macros totales del usuario
+            proteina_total = dieta_data[3] if len(dieta_data) > 3 else 0
+            grasa_total = dieta_data[4] if len(dieta_data) > 4 else 0
+            carbohidratos_total = dieta_data[5] if len(dieta_data) > 5 else 0
+            libertad = dieta_data[24] if len(dieta_data) > 24 else 0
             
-            recetas_calculadas[comida_id] = {
-                'nombre_comida': comida_id.replace('_', ' ').title(),
-                'macros_objetivo': {
-                    'proteina': round(proteina_comida, 2),
-                    'grasa': round(grasa_comida, 2),
-                    'carbohidratos': round(carbos_comida, 2)
-                },
-                'recetas': []
+            # Mapeo de comida_id a columnas de la tabla DIETA
+            comidas_porcentajes = {
+                'desayuno': (6, 7, 8),
+                'media_manana': (9, 10, 11),
+                'almuerzo': (12, 13, 14),
+                'merienda': (15, 16, 17),
+                'media_tarde': (18, 19, 20),
+                'cena': (21, 22, 23)
             }
             
-            for receta_id in recetas_ids:
-                # Obtener datos de la receta
-                cursor.execute('SELECT ID, NOMBRERECETA FROM RECETAS WHERE ID = ?', (receta_id,))
-                receta = cursor.fetchone()
+            recetas_calculadas = {}
+            
+            for comida_id, recetas_ids in plan_data.get('comidas', {}).items():
+                if not recetas_ids:
+                    continue
                 
-                if receta:
-                    # EJECUTAR EL SOLVER COMPLETO para esta receta
-                    resultado_calculo = functions.calculate_recipe_portions(
-                        nombrereceta=receta[1],
-                        p0=proteina_comida,
-                        g0=grasa_comida,
-                        ch0=carbos_comida,
-                        libertad=libertad
-                    )
+                if comida_id not in comidas_porcentajes:
+                    continue
+                
+                idx_p, idx_g, idx_c = comidas_porcentajes[comida_id]
+                pct_proteina = dieta_data[idx_p] if len(dieta_data) > idx_p else 0
+                pct_grasa = dieta_data[idx_g] if len(dieta_data) > idx_g else 0
+                pct_carbos = dieta_data[idx_c] if len(dieta_data) > idx_c else 0
+                
+                proteina_comida = proteina_total * pct_proteina
+                grasa_comida = grasa_total * pct_grasa
+                carbos_comida = carbohidratos_total * pct_carbos
+                
+                recetas_calculadas[comida_id] = {
+                    'nombre_comida': comida_id.replace('_', ' ').title(),
+                    'macros_objetivo': {
+                        'proteina': round(proteina_comida, 2),
+                        'grasa': round(grasa_comida, 2),
+                        'carbohidratos': round(carbos_comida, 2)
+                    },
+                    'recetas': []
+                }
+                
+                for receta_id in recetas_ids:
+                    cursor.execute('SELECT ID, NOMBRERECETA FROM RECETAS WHERE ID = ?', (receta_id,))
+                    receta = cursor.fetchone()
                     
-                    recetas_calculadas[comida_id]['recetas'].append({
-                        'id': receta[0],
-                        'nombre': receta[1],
-                        'calculo': resultado_calculo
-                    })
+                    if receta:
+                        resultado_calculo = functions.calculate_recipe_portions(
+                            nombrereceta=receta[1],
+                            p0=proteina_comida,
+                            g0=grasa_comida,
+                            ch0=carbos_comida,
+                            libertad=libertad
+                        )
+                        
+                        recetas_calculadas[comida_id]['recetas'].append({
+                            'id': receta[0],
+                            'nombre': receta[1],
+                            'calculo': resultado_calculo
+                        })
         
         basededatos.close()
         
