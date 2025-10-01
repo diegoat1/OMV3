@@ -57,10 +57,3 @@ _gsdata_/
 # Node.js
 node_modules/
 package-lock.json
-
-# Modelos de optimización (auto-generados por PuLP/GEKKO)
-*.lp
-src/*.lp
-src/metodo1Model.lp
-src/metodo2Model.lp
-src/metodo3Model.lp
