@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.optimize import *
 from pulp import *
 import sqlite3
 import json
