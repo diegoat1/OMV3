@@ -448,7 +448,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
             
             # Configurar solver para usar directorio temporal
             temp_dir = tempfile.gettempdir()
-            solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+            solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
             status=forecast.solve(solver)
 
             if status == 1:                
@@ -792,7 +792,7 @@ def actualizarperfildin(perfil):
         forecast += lpSum(IncDays*aveincpm+DecDays*avedecpg+pg) == pgf, "PG FINAL "
         # Configurar solver para usar directorio temporal
         temp_dir = tempfile.gettempdir()
-        solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+        solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
         forecast.solve(solver)
 
         decdays=round(forecast.variables()[0].varValue)
@@ -2321,7 +2321,7 @@ def recipe(recipeform, nameuser):
         
         # Configurar solver para usar directorio temporal (optimizado para velocidad)
         temp_dir = tempfile.gettempdir()
-        solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+        solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
         metodo1.solve(solver)
 
         if LpStatus[metodo1.status] != "Optimal":
@@ -2335,7 +2335,7 @@ def recipe(recipeform, nameuser):
             metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-libertad/100), "Limite inferior de proteinas"
 
             # Configurar solver para usar directorio temporal (optimizado para velocidad)
-            solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+            solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
             metodo2.solve(solver)
 
             if LpStatus[metodo2.status] != "Optimal":
@@ -2347,7 +2347,7 @@ def recipe(recipeform, nameuser):
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
 
                 # Configurar solver para usar directorio temporal (optimizado para velocidad)
-                solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+                solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
                 metodo3.solve(solver)
                 if LpStatus[metodo3.status] == "Optimal":
                     met = 3
@@ -2510,7 +2510,7 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
         
         # Configurar solver para usar directorio temporal
         temp_dir = tempfile.gettempdir()
-        solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+        solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
         metodo1.solve(solver)
 
         if LpStatus[metodo1.status] == "Optimal":
@@ -2524,7 +2524,7 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
             metodo2 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
             metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-libertad/100)
             # Configurar solver para usar directorio temporal
-            solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+            solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
             metodo2.solve(solver)
 
             if LpStatus[metodo2.status] == "Optimal":
@@ -2537,7 +2537,7 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
                 # Configurar solver para usar directorio temporal
-                solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
+                solver = PULP_CBC_CMD(msg=0, keepFiles=0, options=['--tmpDir', temp_dir])
                 metodo3.solve(solver)
                 met = 3
                 metodo_usado = metodo3
