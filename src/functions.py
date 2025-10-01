@@ -2319,11 +2319,8 @@ def recipe(recipeform, nameuser):
         metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) <= ch0*(1+(libertad/100)), "Limite superior de carbos"
         metodo1 += lpSum([medida_casera[i]*porciones[i]*carbos[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*carbos[i]/100 for i in alimentosnovar]) >= ch0*(1-(libertad/100)), "Limite inferior de carbos"
         
-        # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
+        # Configurar solver para usar directorio temporal (optimizado para velocidad)
         temp_dir = tempfile.gettempdir()
-        metodo1.writeLP(os.path.join(temp_dir, "metodo1Model.lp"))
-        
-        # Configurar solver para usar directorio temporal
         solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
         metodo1.solve(solver)
 
@@ -2337,10 +2334,7 @@ def recipe(recipeform, nameuser):
             #metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) <= p0*(1+libertad/100), "Limite superior de proteinas"
             metodo2 += lpSum([medida_casera[i]*porciones[i]*proteina[i]/100 for i in alimentos])+lpSum([medida_casera[i] * porcionesnovar[i]*proteina[i]/100 for i in alimentosnovar]) >= p0*(1-libertad/100), "Limite inferior de proteinas"
 
-            # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
-            metodo2.writeLP(os.path.join(temp_dir, "metodo2Model.lp"))
-
-            # Configurar solver para usar directorio temporal
+            # Configurar solver para usar directorio temporal (optimizado para velocidad)
             solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
             metodo2.solve(solver)
 
@@ -2352,10 +2346,7 @@ def recipe(recipeform, nameuser):
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= p0*4+g0*9+ch0*4
                 metodo3 += lpSum([medida_casera[i]*porciones[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentos])+lpSum([medida_casera[i]*porcionesnovar[i]*(proteina[i]*4+carbos[i]*4+grasa[i]*9)/100 for i in alimentosnovar]) <= (p0*4+g0*9+ch0*4)*(1-libertad/100)
 
-                # Usar directorio temporal para evitar errores de escritura en PythonAnywhere
-                metodo3.writeLP(os.path.join(temp_dir, "metodo3Model.lp"))
-
-                # Configurar solver para usar directorio temporal
+                # Configurar solver para usar directorio temporal (optimizado para velocidad)
                 solver = PULP_CBC_CMD(msg=0, tmpDir=temp_dir, keepFiles=0)
                 metodo3.solve(solver)
                 if LpStatus[metodo3.status] == "Optimal":
