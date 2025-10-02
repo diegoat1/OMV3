@@ -12,6 +12,45 @@
 {% endblock %}
 
 {% block content %}
+
+{% if is_admin %}
+<!-- Selector de Pacientes (Solo Administrador) -->
+<div class="block block-rounded mb-3 bg-primary-light">
+    <div class="block-content py-3">
+        <div class="row align-items-center">
+            <div class="col-md-1 text-center">
+                <i class="fa fa-user-shield fa-2x text-primary"></i>
+            </div>
+            <div class="col-md-5">
+                <label class="mb-1 font-w600 text-primary">👑 Administrador - Ver dashboard de paciente:</label>
+                <select class="form-control form-control-lg" id="selector_paciente" onchange="cambiarPaciente()">
+                    {% for paciente in lista_pacientes %}
+                    <option value="{{ paciente }}" {% if paciente == (paciente_seleccionado or username) %}selected{% endif %}>
+                        {{ paciente }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-info mb-0">
+                    <i class="fa fa-info-circle mr-2"></i>
+                    <strong>Modo Admin:</strong> Viendo datos de <strong>{{ paciente_seleccionado or username }}</strong>
+                    <br>
+                    <small>Los botones de ajuste de calorías están activos para realizar cambios.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function cambiarPaciente() {
+    const paciente = document.getElementById('selector_paciente').value;
+    window.location.href = `/dashboard?paciente=${encodeURIComponent(paciente)}`;
+}
+</script>
+{% endif %}
+
 <script>
     // Variable global para el sexo del usuario (para los cálculos de los gauges)
     window.userSex = '{{ estaticodata[0][4] if estaticodata else "M" }}';
@@ -109,6 +148,715 @@
                 </div>
                 <div class="block-content block-content-full">
                     <div class="row">
+                        <!-- 
+    SECCIÓN DE ANÁLISIS COMPLETO DEL RELOJ DE RENDIMIENTO
+    Esta sección debe insertarse ANTES de las 3 columnas del performance_clock en dashboard.html
+    
+    INSTRUCCIONES:
+    1. Buscar en dashboard.html la línea que dice: <div class="row"> (después del block-content del Reloj de rendimiento)
+    2. Insertar todo este código ANTES de esa línea
+-->
+
+<!-- ANÁLISIS COMPLETO: TODA LA INFORMACIÓN DEL PROGRESO -->
+{% if analisis_completo.tiene_datos %}
+
+<!-- SECCIÓN 1: RESUMEN GENERAL - 4 CARDS -->
+<div class="bg-light p-4 mb-4">
+    <h4 class="font-w700 mb-4 text-primary">
+        <i class="fa fa-tachometer-alt mr-2"></i>Resumen General del Progreso
+    </h4>
+    
+    <div class="row">
+        <!-- Card 1: Estado Actual -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-primary shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fa fa-user-circle mr-2"></i>Estado Actual</h6>
+                </div>
+                <div class="card-body font-size-sm">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td>Peso:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.estado_actual.peso }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>Masa Magra:</td>
+                            <td class="text-right font-w600 text-success">{{ analisis_completo.estado_actual.peso_magro }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>Masa Grasa:</td>
+                            <td class="text-right font-w600 text-danger">{{ analisis_completo.estado_actual.peso_graso }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>BF%:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.estado_actual.bf_porcentaje }}%</td>
+                        </tr>
+                        <tr>
+                            <td>FFMI:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.estado_actual.ffmi }}</td>
+                        </tr>
+                    </table>
+                    <hr class="my-2">
+                    <div class="font-size-xs text-muted">
+                        <div><i class="fa fa-calendar mr-1"></i>Último: {{ analisis_completo.estado_actual.fecha_ultimo_registro }}</div>
+                        <div><i class="fa fa-database mr-1"></i>{{ analisis_completo.estado_actual.total_registros }} registros / {{ analisis_completo.estado_actual.dias_monitoreados }} días</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Objetivo -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-success shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fa fa-bullseye mr-2"></i>Objetivo Definido</h6>
+                </div>
+                <div class="card-body font-size-sm">
+                    {% if analisis_completo.objetivo_definido.tiene_objetivo %}
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td>Peso:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.objetivo_definido.peso_objetivo }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>Masa Magra:</td>
+                            <td class="text-right font-w600 text-success">{{ analisis_completo.objetivo_definido.peso_magro_objetivo }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>Masa Grasa:</td>
+                            <td class="text-right font-w600 text-danger">{{ analisis_completo.objetivo_definido.peso_graso_objetivo }} kg</td>
+                        </tr>
+                        <tr>
+                            <td>BF%:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.objetivo_definido.bf_objetivo }}%</td>
+                        </tr>
+                        <tr>
+                            <td>FFMI:</td>
+                            <td class="text-right font-w600">{{ analisis_completo.objetivo_definido.ffmi_objetivo }}</td>
+                        </tr>
+                    </table>
+                    <hr class="my-2">
+                    <span class="badge badge-{{ 'warning' if analisis_completo.diferencias.fase == 'Definición (Pérdida de grasa)' else 'info' if analisis_completo.diferencias.fase == 'Volumen (Ganancia muscular)' else 'secondary' }} font-size-xs">
+                        {{ analisis_completo.diferencias.fase }}
+                    </span>
+                    {% else %}
+                    <div class="alert alert-warning mb-0 font-size-xs">
+                        <i class="fa fa-exclamation-triangle"></i> No has definido objetivos.
+                        <a href="/goal" class="alert-link">Definir ahora</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Diferencias -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-info shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fa fa-exchange-alt mr-2"></i>Cambios Necesarios</h6>
+                </div>
+                <div class="card-body font-size-sm">
+                    {% if analisis_completo.objetivo_definido.tiene_objetivo %}
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td>Peso:</td>
+                            <td class="text-right font-w600 {{ 'text-danger' if analisis_completo.diferencias.peso < 0 else 'text-success' }}">
+                                {{ '%+.2f'|format(analisis_completo.diferencias.peso) }} kg
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Masa Magra:</td>
+                            <td class="text-right font-w600 {{ 'text-danger' if analisis_completo.diferencias.peso_magro < 0 else 'text-success' }}">
+                                {{ '%+.2f'|format(analisis_completo.diferencias.peso_magro) }} kg
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Masa Grasa:</td>
+                            <td class="text-right font-w600 {{ 'text-success' if analisis_completo.diferencias.peso_graso < 0 else 'text-danger' }}">
+                                {{ '%+.2f'|format(analisis_completo.diferencias.peso_graso) }} kg
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>BF%:</td>
+                            <td class="text-right font-w600 {{ 'text-success' if analisis_completo.diferencias.bf < 0 else 'text-danger' }}">
+                                {{ '%+.1f'|format(analisis_completo.diferencias.bf) }}%
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>FFMI:</td>
+                            <td class="text-right font-w600 {{ 'text-danger' if analisis_completo.diferencias.ffmi < 0 else 'text-success' }}">
+                                {{ '%+.2f'|format(analisis_completo.diferencias.ffmi) }}
+                            </td>
+                        </tr>
+                    </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Diagnóstico -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-{{ 'danger' if analisis_completo.diagnostico.estado_general == 'alerta_alta' else 'warning' if analisis_completo.diagnostico.estado_general == 'alerta_media' else 'success' }} shadow-sm h-100">
+                <div class="card-header bg-{{ 'danger' if analisis_completo.diagnostico.estado_general == 'alerta_alta' else 'warning' if analisis_completo.diagnostico.estado_general == 'alerta_media' else 'success' }} text-white">
+                    <h6 class="mb-0">
+                        <i class="fa fa-{{ 'exclamation-circle' if analisis_completo.diagnostico.estado_general == 'alerta_alta' else 'exclamation-triangle' if analisis_completo.diagnostico.estado_general == 'alerta_media' else 'check-circle' }} mr-2"></i>
+                        Diagnóstico
+                    </h6>
+                </div>
+                <div class="card-body font-size-xs">
+                    {% if analisis_completo.diagnostico.alertas %}
+                        {% for alerta in analisis_completo.diagnostico.alertas %}
+                        <div class="alert alert-{{ 'danger' if analisis_completo.diagnostico.estado_general == 'alerta_alta' else 'warning' if analisis_completo.diagnostico.estado_general == 'alerta_media' else 'success' }} py-2 px-2 mb-2">
+                            {{ alerta }}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0">
+                        No hay suficientes datos para diagnóstico. Continúa registrando.
+                    </p>
+                    {% endif %}
+                    
+                    <!-- Botones de ajuste (SOLO ADMIN) o mensaje informativo -->
+                    {% if analisis_completo.diagnostico and analisis_completo.diagnostico.estado_general in ['alerta_alta', 'alerta_media'] %}
+                    <div class="mt-3 pt-3 border-top">
+                        {% if is_admin %}
+                            <!-- ADMIN: Mostrar botones de ajuste activos -->
+                            <h6 class="font-w600 mb-2 text-primary">
+                                <i class="fa fa-wrench mr-1"></i>Ajuste de Calorías (Admin)
+                            </h6>
+                            <p class="text-muted font-size-sm mb-2">
+                                Como administrador, puedes ajustar las calorías del paciente seleccionado.
+                            </p>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-success" onclick="ajustarCalorias(100)">
+                                    <i class="fa fa-plus-circle mr-1"></i>+100 kcal
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="ajustarCalorias(150)">
+                                    <i class="fa fa-plus-circle mr-1"></i>+150 kcal
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="ajustarCalorias(-100)">
+                                    <i class="fa fa-minus-circle mr-1"></i>-100 kcal
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="ajustarCalorias(-150)">
+                                    <i class="fa fa-minus-circle mr-1"></i>-150 kcal
+                                </button>
+                            </div>
+                        {% else %}
+                            <!-- USUARIO NORMAL: Solo mensaje informativo -->
+                            <div class="alert alert-info mb-0">
+                                <i class="fa fa-info-circle mr-2"></i>
+                                <strong>Recomendación:</strong> Consulta estos resultados con tu nutricionista para realizar ajustes en el plan.
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN 2: PLANES NUTRICIONALES -->
+<div class="p-4 mb-4">
+    <h4 class="font-w700 mb-4 text-success">
+        <i class="fa fa-utensils mr-2"></i>Planes Nutricionales y Alimentarios
+    </h4>
+    
+    <div class="row">
+        <!-- Plan Nutricional (Macros) -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h5 class="mb-0"><i class="fa fa-calculator mr-2"></i>Plan Nutricional (Macros)</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis_completo.plan_nutricional.tiene_plan %}
+                    <!-- Calorías y Libertad -->
+                    <div class="row mb-3">
+                        <div class="col-6 text-center">
+                            <div class="bg-primary-light p-3 rounded">
+                                <h2 class="font-w700 text-primary mb-0">{{ analisis_completo.plan_nutricional.calorias_totales }}</h2>
+                                <small class="text-muted">Calorías/día</small>
+                            </div>
+                        </div>
+                        <div class="col-6 text-center">
+                            <div class="bg-success-light p-3 rounded">
+                                <h2 class="font-w700 text-success mb-0">{{ analisis_completo.plan_nutricional.libertad_porcentaje }}%</h2>
+                                <small class="text-muted">Libertad</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Macros Totales -->
+                    <h6 class="font-w700 mb-2">Macronutrientes Totales:</h6>
+                    <div class="row mb-3">
+                        <div class="col-4 text-center">
+                            <div class="bg-danger-light p-2 rounded">
+                                <strong class="text-danger d-block">{{ analisis_completo.plan_nutricional.proteina_total }}g</strong>
+                                <small class="text-muted">Proteína</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="bg-warning-light p-2 rounded">
+                                <strong class="text-warning d-block">{{ analisis_completo.plan_nutricional.grasa_total }}g</strong>
+                                <small class="text-muted">Grasa</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="bg-info-light p-2 rounded">
+                                <strong class="text-info d-block">{{ analisis_completo.plan_nutricional.carbohidratos_total }}g</strong>
+                                <small class="text-muted">CH</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distribución por Comidas -->
+                    <h6 class="font-w700 mb-2">Distribución por Comidas (%):</h6>
+                    <div class="font-size-xs">
+                        {% for comida, nombre in [('desayuno', 'Desayuno'), ('media_manana', 'Media Mañana'), ('almuerzo', 'Almuerzo'), ('merienda', 'Merienda'), ('media_tarde', 'Media Tarde'), ('cena', 'Cena')] %}
+                        {% set macros = analisis_completo.plan_nutricional.distribucion_comidas[comida] %}
+                        {% if macros.proteina > 0 or macros.grasa > 0 or macros.carbohidratos > 0 %}
+                        <div class="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
+                            <strong>{{ nombre }}:</strong>
+                            <span>
+                                <span class="badge badge-danger">P: {{ macros.proteina }}%</span>
+                                <span class="badge badge-warning">G: {{ macros.grasa }}%</span>
+                                <span class="badge badge-info">CH: {{ macros.carbohidratos }}%</span>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    {% if analisis_completo.plan_nutricional.fecha_creacion %}
+                    <hr class="my-2">
+                    <div class="font-size-xs text-muted">
+                        <div><i class="fa fa-calendar-plus mr-1"></i><strong>Fecha de creación:</strong> {{ analisis_completo.plan_nutricional.fecha_creacion }}</div>
+                        <div><i class="fa fa-clock mr-1"></i><strong>Días activo:</strong> {{ analisis_completo.plan_nutricional.dias_desde_creacion }} días</div>
+                        {% if analisis_completo.plan_nutricional.estrategia and analisis_completo.plan_nutricional.velocidad_cambio %}
+                        <div class="mt-2 p-2 bg-primary text-white rounded">
+                            <strong><i class="fa fa-chart-line mr-1"></i>Estrategia:</strong> {{ analisis_completo.plan_nutricional.estrategia }}<br>
+                            <strong>Velocidad objetivo:</strong> {{ (analisis_completo.plan_nutricional.velocidad_cambio / 1000)|round(3) }} kg/semana<br>
+                            {% if analisis_completo.plan_nutricional.deficit_calorico %}
+                            <strong>Déficit:</strong> {{ analisis_completo.plan_nutricional.deficit_calorico|int }} kcal/día<br>
+                            {% endif %}
+                            {% if analisis_completo.plan_nutricional.disponibilidad_energetica %}
+                            <strong>EA:</strong> {{ analisis_completo.plan_nutricional.disponibilidad_energetica|round(1) }} kcal/kg FFM
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="fa fa-exclamation-triangle mr-2"></i>
+                        No tienes plan nutricional. <a href="/planner" class="alert-link">Crear plan</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Alimentario (Recetas) -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-header bg-gradient-success text-white">
+                    <h5 class="mb-0"><i class="fa fa-book-open mr-2"></i>Plan Alimentario (Recetas)</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis_completo.plan_alimentario.tiene_plan %}
+                    <div class="alert alert-success mb-3 font-size-sm">
+                        <i class="fa fa-check-circle mr-2"></i>
+                        <strong>Plan activo</strong> desde hace <strong>{{ analisis_completo.plan_alimentario.dias_desde_inicio }}</strong> días
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6 text-center">
+                            <div class="bg-success-light p-3 rounded">
+                                <h2 class="font-w700 text-success mb-0">{{ analisis_completo.plan_alimentario.total_recetas }}</h2>
+                                <small class="text-muted">Recetas</small>
+                            </div>
+                        </div>
+                        <div class="col-6 text-center">
+                            <div class="bg-success-light p-3 rounded">
+                                <h2 class="font-w700 text-success mb-0">{{ analisis_completo.plan_alimentario.comidas_configuradas }}</h2>
+                                <small class="text-muted">Comidas</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="font-size-sm">
+                        <table class="table table-sm table-borderless mb-3">
+                            <tr>
+                                <td>Tipo:</td>
+                                <td class="text-right font-w600">{{ analisis_completo.plan_alimentario.tipo_plan|capitalize }}</td>
+                            </tr>
+                            <tr>
+                                <td>Inicio:</td>
+                                <td class="text-right">{{ analisis_completo.plan_alimentario.fecha_inicio }}</td>
+                            </tr>
+                            <tr>
+                                <td>Actualización:</td>
+                                <td class="text-right">{{ analisis_completo.plan_alimentario.fecha_actualizacion or 'N/A' }}</td>
+                            </tr>
+                            {% if analisis_completo.plan_alimentario.calorias_del_plan %}
+                            <tr>
+                                <td>Calorías:</td>
+                                <td class="text-right font-w600">{{ analisis_completo.plan_alimentario.calorias_del_plan }} kcal</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+
+                    <a href="/plan-alimentario" class="btn btn-success btn-block">
+                        <i class="fa fa-edit mr-2"></i>Ver/Editar Plan
+                    </a>
+                    {% else %}
+                    <div class="alert alert-info mb-3">
+                        <i class="fa fa-info-circle mr-2"></i>
+                        No tienes plan alimentario con recetas.
+                    </div>
+                    <a href="/plan-alimentario" class="btn btn-primary btn-block">
+                        <i class="fa fa-plus-circle mr-2"></i>Crear Plan Alimentario
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN 3: TASAS ESPERADAS VS ACTUALES -->
+<div class="bg-light p-4 mb-4">
+    <h4 class="font-w700 mb-4 text-warning">
+        <i class="fa fa-chart-line mr-2"></i>Comparación: Tasas Esperadas vs Actuales
+    </h4>
+
+    <div class="row">
+        <!-- Tasas Esperadas -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fa fa-bullseye mr-2"></i>Tasas Esperadas (Objetivo)</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis_completo.tasas_esperadas %}
+                    <div class="alert alert-info mb-3 font-size-sm">
+                        <div><strong>Fase:</strong> {{ analisis_completo.tasas_esperadas.fase|capitalize|upper }}</div>
+                        <div><strong>Rango:</strong> {{ analisis_completo.tasas_esperadas.porcentaje_peso_min }} - {{ analisis_completo.tasas_esperadas.porcentaje_peso_max }} del peso/semana</div>
+                        {% if analisis_completo.tasas_esperadas.dias_estimados %}
+                        <div><strong>Tiempo estimado:</strong> {{ analisis_completo.tasas_esperadas.dias_estimados }} días ({{ (analisis_completo.tasas_esperadas.dias_estimados / 7)|round(1) }} semanas)</div>
+                        {% endif %}
+                    </div>
+
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-right">Valor (kg/sem)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Peso (rango):</strong></td>
+                                <td class="text-right font-w600">
+                                    {{ analisis_completo.tasas_esperadas.peso_min_semanal }} a {{ analisis_completo.tasas_esperadas.peso_max_semanal }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Grasa:</strong></td>
+                                <td class="text-right font-w600 {{ 'text-success' if analisis_completo.tasas_esperadas.grasa_semanal <= 0 else 'text-warning' }}">
+                                    {{ analisis_completo.tasas_esperadas.grasa_semanal }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Músculo:</strong></td>
+                                <td class="text-right font-w600 {{ 'text-success' if analisis_completo.tasas_esperadas.musculo_semanal >= 0 else 'text-danger' }}">
+                                    {{ analisis_completo.tasas_esperadas.musculo_semanal }}
+                                </td>
+                            </tr>
+                            {% if analisis_completo.tasas_esperadas.fatrate_planner %}
+                            <tr class="bg-light">
+                                <td colspan="2" class="font-size-xs text-muted">
+                                    <strong>Fórmulas del Planner:</strong>
+                                    {% if analisis_completo.tasas_esperadas.fase == 'definicion' %}
+                                    Fat Rate = {{ analisis_completo.tasas_esperadas.fatrate_planner }} kg/sem
+                                    {% elif analisis_completo.tasas_esperadas.fase == 'volumen' %}
+                                    Lean Rate = {{ analisis_completo.tasas_esperadas.leanrate_planner }} kg/sem
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-warning mb-0">Sin datos de objetivos</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasas Actuales -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="fa fa-chart-area mr-2"></i>Tasas Actuales (Medidas)</h5>
+                </div>
+                <div class="card-body">
+                    {% if analisis_completo.comparacion_periodos and analisis_completo.comparacion_periodos.fat_rate_actual is not none %}
+                    <div class="alert alert-{{ 'info' if analisis_completo.comparacion_periodos.extrapolado else ('success' if analisis_completo.comparacion_periodos.evaluacion and analisis_completo.comparacion_periodos.evaluacion.peso_en_rango else 'warning') }} mb-3 font-size-sm">
+                        <div><strong>Periodo:</strong> Desde inicio del plan ({{ analisis_completo.comparacion_periodos.dias_transcurridos }} días)</div>
+                        <div><strong>Pesajes:</strong> {{ analisis_completo.comparacion_periodos.pesajes_periodo }}</div>
+                        {% if analisis_completo.comparacion_periodos.extrapolado %}
+                        <div class="mt-2"><strong><i class="fa fa-exclamation-circle mr-1"></i>DATOS PRELIMINARES:</strong><br>{{ analisis_completo.comparacion_periodos.mensaje_confiabilidad }}</div>
+                        {% elif analisis_completo.comparacion_periodos.evaluacion %}
+                        <div><strong>Estado:</strong> 
+                            {% if analisis_completo.comparacion_periodos.evaluacion.peso_en_rango %}
+                            <span class="text-success font-w600">✓ En rango</span>
+                            {% else %}
+                            <span class="text-warning font-w600">⚠ Fuera de rango</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-right">Valor</th>
+                                <th class="text-right">Δ vs Ideal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Peso:</strong></td>
+                                <td class="text-right font-w600">{{ analisis_completo.comparacion_periodos.peso_rate_actual|default('N/A') }} kg/sem</td>
+                                <td class="text-right text-muted font-size-xs">
+                                    {% if analisis_completo.comparacion_periodos.evaluacion %}
+                                    {{ '%+.3f'|format(analisis_completo.comparacion_periodos.evaluacion.diferencia_peso_vs_ideal) }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Grasa:</strong></td>
+                                <td class="text-right font-w600 {{ 'text-success' if (analisis_completo.comparacion_periodos.fat_rate_actual|default(0)) <= 0 else 'text-danger' }}">
+                                    {{ analisis_completo.comparacion_periodos.fat_rate_actual|default('N/A') }} kg/sem
+                                </td>
+                                <td class="text-right text-muted font-size-xs">
+                                    {% if analisis_completo.comparacion_periodos.evaluacion %}
+                                    {{ '%+.3f'|format(analisis_completo.comparacion_periodos.evaluacion.diferencia_grasa_vs_ideal) }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Músculo:</strong></td>
+                                <td class="text-right font-w600 {{ 'text-success' if (analisis_completo.comparacion_periodos.lean_rate_actual|default(0)) >= 0 else 'text-danger' }}">
+                                    {{ analisis_completo.comparacion_periodos.lean_rate_actual|default('N/A') }} kg/sem
+                                </td>
+                                <td class="text-right text-muted font-size-xs">
+                                    {% if analisis_completo.comparacion_periodos.evaluacion %}
+                                    {{ '%+.3f'|format(analisis_completo.comparacion_periodos.evaluacion.diferencia_musculo_vs_ideal) }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-warning mb-0 font-size-sm">
+                        <i class="fa fa-exclamation-triangle mr-2"></i>
+                        Necesitas al menos 4 pesajes en 2-3 semanas para calcular tasas.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pesajes Considerados para el Diagnóstico -->
+    {% if analisis_completo.tasas_actuales.desde_plan and analisis_completo.tasas_actuales.desde_plan.pesajes_detallados %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="fa fa-weight mr-2"></i>Pesajes Considerados para el Diagnóstico
+                <small class="ml-2">({{ analisis_completo.tasas_actuales.desde_plan.pesajes }} pesajes en {{ analisis_completo.tasas_actuales.desde_plan.dias_transcurridos }} días)</small>
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted font-size-sm mb-3">
+                <i class="fa fa-info-circle mr-1"></i>
+                Estos son los pesajes usados para calcular las tasas actuales y generar el diagnóstico.
+                El <strong>baseline</strong> es el punto de referencia inicial (al inicio del plan) y se compara con el <strong>último pesaje</strong>.
+            </p>
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-hover mb-0">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th class="text-center" style="width: 15%;">Fecha</th>
+                            <th class="text-center" style="width: 15%;">Peso (kg)</th>
+                            <th class="text-center" style="width: 17%;">Masa Grasa (kg)</th>
+                            <th class="text-center" style="width: 17%;">Masa Magra (kg)</th>
+                            <th class="text-center" style="width: 18%;">Δ Masa Grasa</th>
+                            <th class="text-center" style="width: 18%;">Δ Masa Magra</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set baseline = analisis_completo.tasas_actuales.desde_plan.pesajes_detallados[0] %}
+                        {% for pesaje in analisis_completo.tasas_actuales.desde_plan.pesajes_detallados %}
+                        <tr class="{% if pesaje.es_baseline %}table-primary{% elif pesaje.es_ultimo %}table-success{% endif %}">
+                            <td class="text-center font-w600">
+                                {{ pesaje.fecha }}
+                                {% if pesaje.es_baseline %}
+                                <span class="badge badge-primary ml-1">BASELINE</span>
+                                {% elif pesaje.es_ultimo %}
+                                <span class="badge badge-success ml-1">ÚLTIMO</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ pesaje.peso }}</td>
+                            <td class="text-center">{{ pesaje.masa_grasa }}</td>
+                            <td class="text-center">{{ pesaje.masa_magra }}</td>
+                            <td class="text-center">
+                                {% if not pesaje.es_baseline %}
+                                    {% set delta_grasa = pesaje.masa_grasa - baseline.masa_grasa %}
+                                    <span class="{% if delta_grasa < 0 %}text-success{% elif delta_grasa > 0 %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(delta_grasa) }} kg
+                                        {% if delta_grasa < 0 %}
+                                        <i class="fa fa-arrow-down"></i>
+                                        {% elif delta_grasa > 0 %}
+                                        <i class="fa fa-arrow-up"></i>
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not pesaje.es_baseline %}
+                                    {% set delta_magra = pesaje.masa_magra - baseline.masa_magra %}
+                                    <span class="{% if delta_magra > 0 %}text-success{% elif delta_magra < 0 %}text-danger{% endif %}">
+                                        {{ "%.2f"|format(delta_magra) }} kg
+                                        {% if delta_magra > 0 %}
+                                        <i class="fa fa-arrow-up"></i>
+                                        {% elif delta_magra < 0 %}
+                                        <i class="fa fa-arrow-down"></i>
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Resumen de cambios -->
+            {% set baseline = analisis_completo.tasas_actuales.desde_plan.pesajes_detallados[0] %}
+            {% set ultimo = analisis_completo.tasas_actuales.desde_plan.pesajes_detallados[-1] %}
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="alert alert-primary mb-0">
+                        <strong>Cambio Total de Peso:</strong><br>
+                        {{ "%.2f"|format(ultimo.peso - baseline.peso) }} kg
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-{{ 'success' if (ultimo.masa_grasa - baseline.masa_grasa) < 0 else 'danger' }} mb-0">
+                        <strong>Cambio Masa Grasa:</strong><br>
+                        {{ "%.2f"|format(ultimo.masa_grasa - baseline.masa_grasa) }} kg
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-{{ 'success' if (ultimo.masa_magra - baseline.masa_magra) > 0 else 'danger' }} mb-0">
+                        <strong>Cambio Masa Magra:</strong><br>
+                        {{ "%.2f"|format(ultimo.masa_magra - baseline.masa_magra) }} kg
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Histórico Completo -->
+    <div class="card shadow-sm mt-3">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fa fa-history mr-2"></i>Histórico de Tasas por Periodo</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Periodo</th>
+                            <th class="text-center">Pesajes</th>
+                            <th class="text-center">Fat Rate</th>
+                            <th class="text-center">Lean Rate</th>
+                            <th class="text-center">Peso Rate</th>
+                            <th class="text-center">CV%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if analisis_completo.tasas_actuales.desde_plan %}
+                        {% set datos = analisis_completo.tasas_actuales.desde_plan %}
+                        <tr>
+                            <td class="font-w600">Desde Plan Nutricional</td>
+                            <td class="text-center">
+                                <span class="badge badge-{{ 'success' if datos.datos_suficientes else 'info' if datos.pesajes > 0 else 'secondary' }}">
+                                    {{ datos.pesajes|default(0) }}
+                                </span>
+                            </td>
+                            <td class="text-center {{ 'text-success font-w600' if datos.fat_rate and datos.fat_rate <= 0 else 'text-danger font-w600' if datos.fat_rate else 'text-muted' }}">
+                                {{ datos.fat_rate|round(3) if datos.fat_rate is not none else 'N/D' }}
+                            </td>
+                            <td class="text-center {{ 'text-success font-w600' if datos.lean_rate and datos.lean_rate >= 0 else 'text-danger font-w600' if datos.lean_rate else 'text-muted' }}">
+                                {{ datos.lean_rate|round(3) if datos.lean_rate is not none else 'N/D' }}
+                            </td>
+                            <td class="text-center font-w600">
+                                {{ datos.peso_rate|round(3) if datos.peso_rate is not none else 'N/D' }}
+                            </td>
+                            <td class="text-center text-muted font-size-xs">
+                                {% if datos.extrapolado %}
+                                <span class="text-warning">⚠ Preliminar</span>
+                                {% elif datos.cv is not none %}
+                                {{ (datos.cv * 100)|round(1) }}%
+                                {% else %}
+                                N/D
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No hay datos disponibles</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="font-size-xs text-muted mt-2">
+                <strong>CV (Coeficiente de Variación):</strong> Mide la consistencia de los pesajes. Valores bajos (&lt;2%) indican datos más confiables.
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-4">
+
+<h4 class="font-w700 mb-3 text-secondary">
+    <i class="fa fa-table mr-2"></i>Tablas Detalladas de Performance Clock
+</h4>
+
+{% endif %}
+
+<!-- FIN DE ANÁLISIS COMPLETO - Aquí empieza el código original del performance_clock -->
+
                         {% for scenario in performance_clock.values() %}
                         <div class="col-lg-4">
                             <h4 class="font-w700 font-size-h5">{{ scenario.label }}</h4>
@@ -752,5 +1500,69 @@
 </script>
 <!-- Gauges JavaScript -->
 <script src="{{ url_for('static', filename='assets/js/gauges.js') }}"></script>
+
+<!-- JavaScript para Ajuste de Calorías -->
+<script>
+function ajustarCalorias(ajuste) {
+    const paciente = '{{ paciente_seleccionado or username }}';
+    const signo = ajuste > 0 ? '+' : '';
+    const accion = ajuste > 0 ? 'aumentar' : 'reducir';
+    if (!confirm(`¿Confirmar ajuste de ${signo}${ajuste} kcal para ${paciente}?\n\nSe recalculará automáticamente:\n- Calorías totales (${accion})\n- Macronutrientes (fórmulas del planner)\n- Disponibilidad energética\n- Factor de actividad\n\nEl déficit y velocidad objetivo se mantendrán.`)) {
+        return;
+    }
+    
+    // Deshabilitar botones durante la petición
+    const botones = document.querySelectorAll('.btn-group button');
+    botones.forEach(btn => {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Procesando...';
+    });
+    
+    fetch('/api/plan-nutricional/ajustar-calorias', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ajuste: ajuste, paciente: paciente })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar resultado
+            alert(`✅ ${data.message}\n\nNuevos valores:\n` +
+                  `Calorías: ${data.datos_nuevos.calorias} kcal\n` +
+                  `Proteína: ${data.datos_nuevos.proteina}g\n` +
+                  `Grasa: ${data.datos_nuevos.grasa}g\n` +
+                  `CH: ${data.datos_nuevos.carbohidratos}g\n` +
+                  `Déficit: ${data.datos_nuevos.deficit} kcal (IGUAL)\n` +
+                  `EA: ${data.datos_nuevos.ea} kcal/kg FFM\n\n` +
+                  `Velocidad objetivo: ${data.datos_nuevos.velocidad_objetivo} kg/sem (MANTENIDA)\n\n` +
+                  `🏋️ Factor de Actividad Recalculado:\n` +
+                  `TMB: ${data.datos_nuevos.tmb} kcal\n` +
+                  `TDEE: ${data.datos_nuevos.tdee} kcal\n` +
+                  `Factor: ${data.datos_nuevos.factor_actividad}\n` +
+                  `(Se usará este valor en próximos planes)`);
+            
+            // Recargar página para ver cambios
+            location.reload();
+        } else {
+            alert(`❌ Error: ${data.message}`);
+            botones.forEach(btn => {
+                btn.disabled = false;
+                btn.innerHTML = btn.innerHTML.replace('Procesando...', '');
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error al ajustar calorías. Ver consola para detalles.');
+        botones.forEach(btn => {
+            btn.disabled = false;
+            btn.innerHTML = btn.innerHTML.replace('Procesando...', '');
+        });
+    });
+}
+</script>
+
 {% endblock %}
 

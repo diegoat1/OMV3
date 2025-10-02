@@ -1,0 +1,251 @@
+{% extends 'base/base.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block herotitle %} Administrador de Base de Datos <span class="badge badge-primary ml-2">BETA</span> {% endblock %}
+{% block herosubtitle %} {{ todas_tablas|length }} tablas • Edición inline • Búsqueda • Paginado • Exportación {% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+
+<style>
+    .editable-cell {
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+    .editable-cell:hover {
+        background-color: #e3f2fd !important;
+        box-shadow: inset 0 0 0 2px #2196F3;
+    }
+    .editable-cell:hover::after {
+        content: "✎";
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #2196F3;
+        font-weight: bold;
+    }
+    .editing-cell {
+        background-color: #fff3cd !important;
+        padding: 2px !important;
+    }
+    .editing-cell input {
+        width: 100%;
+        border: 2px solid #ffc107;
+        padding: 6px;
+        font-size: 13px;
+        min-width: 150px;
+    }
+    .editing-cell input[type="datetime-local"],
+    .editing-cell input[type="number"] {
+        min-width: 180px;
+    }
+    .column-id {
+        background-color: #e9ecef !important;
+        font-weight: 600;
+    }
+    table.dataTable thead th {
+        background-color: #343a40 !important;
+        color: white !important;
+    }
+</style>
+
+<div class="row mb-3">
+    <div class="col-lg-12">
+        <div class="alert alert-info">
+            <h5 class="alert-heading"><i class="fa fa-database mr-2"></i>Administrador BETA - TODAS LAS TABLAS</h5>
+            <p class="mb-0"><strong>✎ Click en celdas</strong> para editar • <strong>🔍 Buscar</strong> en cada tabla • <strong>📄 25 registros</strong> por página • <strong>📥 Exportar</strong> a CSV</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="block block-rounded">
+            <ul class="nav nav-tabs nav-tabs-block" data-toggle="tabs" role="tablist">
+                {% for tabla in todas_tablas %}
+                <li class="nav-item">
+                    <a class="nav-link {% if loop.first %}active{% endif %}" href="#tab-{{ tabla }}">
+                        <i class="fa fa-table mr-1"></i>{{ tabla }}
+                        <span class="badge badge-pill badge-secondary ml-2">{{ datos_tablas[tabla]|length }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <div class="block-content tab-content">
+                {% for tabla in todas_tablas %}
+                <div class="tab-pane {% if loop.first %}active{% endif %}" id="tab-{{ tabla }}" role="tabpanel">
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-success" onclick="exportTableToCSV('{{ tabla }}')">
+                            <i class="fa fa-download mr-1"></i>Exportar CSV
+                        </button>
+                        <span class="ml-3 text-muted font-size-sm">
+                            <i class="fa fa-info-circle"></i> {{ columnas_tablas[tabla]|length }} columnas • {{ datos_tablas[tabla]|length }} registros
+                        </span>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover table-sm datatables-table" id="table-{{ tabla }}">
+                            <thead>
+                                <tr>
+                                    {% for columna in columnas_tablas[tabla] %}
+                                    <th>{{ columna }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in datos_tablas[tabla] %}
+                                <tr>
+                                    {% for i in range(row|length) %}
+                                    <td class="editable-cell {% if i == 0 %}column-id{% endif %}" 
+                                        data-table="{{ tabla }}" 
+                                        data-pk="{{ row[0] }}" 
+                                        data-col="{{ i }}"
+                                        data-type="{{ tipos_tablas[tabla][i] }}"
+                                        title="Click para editar ({{ tipos_tablas[tabla][i] }})">
+                                        {{ row[i] if row[i] is not none else '-' }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script>
+// Inicializar DataTables en todas las tablas
+$(document).ready(function() {
+    $('.datatables-table').DataTable({
+        "pageLength": 25,
+        "lengthMenu": [[25, 50, 100, -1], [25, 50, 100, "Todos"]],
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+        },
+        "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+        "scrollX": true
+    });
+    
+    // Sistema de edición inline con inputs específicos por tipo
+    $(document).on('click', '.editable-cell', function() {
+        const cell = $(this);
+        if (cell.hasClass('editing-cell')) return;
+        
+        const oldValue = cell.text().trim();
+        const dataType = cell.data('type');
+        let input;
+        
+        // Crear input según tipo de dato
+        if (dataType && (dataType.includes('DATETIME') || dataType.includes('DATE') || dataType.includes('TIMESTAMP'))) {
+            // Input tipo datetime-local para fechas
+            input = $('<input type="datetime-local" class="form-control form-control-sm" step="1">');
+            // Convertir formato SQLite a datetime-local (YYYY-MM-DD HH:MM:SS -> YYYY-MM-DDTHH:MM:SS)
+            if (oldValue && oldValue !== '-') {
+                const formatted = oldValue.replace(' ', 'T').replace('|', 'T');
+                input.val(formatted);
+            }
+        } else if (dataType && (dataType.includes('INT') || dataType.includes('REAL') || dataType.includes('FLOAT') || dataType.includes('DOUBLE'))) {
+            // Input tipo number para números
+            input = $('<input type="number" class="form-control form-control-sm" step="any">');
+            input.val(oldValue === '-' ? '' : oldValue);
+        } else {
+            // Input tipo text para strings
+            input = $('<input type="text" class="form-control form-control-sm">');
+            input.val(oldValue === '-' ? '' : oldValue);
+        }
+        
+        cell.html(input).addClass('editing-cell');
+        input.focus().select();
+        
+        input.on('blur keypress', function(e) {
+            if (e.type === 'keypress' && e.which !== 13) return;
+            
+            let newValue = input.val();
+            
+            // Convertir datetime-local de vuelta a formato SQLite
+            if (input.attr('type') === 'datetime-local' && newValue) {
+                newValue = newValue.replace('T', ' ');
+            }
+            
+            if (newValue !== oldValue && newValue !== '') {
+                const requestData = {
+                    table: cell.data('table'),
+                    pk: cell.data('pk'),
+                    column: cell.data('col'),
+                    value: newValue
+                };
+                console.log('📤 Enviando actualización:', requestData);
+                
+                $.ajax({
+                    url: '/api/database/update-cell',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function(response) {
+                        console.log('✅ Actualización exitosa:', response);
+                        // Mostrar en formato legible
+                        const displayValue = newValue || '-';
+                        cell.text(displayValue).removeClass('editing-cell');
+                        cell.css('background-color', '#d4edda').delay(1000).queue(function() {
+                            $(this).css('background-color', '').dequeue();
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('❌ Error al actualizar:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            response: xhr.responseJSON,
+                            responseText: xhr.responseText
+                        });
+                        cell.text(oldValue).removeClass('editing-cell');
+                        const errorMsg = xhr.responseJSON?.message || 'No se pudo actualizar';
+                        cell.css('background-color', '#f8d7da').delay(2000).queue(function() {
+                            $(this).css('background-color', '').dequeue();
+                        });
+                        alert('✗ Error al actualizar:\n\n' + errorMsg + '\n\nRevisa la consola del navegador (F12) para más detalles');
+                    }
+                });
+            } else {
+                cell.text(oldValue === '' ? '-' : oldValue).removeClass('editing-cell');
+            }
+        });
+    });
+});
+
+// Función para exportar tabla a CSV
+function exportTableToCSV(tableName) {
+    const table = document.getElementById('table-' + tableName);
+    let csv = [];
+    const rows = table.querySelectorAll("tr");
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = [], cols = rows[i].querySelectorAll("td, th");
+        for (let j = 0; j < cols.length; j++) {
+            let text = cols[j].innerText.replace(/"/g, '""');
+            row.push('"' + text + '"');
+        }
+        csv.push(row.join(","));
+    }
+    
+    const csvFile = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const downloadLink = document.createElement("a");
+    downloadLink.download = tableName + "_" + new Date().toISOString().split('T')[0] + ".csv";
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+</script>
+
+{% endblock %}

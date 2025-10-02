@@ -771,11 +771,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Manejador para el botón de confirmación en el modal - usamos una función directa 
     const btnOptimizar = document.getElementById('btnEnviarOptimizacion');
-    console.log('DEBUG: Botón de optimización encontrado:', btnOptimizar);
     
     if (btnOptimizar) {
         btnOptimizar.onclick = function() {
-            console.log('DEBUG: Botón de optimización clickeado');
         const id = document.getElementById('optimizacionId').value;
         const categoriesAttr = document.getElementById('optimizacionCategories').value;
         const numeroDias = document.getElementById('numeroDias').value;
@@ -819,7 +817,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función para cerrar el modal de optimización
 function cerrarModal() {
-    console.log('Cerrando modal...');
     const modalElement = document.getElementById('optimizacionModal');
     if (modalElement) {
         // Manipular directamente el DOM para cerrar el modal
@@ -841,7 +838,6 @@ function cerrarModal() {
 
 // Función para procesar la optimización desde el modal
 function procesarOptimizacion() {
-    console.log('Función procesarOptimizacion ejecutada');
     const id = document.getElementById('optimizacionId').value;
     const categoriesAttr = document.getElementById('optimizacionCategories').value;
     const numeroDias = document.getElementById('numeroDias').value;

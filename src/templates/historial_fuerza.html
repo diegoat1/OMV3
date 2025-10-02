@@ -8,17 +8,12 @@
     // Verificamos si Chart.js ya está cargado
     if (typeof Chart === 'undefined') {
         document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"><\/script>');
-    } else {
-        console.log('Chart.js ya está cargado, versión:', Chart.version);
     }
 </script>
 <!-- Cargamos ApexCharts para el gráfico de barras horizontales -->
 <script>
     if (typeof ApexCharts === 'undefined') {
         document.write('<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js"><\/script>');
-        console.log('ApexCharts cargado desde el head');
-    } else {
-        console.log('ApexCharts ya está cargado');
     }
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.css">
@@ -481,62 +476,38 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Vaciar la consola para ver solo los mensajes nuevos
-        console.clear();
-        console.log('Cargando historial de fuerza - Versión depuración');
-        
         // Verificar que ApexCharts esté cargado
-        if (typeof ApexCharts !== 'undefined') {
-            console.log('ApexCharts cargado correctamente en historial-fuerzas, versión:', ApexCharts.version);
-        } else {
-            console.error('ApexCharts no está cargado. Intentando cargar...');
+        if (typeof ApexCharts === 'undefined') {
             var script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js';
-            script.onload = function() {
-                console.log('ApexCharts cargado manualmente con éxito');
-            };
             document.head.appendChild(script);
         }
         
         var activeCharts = {};
         var rawStrengthDataItems = [];
         var rawMuscleGroupDataItems = [];
-
-        // Mostrar cantidad de registros disponibles
-        console.log('Número total de registros:', {{ registros|length }});
         
         {% for registro in registros %}
             try {
                 {% if registro.lifts_results_json %}
-                    console.log('Procesando lifts_results_json para registro #{{ loop.index }}');
                     var rawLiftData = {{ registro.lifts_results_json | tojson | safe }};
-                    console.log('Dato raw:', typeof rawLiftData, rawLiftData);
                     rawStrengthDataItems.push({
                         id: {{ loop.index }},
                         rawData: rawLiftData
                     });
-                {% else %}
-                    console.warn('El registro #{{ loop.index }} no tiene datos de lifts_results_json');
                 {% endif %}
                 
                 {% if registro.muscle_groups_results_json %}
-                    console.log('Procesando muscle_groups_results_json para registro #{{ loop.index }}');
                     var rawMuscleData = {{ registro.muscle_groups_results_json | tojson | safe }};
-                    console.log('Dato raw:', typeof rawMuscleData, rawMuscleData);
                     rawMuscleGroupDataItems.push({
                         id: {{ loop.index }},
                         rawData: rawMuscleData
                     });
-                {% else %}
-                    console.warn('El registro #{{ loop.index }} no tiene datos de muscle_groups_results_json');
                 {% endif %}
             } catch (error) {
-                console.error('Error procesando registro #{{ loop.index }}:', error);
+                // Error silencioso
             }
         {% endfor %}
-
-        console.log('Raw Strength Data Items:', rawStrengthDataItems);
-        console.log('Raw Muscle Group Data Items:', rawMuscleGroupDataItems);
 
         var allStrengthData = rawStrengthDataItems.map(function(item) {
             var strength_data_obj = { id: item.id, labels: [], scores: [], maxScores: [], backgroundColor: [], borderColor: [], pointBackgroundColor: [], pointBorderColor: [] };
@@ -689,8 +660,6 @@
             var muscle_groups = item.rawData;
 
             if (typeof muscle_groups === 'object' && muscle_groups !== null) {
-                console.log('Procesando datos de grupos musculares:', muscle_groups);
-                
                 // Estructura de grupos agrupados por proximidad y función muscular
                 const groupOrder = [
                     // Miembro inferior
@@ -839,15 +808,11 @@
             return muscle_group_obj;
         });
 
-        console.log('Processed allStrengthData:', allStrengthData);
-        console.log('Processed allMuscleGroupsData:', allMuscleGroupsData);
-
         var activeCharts = {};
 
         function createStrengthChart(chartId, data) {
             var container = document.getElementById(chartId);
             if (!container) {
-                console.error('Container element not found for strength chart:', chartId);
                 return;
             }
             
@@ -868,8 +833,6 @@
             apexDiv.style.width = '100%';
             apexDiv.style.height = canvasHeight + 'px';
             parentElement.appendChild(apexDiv);
-            
-            console.log('ApexCharts: Procesando datos para el gráfico de barras');
             
             if (data && data.labels && data.labels.length > 0 && data.scores) {
                 // Procesar datos para gráfico de barras horizontales
@@ -912,8 +875,6 @@
                 // Redondear y añadir un pequeño margen
                 minValue = Math.floor(minValue * 1.1); // 10% adicional para el límite inferior
                 maxValue = Math.ceil(maxValue * 1.1);  // 10% adicional para el límite superior
-                
-                console.log('ApexCharts: Datos procesados', { categories, seriesData, colorData, minValue, maxValue });
                 
                 var options = {
                     series: [{
@@ -1043,21 +1004,15 @@
                 // Crear el gráfico
                 try {
                     if (typeof ApexCharts === 'undefined') {
-                        console.error('ApexCharts no está cargado. Intenta recargar la página.');
-                        // Muestra un mensaje de error en el lugar donde debería estar el gráfico
                         apexDiv.innerHTML = '<div class="alert alert-danger">Error: No se pudo cargar ApexCharts. Intenta recargar la página.</div>';
                     } else {
-                        console.log('ApexCharts: Creando gráfico con opciones', options);
                         activeCharts[chartId] = new ApexCharts(document.getElementById(chartId + '-apex'), options);
                         activeCharts[chartId].render();
-                        console.log('ApexCharts: Gráfico creado exitosamente');
                     }
                 } catch (error) {
-                    console.error('Error al crear el gráfico ApexCharts:', error);
                     apexDiv.innerHTML = '<div class="alert alert-danger">Error al crear el gráfico: ' + error.message + '</div>';
                 }
             } else {
-                console.warn('No hay datos o etiquetas vacías para el gráfico de fuerza:', chartId, data);
                 apexDiv.innerHTML = '<div class="alert alert-info">No hay datos suficientes para mostrar el gráfico.</div>';
             }
         }
@@ -1065,7 +1020,6 @@
         function createMuscleGroupChart(chartId, data) {
             var ctx = document.getElementById(chartId);
             if (!ctx) {
-                console.error('Canvas element not found for muscle group chart:', chartId);
                 return;
             }
             ctx = ctx.getContext('2d');
@@ -1075,8 +1029,6 @@
             }
             
             if (data && data.labels && data.labels.length > 0) {
-                console.log('Creating muscle group chart ' + chartId + ' with data:', JSON.parse(JSON.stringify(data)));
-                
                 // Calcular el promedio de los puntajes
                 let sum = 0;
                 let validValues = 0;
@@ -1090,7 +1042,6 @@
                 }
                 
                 const averageScore = validValues > 0 ? Math.round(sum / validValues) : 0;
-                console.log('Puntaje promedio:', averageScore);
                 
                 // Crear un array de valores promedio para el dataset de referencia
                 const averageData = Array(data.labels.length).fill(averageScore);
@@ -1236,33 +1187,18 @@
                 var loopIndex = parseInt(loopIndexStr);
 
                 if (!isNaN(loopIndex)) {
-                    console.log('Collapse shown for index:', loopIndex);
                     var strengthChartId = 'strengthChart' + loopIndex;
                     var strengthItem = allStrengthData.find(function(item) { return item.id === loopIndex; });
                     if (strengthItem) {
                         createStrengthChart(strengthChartId, strengthItem);
-                    } else {
-                        console.warn('No strength data found for index:', loopIndex);
                     }
 
                     var muscleGroupsChartId = 'muscleGroupsChart' + loopIndex;
                     var muscleGroupItem = allMuscleGroupsData.find(function(item) { return item.id === loopIndex; });
-                    console.log('Datos para muscleGroupsChart' + loopIndex + ':', muscleGroupItem);
                     
                     if (muscleGroupItem) {
-                        // Verificar si los datos tienen la estructura esperada
-                        if (!muscleGroupItem.labels || muscleGroupItem.labels.length === 0) {
-                            console.warn('No hay etiquetas en los datos de grupos musculares para el registro #' + loopIndex);
-                        }
-                        if (!muscleGroupItem.scores || muscleGroupItem.scores.length === 0) {
-                            console.warn('No hay puntuaciones en los datos de grupos musculares para el registro #' + loopIndex);
-                        }
                         createMuscleGroupChart(muscleGroupsChartId, muscleGroupItem);
-                    } else {
-                        console.warn('No muscle group data found for index:', loopIndex);
                     }
-                } else {
-                    console.error('Could not parse loop index from collapse ID:', collapseId);
                 }
             });
         });

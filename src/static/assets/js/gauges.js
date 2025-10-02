@@ -94,6 +94,28 @@ class MetricGauge {
         return -90 + (position * 180);
     }
 
+    calculateBfAngle(bf, sex) {
+        let ranges;
+        
+        if (sex === 'M') {
+            // Rangos %BF Hombres: 2-40% para mejor visualización
+            // Categorías: Esencial(<6%), Atlético(6-13%), Fitness(14-17%), Promedio(18-24%), Alto(25-31%), Obesidad(>31%)
+            ranges = [2, 6, 10, 14, 18, 24, 31, 40];
+        } else {
+            // Rangos %BF Mujeres: 8-50% para mejor visualización
+            // Categorías: Esencial(<14%), Atlético(14-20%), Fitness(21-24%), Promedio(25-31%), Alto(32-38%), Obesidad(>38%)
+            ranges = [8, 14, 17, 21, 25, 31, 38, 50];
+        }
+
+        if (bf <= ranges[0]) return -90;
+        if (bf >= ranges[7]) return 90;
+
+        // Distribución uniforme en el semicírculo
+        const totalRange = ranges[7] - ranges[0];
+        const position = (bf - ranges[0]) / totalRange;
+        return -90 + (position * 180);
+    }
+
     setNeedlePosition() {
         const angle = this.calculateNeedleAngle();
         this.needle.style.transform = `rotate(${angle}deg)`;

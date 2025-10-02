@@ -1641,7 +1641,7 @@ def calcular_objetivos_automaticos(nombre_usuario):
 
 ### FUNCIÓN PARA ARMAR PLANES ###
 
-def plannutricional(planner):
+def plannutricional(planner, estrategia='', velocidad_cambio=0, deficit_calorico=0, disponibilidad_energetica=0, factor_actividad=1.55):
 
     #Conectar con la base de datos
     basededatos=sqlite3.connect("src/Basededatos")
@@ -1778,15 +1778,55 @@ def plannutricional(planner):
     
     #Guardar en base de datos las ultimas divisiones de macros, calorias, etc.
     try:
-        cursor.execute("CREATE TABLE DIETA (NOMBRE_APELLIDO  VARCHAR(50) UNIQUE, CALORIAS DECIMAL, PROTEINA DECIMAL, GRASA DECIMAL, CH DECIMAL, DP DECIMAL, DG DECIMAL, DC DECIMAL, MMP DECIMAL, MMG DECIMAL, MMC DECIMAL, AP DECIMAL, AG DECIMAL, AC DECIMAL, MP DECIMAL, MG DECIMAL, MC DECIMAL, MTP DECIMAL, MTG DECIMAL, MTC DECIMAL, CP DECIMAL, CG DECIMAL, CC DECIMAL, LIBERTAD INTEGER)")
+        cursor.execute("CREATE TABLE DIETA (NOMBRE_APELLIDO  VARCHAR(50) UNIQUE, CALORIAS DECIMAL, PROTEINA DECIMAL, GRASA DECIMAL, CH DECIMAL, DP DECIMAL, DG DECIMAL, DC DECIMAL, MMP DECIMAL, MMG DECIMAL, MMC DECIMAL, AP DECIMAL, AG DECIMAL, AC DECIMAL, MP DECIMAL, MG DECIMAL, MC DECIMAL, MTP DECIMAL, MTG DECIMAL, MTC DECIMAL, CP DECIMAL, CG DECIMAL, CC DECIMAL, LIBERTAD INTEGER, FECHA_CREACION DATETIME, ESTRATEGIA VARCHAR(20), VELOCIDAD_CAMBIO DECIMAL, DEFICIT_CALORICO DECIMAL, DISPONIBILIDAD_ENERGETICA DECIMAL, FACTOR_ACTIVIDAD DECIMAL)")
     except sqlite3.OperationalError:
-        pass
+        # Si la tabla ya existe, agregar columnas faltantes
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN FECHA_CREACION DATETIME")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN ESTRATEGIA VARCHAR(20)")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN VELOCIDAD_CAMBIO DECIMAL")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN DEFICIT_CALORICO DECIMAL")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN DISPONIBILIDAD_ENERGETICA DECIMAL")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE DIETA ADD COLUMN FACTOR_ACTIVIDAD DECIMAL")
+        except sqlite3.OperationalError:
+            pass
+    
+    # Obtener fecha actual
+    from datetime import datetime
+    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Convertir valores de estrategia (pueden venir como string)
+    try:
+        velocidad_cambio = float(velocidad_cambio) if velocidad_cambio else None
+        deficit_calorico = float(deficit_calorico) if deficit_calorico else None
+        disponibilidad_energetica = float(disponibilidad_energetica) if disponibilidad_energetica else None
+        factor_actividad = float(factor_actividad) if factor_actividad else 1.55
+    except:
+        velocidad_cambio = None
+        deficit_calorico = None
+        disponibilidad_energetica = None
+        factor_actividad = 1.55
     
     #Primero intenta registrar la dieta, pero si esta ya fue realizada actualiza nada mas los valores.
     try:    
-        cursor.execute("INSERT INTO DIETA (NOMBRE_APELLIDO, CALORIAS, PROTEINA, GRASA, CH, DP, DG, DC, MMP, MMG, MMC, AP, AG, AC, MP, MG, MC, MTP, MTG, MTC, CP, CG, CC, LIBERTAD) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (planner.nameuser.data, planner.cal.data, proteina, grasa, ch, dp, dg, dc, mmp, mmg, mmc, ap, ag, ac, mp, mg, mc, mtp, mtg, mtc, cp, cg, cc, libertad))
+        cursor.execute("INSERT INTO DIETA (NOMBRE_APELLIDO, CALORIAS, PROTEINA, GRASA, CH, DP, DG, DC, MMP, MMG, MMC, AP, AG, AC, MP, MG, MC, MTP, MTG, MTC, CP, CG, CC, LIBERTAD, FECHA_CREACION, ESTRATEGIA, VELOCIDAD_CAMBIO, DEFICIT_CALORICO, DISPONIBILIDAD_ENERGETICA, FACTOR_ACTIVIDAD) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (planner.nameuser.data, planner.cal.data, proteina, grasa, ch, dp, dg, dc, mmp, mmg, mmc, ap, ag, ac, mp, mg, mc, mtp, mtg, mtc, cp, cg, cc, libertad, fecha_actual, estrategia, velocidad_cambio, deficit_calorico, disponibilidad_energetica, factor_actividad))
     except:
-        cursor.execute("UPDATE DIETA SET CALORIAS=?, PROTEINA=?, GRASA=?, CH=?, DP=?, DG=?, DC=?, MMP=?, MMG=?, MMC=?, AP=?, AG=?, AC=?, MP=?, MG=?, MC=?, MTP=?, MTG=?, MTC=?, CP=?, CG=?, CC=?, LIBERTAD=? WHERE NOMBRE_APELLIDO=?", (planner.cal.data, proteina, grasa, ch, dp, dg, dc, mmp, mmg, mmc, ap, ag, ac, mp, mg, mc, mtp, mtg, mtc, cp, cg, cc, libertad, planner.nameuser.data))
+        cursor.execute("UPDATE DIETA SET CALORIAS=?, PROTEINA=?, GRASA=?, CH=?, DP=?, DG=?, DC=?, MMP=?, MMG=?, MMC=?, AP=?, AG=?, AC=?, MP=?, MG=?, MC=?, MTP=?, MTG=?, MTC=?, CP=?, CG=?, CC=?, LIBERTAD=?, FECHA_CREACION=?, ESTRATEGIA=?, VELOCIDAD_CAMBIO=?, DEFICIT_CALORICO=?, DISPONIBILIDAD_ENERGETICA=?, FACTOR_ACTIVIDAD=? WHERE NOMBRE_APELLIDO=?", (planner.cal.data, proteina, grasa, ch, dp, dg, dc, mmp, mmg, mmc, ap, ag, ac, mp, mg, mc, mtp, mtg, mtc, cp, cg, cc, libertad, fecha_actual, estrategia, velocidad_cambio, deficit_calorico, disponibilidad_energetica, factor_actividad, planner.nameuser.data))
         
     basededatos.commit()
 
@@ -2706,41 +2746,33 @@ def predict_next_workouts(user_id, num_predictions=5):
                     continue
 
                 estado = estado_dict[ejercicio_nombre]
-                fila = estado['fila_matriz']
                 columna = estado['current_columna']
-                columna = max(0, (columna or 1) - 1)
                 sesion = estado['current_sesion']
                 peso = estado['current_peso']
                 lastre = estado['lastre_adicional']
                 es_running = ejercicio_nombre.lower() == 'running'
                 
-                # Validar límites de matriz
-                if fila >= len(matriz):
-                    continue
-                    
-                # Para running, usar fila según sesión
-                if es_running:
-                    # La fila debe corresponder a la sesión: sesión 1→fila 0, sesión 2→fila 1, sesión 3→fila 2
-                    if sesion < 4:
-                        fila_efectiva = min(sesion - 1, len(matriz) - 1)  # sesion 1→fila 0, sesion 2→fila 1, etc.
-                    else:
-                        fila_efectiva = fila  # Para TEST usar fila original
-                    
-                    # Convertir "columna 9" (posición 9) a índice 8
-                    # Columna 9 = posición 9 = índice 8 (porque se cuenta desde 0)
-                    if columna >= len(matriz[fila_efectiva]):
-                        columna_efectiva = len(matriz[fila_efectiva]) - 1  # Columna 9 → índice 8
-                    else:
-                        columna_efectiva = columna
-                    
-                    # Actualizar fila y columna
-                    fila = fila_efectiva
-                    columna = columna_efectiva
-                elif columna >= len(matriz[fila]):
-                    continue
-
-                # Obtener prescripción de la matriz
-                prescripcion = matriz[fila][columna]
+                # Calcular fila e índice de columna para acceder a la matriz
+                # La sesión determina la fila: sesión 1→fila 0, sesión 2→fila 1, sesión 3→fila 2
+                # La columna (current_columna) es 1-indexed, necesitamos convertir a 0-indexed
+                if sesion == 4:  # TEST
+                    # Para TEST no necesitamos prescripción de matriz
+                    fila_idx = None
+                    col_idx = None
+                else:
+                    fila_idx = sesion - 1  # Convertir sesión a índice de fila
+                    col_idx = max(0, (columna or 1) - 1)  # Convertir columna a índice
+                
+                # Validar límites de matriz para sesiones normales
+                if sesion != 4:
+                    if not (0 <= fila_idx < len(matriz)):
+                        continue
+                    if not (0 <= col_idx < len(matriz[fila_idx])):
+                        continue
+                    # Obtener prescripción de la matriz usando los índices correctos
+                    prescripcion = matriz[fila_idx][col_idx]
+                else:
+                    prescripcion = None  # TEST no usa prescripción
 
                 # Determinar cómo mostrar el peso
                 if es_running:
@@ -2793,11 +2825,17 @@ def predict_next_workouts(user_id, num_predictions=5):
                             descripcion = f"{num_series} series: Corre durante {minutos_totales:.1f} min"
                         else:
                             descripcion = "Trabajo de carrera"
-                    elif len(partes) >= 2:
-                        num_series = int(partes[0])
-                        reps_por_serie = [partes[i] for i in range(1, min(len(partes), num_series + 1))]
-
-                        descripcion = f"{num_series} series ({', '.join(reps_por_serie)} reps)"
+                    elif len(partes) >= 1:
+                        # Cada parte separada por punto es una serie con sus reps
+                        # No se usa el primer número como cantidad de series
+                        num_series = len(partes)
+                        reps_por_serie = partes
+                        
+                        # Si todas las reps son iguales, simplificar
+                        if len(set(reps_por_serie)) == 1:
+                            descripcion = f"{num_series} series de {reps_por_serie[0]} reps"
+                        else:
+                            descripcion = f"{num_series} series ({', '.join(reps_por_serie)} reps)"
                     else:
                         descripcion = "Prescripción no válida"
 
@@ -2813,7 +2851,9 @@ def predict_next_workouts(user_id, num_predictions=5):
                     estado_dict[ejercicio_nombre]['current_sesion'] = sesion + 1
                 else:
                     # Después del test, asumir progresión exitosa
-                    nueva_columna = min(columna + 1, len(matriz[fila]) - 1)
+                    # La columna máxima depende de la longitud de la primera fila de la matriz
+                    max_columna = len(matriz[0]) if len(matriz) > 0 else 9
+                    nueva_columna = min(columna + 1, max_columna)
                     estado_dict[ejercicio_nombre]['current_columna'] = nueva_columna
                     estado_dict[ejercicio_nombre]['current_sesion'] = 1
                     
@@ -3976,5 +4016,205 @@ def recipe_simple_calculation(receta_id, username, comida_id, dieta_data):
             'status': 'error'
         }
 
+
+### FUNCIÓN PARA OBTENER ANÁLISIS COMPLETO DE UN USUARIO ###
+
+def obtener_analisis_completo_usuario(nombre_usuario):
+    """
+    Obtiene el análisis completo de un usuario para la vista de administración.
+    Retorna los mismos datos que el dashboard pero sin requerir session activa del usuario.
+    """
+    import sqlite3
+    from datetime import datetime, timedelta
+    
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    
+    try:
+        # Obtener datos del usuario
+        cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO ASC', [nombre_usuario])
+        dinamicodata = cursor.fetchall()
+        
+        cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [nombre_usuario])
+        estaticodata = cursor.fetchall()
+        
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [nombre_usuario])
+        dietadata = cursor.fetchall()
+        
+        cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [nombre_usuario])
+        objetivodata = cursor.fetchall()
+        
+        if not dinamicodata or not estaticodata:
+            basededatos.close()
+            return {"error": "No hay datos suficientes", "tiene_datos": False}
+        
+        # Estructura del análisis
+        analisis_completo = {
+            "estado_actual": {},
+            "objetivos": {},
+            "tasas_esperadas": {},
+            "comparacion_periodos": {},
+            "diagnostico": {},
+            "tiene_datos": False
+        }
+        
+        # Estado actual (último registro)
+        ultimo = dinamicodata[-1]
+        analisis_completo["estado_actual"] = {
+            "peso": ultimo[6],
+            "bf": ultimo[8],
+            "ffmi": ultimo[10],
+            "peso_magro": ultimo[7],
+            "peso_graso": ultimo[9],
+            "fecha": ultimo[2]
+        }
+        
+        # Objetivos (si existen)
+        if objetivodata:
+            obj = objetivodata[-1]
+            analisis_completo["objetivos"] = {
+                "peso": obj[2] if len(obj) > 2 else None,
+                "bf": obj[3] if len(obj) > 3 else None,
+                "ffmi": obj[4] if len(obj) > 4 else None
+            }
+        
+        # Tasas esperadas del plan (si existe)
+        if dietadata:
+            plan = dietadata[-1]
+            velocidad_cambio = plan[6] if len(plan) > 6 else None  # VELOCIDAD_CAMBIO en gramos/sem
+            
+            if velocidad_cambio:
+                velocidad_kg = velocidad_cambio / 1000
+                
+                # Determinar fase según signo
+                if velocidad_kg < 0:
+                    # Definición
+                    analisis_completo["tasas_esperadas"] = {
+                        "fase": "definicion",
+                        "peso_min_semanal": velocidad_kg * 1.1,
+                        "peso_max_semanal": velocidad_kg * 0.9
+                    }
+                else:
+                    # Volumen
+                    analisis_completo["tasas_esperadas"] = {
+                        "fase": "volumen",
+                        "peso_min_semanal": velocidad_kg * 0.8,
+                        "peso_max_semanal": velocidad_kg * 1.2
+                    }
+        
+        # Comparación de períodos (7 días)
+        if len(dinamicodata) >= 3:
+            dias_necesarios = 7
+            fecha_limite = datetime.now() - timedelta(days=dias_necesarios)
+            
+            registros_periodo = [r for r in dinamicodata if datetime.strptime(r[2], '%Y-%m-%d') >= fecha_limite]
+            
+            if len(registros_periodo) >= 3:
+                primer_reg = registros_periodo[0]
+                ultimo_reg = registros_periodo[-1]
+                
+                dias_transcurridos = (datetime.strptime(ultimo_reg[2], '%Y-%m-%d') - 
+                                    datetime.strptime(primer_reg[2], '%Y-%m-%d')).days
+                
+                if dias_transcurridos > 0:
+                    cambio_peso = ultimo_reg[6] - primer_reg[6]
+                    cambio_magro = ultimo_reg[7] - primer_reg[7]
+                    cambio_graso = ultimo_reg[9] - primer_reg[9]
+                    
+                    # Tasas semanales
+                    peso_rate = (cambio_peso / dias_transcurridos) * 7
+                    lean_rate = (cambio_magro / dias_transcurridos) * 7
+                    fat_rate = (cambio_graso / dias_transcurridos) * 7
+                    
+                    analisis_completo["comparacion_periodos"] = {
+                        "tiene_datos_suficientes": True,
+                        "peso_rate_actual": peso_rate,
+                        "lean_rate_actual": lean_rate,
+                        "fat_rate_actual": fat_rate,
+                        "dias_medidos": dias_transcurridos,
+                        "registros": len(registros_periodo)
+                    }
+        
+        # DIAGNÓSTICO (lógica completa del main.py)
+        if "comparacion_periodos" in analisis_completo and analisis_completo["comparacion_periodos"].get("tiene_datos_suficientes"):
+            comp = analisis_completo["comparacion_periodos"]
+            
+            diagnostico = {
+                "alertas": [],
+                "estado_general": "normal"
+            }
+            
+            # En definición
+            if analisis_completo.get("tasas_esperadas", {}).get("fase") == "definicion":
+                peso_esperado_min = analisis_completo["tasas_esperadas"]["peso_min_semanal"]
+                peso_esperado_max = analisis_completo["tasas_esperadas"]["peso_max_semanal"]
+                
+                if comp["peso_rate_actual"] > 0:
+                    diagnostico["alertas"].append("⚠️ GANANDO PESO - Deberías estar perdiendo. Reducir calorías")
+                    diagnostico["estado_general"] = "alerta_alta"
+                elif comp["peso_rate_actual"] > peso_esperado_max * 0.5:
+                    diagnostico["alertas"].append("Pérdida de peso muy lenta - Reducir calorías un 10-15%")
+                    diagnostico["estado_general"] = "alerta_media"
+                elif comp["peso_rate_actual"] < peso_esperado_min * 1.3:
+                    diagnostico["alertas"].append("Pérdida de peso excesiva - Riesgo de pérdida muscular. Aumentar calorías")
+                    diagnostico["estado_general"] = "alerta_alta"
+                
+                if comp["lean_rate_actual"] < -0.1:
+                    diagnostico["alertas"].append("CRÍTICO: Pérdida de masa magra detectada (-0.1 kg/sem). Aumentar proteína y calorías")
+                    diagnostico["estado_general"] = "alerta_alta"
+                
+                if comp["fat_rate_actual"] > 0:
+                    diagnostico["alertas"].append("Ganando grasa en definición - Reducir calorías inmediatamente")
+                    diagnostico["estado_general"] = "alerta_alta"
+            
+            # En volumen
+            elif analisis_completo.get("tasas_esperadas", {}).get("fase") == "volumen":
+                peso_esperado_min = analisis_completo["tasas_esperadas"]["peso_min_semanal"]
+                peso_esperado_max = analisis_completo["tasas_esperadas"]["peso_max_semanal"]
+                
+                if comp["peso_rate_actual"] < 0:
+                    diagnostico["alertas"].append("⚠️ PERDIENDO PESO - Deberías estar ganando. Aumentar calorías")
+                    diagnostico["estado_general"] = "alerta_alta"
+                elif comp["peso_rate_actual"] < peso_esperado_min * 0.5:
+                    diagnostico["alertas"].append("Ganancia muscular lenta - Considerar aumentar calorías")
+                    diagnostico["estado_general"] = "alerta_media"
+                elif comp["peso_rate_actual"] > peso_esperado_max * 1.3:
+                    diagnostico["alertas"].append("Ganancia de peso excesiva - Riesgo de acumulación de grasa. Reducir calorías")
+                    diagnostico["estado_general"] = "alerta_alta"
+                
+                if comp["lean_rate_actual"] < 0:
+                    diagnostico["alertas"].append("CRÍTICO: Perdiendo masa magra en volumen. Aumentar calorías y proteína")
+                    diagnostico["estado_general"] = "alerta_alta"
+                
+                if comp["fat_rate_actual"] > comp["lean_rate_actual"]:
+                    diagnostico["alertas"].append("Ganancia de grasa excede ganancia muscular")
+                    diagnostico["estado_general"] = "alerta_media"
+            
+            if not diagnostico["alertas"]:
+                diagnostico["alertas"].append("Progreso dentro del rango esperado")
+                diagnostico["estado_general"] = "optimo"
+            
+            analisis_completo["diagnostico"] = diagnostico
+        
+        analisis_completo["tiene_datos"] = True
+        analisis_completo["nombre_usuario"] = nombre_usuario
+        
+        # Agregar datos de la dieta actual
+        if dietadata:
+            plan = dietadata[-1]
+            analisis_completo["plan_actual"] = {
+                "calorias": plan[2] if len(plan) > 2 else None,
+                "proteina": plan[3] if len(plan) > 3 else None,
+                "grasa": plan[4] if len(plan) > 4 else None,
+                "carbohidratos": plan[5] if len(plan) > 5 else None
+            }
+        
+        return analisis_completo
+        
+    except Exception as e:
+        print(f"Error en obtener_analisis_completo_usuario: {e}")
+        return {"error": str(e), "tiene_datos": False}
+    finally:
+        basededatos.close()
 
 

@@ -37,14 +37,15 @@
                 {{ render_field(form.nameuser, class='form-control', id='select_usuario_planner') }}
             </div>
             <div class="col-md-3 mb-3">
-                <label class="font-w600 mb-2">Factor de Actividad:</label>
-                <select class="form-control" id="factor_actividad">
-                    <option value="1.2">Sedentario (1.2)</option>
-                    <option value="1.375">Ligero (1.375)</option>
-                    <option value="1.55" selected>Moderado (1.55)</option>
-                    <option value="1.725">Intenso (1.725)</option>
-                    <option value="1.9">Muy Intenso (1.9)</option>
-                </select>
+                <label class="font-w600 mb-2">Factor de Actividad: <span class="badge badge-primary" id="factor_actividad_display">1.55</span></label>
+                <input type="range" class="custom-range" id="factor_actividad" min="1.2" max="2.0" step="0.025" value="1.55">
+                <div class="d-flex justify-content-between font-size-sm text-muted mt-1">
+                    <span>Sedentario<br>(1.2)</span>
+                    <span>Ligero<br>(1.375)</span>
+                    <span>Moderado<br>(1.55)</span>
+                    <span>Intenso<br>(1.725)</span>
+                    <span>Muy Intenso<br>(2.0)</span>
+                </div>
             </div>
             <div class="col-md-3 mb-3">
                 <label class="font-w600 mb-2">&nbsp;</label>
@@ -193,6 +194,13 @@
     <div class="block-content block-content-full">
         <form name="sentMessage" id="plannerForm" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <!-- Campos ocultos para estrategia nutricional -->
+            <input type="hidden" name="estrategia" id="hidden_estrategia" value="">
+            <input type="hidden" name="velocidad_cambio" id="hidden_velocidad_cambio" value="">
+            <input type="hidden" name="deficit_calorico" id="hidden_deficit_calorico" value="">
+            <input type="hidden" name="disponibilidad_energetica" id="hidden_disponibilidad_energetica" value="">
+            <input type="hidden" name="factor_actividad" id="hidden_factor_actividad" value="">
+            
             <div class="row push">
                 <div class="col-lg-2">
                     <p class="font-size-sm text-muted">
@@ -300,31 +308,77 @@ function recargarPlanAutomatico() {
     }
 }
 
-function cargarPlanAutomatico(nombreUsuario, factorActividad = 1.55) {
-    fetch(`/api/planner/plan-automatico/${encodeURIComponent(nombreUsuario)}?factor_actividad=${factorActividad}`)
+function cargarPlanAutomatico(nombreUsuario, factorActividad = null) {
+    // Si no se especifica factor, el backend usará el último guardado
+    const url = factorActividad 
+        ? `/api/planner/plan-automatico/${encodeURIComponent(nombreUsuario)}?factor_actividad=${factorActividad}`
+        : `/api/planner/plan-automatico/${encodeURIComponent(nombreUsuario)}`;
+    
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                console.error('Error:', data.error);
+                // Mostrar error amigable en la interfaz
+                const planSection = document.getElementById('planAutomaticoSection');
+                planSection.style.display = 'block';
+                const planContent = document.getElementById('planAutomaticoContent');
+                planContent.innerHTML = `
+                    <div class="alert alert-warning d-flex align-items-center" role="alert">
+                        <i class="fa fa-exclamation-triangle fa-2x me-3"></i>
+                        <div>
+                            <h5 class="alert-heading mb-2">Objetivo no definido</h5>
+                            <p class="mb-2">${data.error}</p>
+                            <hr>
+                            <a href="/goal" class="btn btn-warning">
+                                <i class="fa fa-bullseye me-2"></i>Definir Objetivo Ahora
+                            </a>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('opcionPersonalizadaContainer').style.display = 'none';
                 return;
             }
+            
+            // Actualizar slider con el factor usado (del backend)
+            if (data.factor_actividad_usado) {
+                document.getElementById('factor_actividad').value = data.factor_actividad_usado;
+                document.getElementById('factor_actividad_display').textContent = data.factor_actividad_usado.toFixed(2);
+            }
+            
             planAutomaticoData = data;
             mostrarPlanAutomatico(data);
         })
         .catch(error => {
             console.error('Error al cargar plan automático:', error);
+            const planSection = document.getElementById('planAutomaticoSection');
+            planSection.style.display = 'block';
+            const planContent = document.getElementById('planAutomaticoContent');
+            planContent.innerHTML = `
+                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                    <i class="fa fa-times-circle fa-2x me-3"></i>
+                    <div>
+                        <h5 class="alert-heading mb-2">Error de conexión</h5>
+                        <p class="mb-0">No se pudo cargar el plan automático. Por favor, intenta nuevamente.</p>
+                    </div>
+                </div>
+            `;
         });
 }
 
 // Event listeners después de que el DOM esté listo
 window.addEventListener('DOMContentLoaded', function() {
+    // Actualizar display del slider cuando cambia
+    document.getElementById('factor_actividad').addEventListener('input', function() {
+        document.getElementById('factor_actividad_display').textContent = parseFloat(this.value).toFixed(2);
+    });
+    
     // Cargar plan automático cuando se selecciona un usuario
     document.getElementById('select_usuario_planner').addEventListener('change', function() {
         const nombreUsuario = this.value;
         document.getElementById('hidden_nameuser').value = nombreUsuario;
         if (nombreUsuario) {
-            const factorActividad = document.getElementById('factor_actividad').value;
-            cargarPlanAutomatico(nombreUsuario, factorActividad);
+            // No pasar factor, dejar que el backend use el último guardado
+            cargarPlanAutomatico(nombreUsuario);
         } else {
             document.getElementById('planAutomaticoSection').style.display = 'none';
             document.getElementById('opcionPersonalizadaContainer').style.display = 'none';
@@ -335,8 +389,8 @@ window.addEventListener('DOMContentLoaded', function() {
     const select = document.getElementById('select_usuario_planner');
     if (select && select.value) {
         document.getElementById('hidden_nameuser').value = select.value;
-        const factorActividad = document.getElementById('factor_actividad').value;
-        cargarPlanAutomatico(select.value, factorActividad);
+        // Cargar sin especificar factor (usar el guardado)
+        cargarPlanAutomatico(select.value);
     }
 });
 
@@ -461,7 +515,6 @@ function inicializarSliderPersonalizado(data) {
         if (deficitMaximo > 0) {
             const velocidadMaxKg = (deficitMaximo * 7) / 7700;
             porcentajeMaximo = Math.min((velocidadMaxKg / pesoKg) * 100, 1.5);
-            console.log(`🔄 Slider reinicializado - TDEE: ${tdee}, Déficit Máx: ${deficitMaximo}, Porcentaje Máx: ${porcentajeMaximo.toFixed(2)}%`);
         }
     }
     
@@ -474,7 +527,6 @@ function inicializarSliderPersonalizado(data) {
         let porcentaje = parseFloat(this.value);
         // Limitar valor sin cambiar el max del slider
         if (porcentaje > porcentajeMaximo) {
-            console.log(`⚠️ Limitando ${porcentaje}% a ${porcentajeMaximo.toFixed(2)}%`);
             porcentaje = porcentajeMaximo;
             this.value = porcentaje;
         }
@@ -600,8 +652,30 @@ function seleccionarOpcion(index) {
 
 document.getElementById('btnUsarPlanAutomatico').addEventListener('click', function() {
     if (!opcionSeleccionada) return;
+    
+    // Llenar campos visibles
     document.getElementById('input_calorias_manual').value = opcionSeleccionada.calorias;
     document.getElementById('hidden_nameuser').value = document.getElementById('select_usuario_planner').value;
+    
+    // Llenar campos ocultos con información de la estrategia
+    document.getElementById('hidden_estrategia').value = opcionSeleccionada.nombre || '';
+    
+    // Velocidad en gramos (multiplicar kg * 1000)
+    const velocidad_kg = opcionSeleccionada.velocidad_semanal_kg || 0;
+    document.getElementById('hidden_velocidad_cambio').value = velocidad_kg * 1000;
+    
+    // Déficit o superávit (dependiendo de la opción)
+    const deficit = opcionSeleccionada.deficit_diario || opcionSeleccionada.superavit_diario || 0;
+    document.getElementById('hidden_deficit_calorico').value = deficit;
+    
+    // Disponibilidad energética
+    const ea = opcionSeleccionada.disponibilidad_energetica ? opcionSeleccionada.disponibilidad_energetica.ea_valor : 0;
+    document.getElementById('hidden_disponibilidad_energetica').value = ea;
+    
+    // Factor de actividad (del slider)
+    const factor_actividad = document.getElementById('factor_actividad').value || 1.55;
+    document.getElementById('hidden_factor_actividad').value = factor_actividad;
+    
     this.classList.remove('btn-success');
     this.classList.add('btn-primary');
     this.innerHTML = '<i class="fa fa-check me-2"></i>Plan Aplicado - Completa la configuración';

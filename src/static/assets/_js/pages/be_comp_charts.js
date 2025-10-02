@@ -11,17 +11,47 @@ class pageCompCharts {
     *
     */
     static initChartsChartJS() {
-        // Set Global Chart.js configuration
-        Chart.defaults.global.defaultFontColor              = '#999';
-        Chart.defaults.global.defaultFontStyle              = '600';
-        Chart.defaults.scale.gridLines.color                = "rgba(0,0,0,.05)";
-        Chart.defaults.scale.gridLines.zeroLineColor        = "rgba(0,0,0,.1)";
-        Chart.defaults.scale.ticks.beginAtZero              = true;
-        Chart.defaults.global.elements.line.borderWidth     = 2;
-        Chart.defaults.global.elements.point.radius         = 4;
-        Chart.defaults.global.elements.point.hoverRadius    = 6;
-        Chart.defaults.global.tooltips.cornerRadius         = 3;
-        Chart.defaults.global.legend.labels.boxWidth        = 15;
+        // Set Global Chart.js configuration (Chart.js v3+ syntax)
+        // Verificar que Chart.js esté cargado correctamente
+        if (typeof Chart === 'undefined') {
+            return; // Chart.js no está cargado, salir silenciosamente
+        }
+        
+        // Configurar defaults solo si existen (evita errores de compatibilidad)
+        try {
+            if (Chart.defaults) {
+                Chart.defaults.color = '#999';
+                if (Chart.defaults.font) {
+                    Chart.defaults.font.weight = '600';
+                }
+                if (Chart.defaults.scale && Chart.defaults.scale.grid) {
+                    Chart.defaults.scale.grid.color = "rgba(0,0,0,.05)";
+                    Chart.defaults.scale.grid.zeroLineColor = "rgba(0,0,0,.1)";
+                }
+                if (Chart.defaults.scale && Chart.defaults.scale.ticks) {
+                    Chart.defaults.scale.ticks.beginAtZero = true;
+                }
+                if (Chart.defaults.elements) {
+                    if (Chart.defaults.elements.line) {
+                        Chart.defaults.elements.line.borderWidth = 2;
+                    }
+                    if (Chart.defaults.elements.point) {
+                        Chart.defaults.elements.point.radius = 4;
+                        Chart.defaults.elements.point.hoverRadius = 6;
+                    }
+                }
+                if (Chart.defaults.plugins) {
+                    if (Chart.defaults.plugins.tooltip) {
+                        Chart.defaults.plugins.tooltip.cornerRadius = 3;
+                    }
+                    if (Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels) {
+                        Chart.defaults.plugins.legend.labels.boxWidth = 15;
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignorar errores de configuración de Chart.js
+        }
 
         // Get Chart Containers
         let chartLinesCon  = jQuery('.js-chartjs-lines');

@@ -28,7 +28,7 @@ def before_request():
         username = session['username']
     else:
         pass
-    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'login', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'strengthstandard', 'trainingplanner', 'strengthdata_admin_view']:
+    if 'username' in session and username != 'Toffaletti, Diego Alejandro' and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'login', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", "databasemanager_beta", "update_database_cell", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'strengthstandard', 'trainingplanner', 'strengthdata_admin_view']:
         return redirect(url_for('dashboard'))
     if 'username' not in session and request.endpoint in ['create', 'editperfilest', 'delperfilest', 'update', 'editperfildin', 'delperfildin', 'planner', 'delplan', 'editplan', 'goal', 'delgoal', 'recipecreator', "databasemanager", 'createfood', 'editfood', 'delfood', 'deleterecipe', 'recipe', 'strengthstandard', 'trainingplanner']:
         return redirect(url_for('login'))
@@ -141,17 +141,47 @@ def dashboard():
 
     user_dni = session['DNI']
     username = session['username']
+    
+    # Detectar si el usuario es administrador
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+    
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
-    cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+    
+    # Si es admin, puede ver otros pacientes vía query param
+    paciente_seleccionado = None
+    lista_pacientes = []
+    
+    if is_admin:
+        # Obtener lista de todos los pacientes para el selector
+        cursor.execute("SELECT DISTINCT NOMBRE_APELLIDO FROM PERFILESTATICO ORDER BY NOMBRE_APELLIDO")
+        lista_pacientes = [row[0] for row in cursor.fetchall()]
+        
+        # Permitir selección de paciente (por defecto, el propio admin)
+        paciente_seleccionado = request.args.get('paciente', username)
+        
+        # Usar el paciente seleccionado para cargar los datos
+        username_to_load = paciente_seleccionado
+        
+        # Obtener DNI del paciente seleccionado
+        cursor.execute("SELECT DNI FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [username_to_load])
+        dni_result = cursor.fetchone()
+        user_dni_to_load = dni_result[0] if dni_result else user_dni
+    else:
+        # Usuario normal solo ve su propia información
+        username_to_load = username
+        user_dni_to_load = user_dni
+    
+    cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username_to_load])
     dietadata=cursor.fetchall()
-    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO ASC', [username])
+    cursor.execute('SELECT * FROM PERFILDINAMICO WHERE NOMBRE_APELLIDO=? ORDER BY FECHA_REGISTRO ASC', [username_to_load])
     dinamicodata=cursor.fetchall()
-    cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username])
+    cursor.execute('SELECT * FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?', [username_to_load])
     estaticodata=cursor.fetchall()
-    cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username])
+    cursor.execute('SELECT * FROM OBJETIVO WHERE NOMBRE_APELLIDO=?', [username_to_load])
     objetivodata=cursor.fetchall()
-    basededatos.close()
+    # NO cerrar aún - se necesita para leer plan alimentario más adelante
+    # basededatos.close()
 
     if not dinamicodata or not estaticodata:
         flash("No se encontraron datos de perfil. Por favor, actualice su perfil.")
@@ -604,7 +634,610 @@ def dashboard():
     # Obtener el plan de entrenamiento
     training_plan = functions.get_training_plan(user_dni)
 
-    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat, solver_category=solver_category, training_plan=training_plan, performance_clock=performance_clock, fatrate_target=fatrate_target, leanrate_target=leanrate_target)
+    # ============================================================================
+    # ANÁLISIS COMPLETO DEL RELOJ DE RENDIMIENTO
+    # ============================================================================
+    
+    analisis_completo = {
+        "tiene_datos": False,
+        "estado_actual": {},
+        "objetivo_definido": {},
+        "plan_nutricional": {},
+        "plan_alimentario": {},
+        "diferencias": {},
+        "tasas_esperadas": {},
+        "tasas_actuales": {},
+        "comparacion_periodos": {},
+        "diagnostico": {}
+    }
+    
+    # 1. ESTADO ACTUAL DEL USUARIO
+    if dinamicodata:
+        ultimo_registro = dinamicodata[-1]
+        primer_registro = dinamicodata[0]
+        
+        analisis_completo["estado_actual"] = {
+            "peso": round(float(ultimo_registro[6]), 2),
+            "peso_magro": round(float(ultimo_registro[11]), 2),
+            "peso_graso": round(float(ultimo_registro[10]), 2),
+            "bf_porcentaje": round(float(ultimo_registro[7]), 1),
+            "ffmi": round(float(ultimo_registro[9]), 2),
+            "imc": round(float(ultimo_registro[8]), 2),
+            "fecha_ultimo_registro": ultimo_registro[2],
+            "fecha_primer_registro": primer_registro[2],
+            "total_registros": len(dinamicodata),
+            "dias_monitoreados": (latest_entry_date - parse_date_safe(primer_registro[2])).days if parse_date_safe(primer_registro[2]) else 0
+        }
+    
+    # 2. OBJETIVO DEFINIDO (leer desde dinamicodata que tiene los objetivos guardados)
+    if dinamicodata and len(ultimo_registro) > 32:
+        # Los objetivos están en dinamicodata en las columnas 30, 31, 32
+        peso_objetivo = float(ultimo_registro[30]) if ultimo_registro[30] else None
+        peso_magro_objetivo = float(ultimo_registro[31]) if ultimo_registro[31] else None
+        peso_graso_objetivo = float(ultimo_registro[32]) if ultimo_registro[32] else None
+        
+        if peso_objetivo and peso_magro_objetivo and peso_graso_objetivo:
+            # Calcular BF% y FFMI objetivo
+            bf_objetivo = (peso_graso_objetivo / peso_objetivo) * 100
+            
+            # Obtener altura correctamente - COLUMNA 6 (NO 7)
+            if estaticodata and len(estaticodata[0]) > 6 and estaticodata[0][6]:
+                altura_raw = estaticodata[0][6]
+                try:
+                    altura = float(altura_raw)
+                except:
+                    altura = 170.0
+            else:
+                altura = 170.0  # Altura por defecto
+            
+            # Normalizar altura a centímetros según el rango
+            if altura < 3:  # Si está en metros (ej: 1.70 o 0.35)
+                altura = altura * 100
+            elif altura < 50:  # Si está en decímetros o error (ej: 17 o 35)
+                # Asumiendo que es un error, usar 170 cm por defecto
+                altura = 170.0
+            # Si está entre 50-250 cm, es válido
+            elif altura > 250:  # Demasiado alto, posible error
+                altura = 170.0
+            
+            altura_m = altura / 100.0
+            
+            # Validar que altura_m sea razonable (1.0m - 2.5m)
+            if altura_m < 1.0 or altura_m > 2.5:
+                altura_m = 1.70
+            
+            ffmi_objetivo = peso_magro_objetivo / (altura_m ** 2)
+            
+            analisis_completo["objetivo_definido"] = {
+                "ffmi_objetivo": round(ffmi_objetivo, 2),
+                "bf_objetivo": round(bf_objetivo, 1),
+                "peso_objetivo": round(peso_objetivo, 2),
+                "peso_magro_objetivo": round(peso_magro_objetivo, 2),
+                "peso_graso_objetivo": round(peso_graso_objetivo, 2),
+                "tiene_objetivo": True
+            }
+        else:
+            analisis_completo["objetivo_definido"]["tiene_objetivo"] = False
+    else:
+        analisis_completo["objetivo_definido"]["tiene_objetivo"] = False
+    
+    # Si hay objetivo definido, continuar con los cálculos
+    if analisis_completo["objetivo_definido"].get("tiene_objetivo"):
+        objetivo_ffmi = analisis_completo["objetivo_definido"]["ffmi_objetivo"]
+        objetivo_bf = analisis_completo["objetivo_definido"]["bf_objetivo"]
+        peso_objetivo = analisis_completo["objetivo_definido"]["peso_objetivo"]
+        peso_magro_objetivo = analisis_completo["objetivo_definido"]["peso_magro_objetivo"]
+        peso_graso_objetivo = analisis_completo["objetivo_definido"]["peso_graso_objetivo"]
+        
+        # Calcular diferencias
+        analisis_completo["diferencias"] = {
+            "peso": round(peso_objetivo - float(ultimo_registro[6]), 2),
+            "peso_magro": round(peso_magro_objetivo - float(ultimo_registro[11]), 2),
+            "peso_graso": round(peso_graso_objetivo - float(ultimo_registro[10]), 2),
+            "bf": round(objetivo_bf - float(ultimo_registro[7]), 1),
+            "ffmi": round(objetivo_ffmi - float(ultimo_registro[9]), 2)
+        }
+        
+        # Determinar fase
+        if abs(analisis_completo["diferencias"]["bf"]) < 2 and abs(analisis_completo["diferencias"]["ffmi"]) < 0.5:
+            fase_actual = "Mantenimiento"
+        elif analisis_completo["diferencias"]["bf"] < -2:
+            fase_actual = "Definición (Pérdida de grasa)"
+        elif analisis_completo["diferencias"]["ffmi"] > 0.5:
+            fase_actual = "Volumen (Ganancia muscular)"
+        else:
+            fase_actual = "Transición"
+        
+        analisis_completo["diferencias"]["fase"] = fase_actual
+    
+    # 3. PLAN NUTRICIONAL ACTUAL (DIETA)
+    if dietadata:
+        plan = dietadata[0]
+        # Estructura: 0-23 (datos base), 24 (libertad), 25 (fecha), 26 (estrategia), 27 (velocidad), 28 (deficit), 29 (EA)
+        fecha_plan = plan[25] if len(plan) > 25 and plan[25] else None
+        estrategia = plan[26] if len(plan) > 26 and plan[26] else None
+        velocidad_cambio = plan[27] if len(plan) > 27 and plan[27] else None
+        deficit_calorico = plan[28] if len(plan) > 28 and plan[28] else None
+        disponibilidad_energetica = plan[29] if len(plan) > 29 and plan[29] else None
+        
+        # Calcular días desde creación
+        dias_desde_creacion = None
+        if fecha_plan:
+            try:
+                # Intentar parsear la fecha
+                if isinstance(fecha_plan, str):
+                    fecha_obj = datetime.fromisoformat(fecha_plan.replace(' ', 'T'))
+                else:
+                    fecha_obj = fecha_plan
+                dias_desde_creacion = (datetime.now() - fecha_obj).days
+            except:
+                dias_desde_creacion = None
+        
+        analisis_completo["plan_nutricional"] = {
+            "tiene_plan": True,
+            "calorias_totales": int(plan[2]) if plan[2] else 0,
+            "proteina_total": round(float(plan[3]), 1) if plan[3] else 0,
+            "grasa_total": round(float(plan[4]), 1) if plan[4] else 0,
+            "carbohidratos_total": round(float(plan[5]), 1) if plan[5] else 0,
+            "libertad_porcentaje": int(plan[24]) if len(plan) > 24 and plan[24] else 0,
+            "fecha_creacion": fecha_plan,
+            "dias_desde_creacion": dias_desde_creacion,
+            # Nueva información de estrategia
+            "estrategia": estrategia,
+            "velocidad_cambio": float(velocidad_cambio) if velocidad_cambio else None,
+            "deficit_calorico": float(deficit_calorico) if deficit_calorico else None,
+            "disponibilidad_energetica": float(disponibilidad_energetica) if disponibilidad_energetica else None,
+            "distribucion_comidas": {
+                "desayuno": {
+                    "proteina": round(float(plan[6]) * 100, 1) if plan[6] else 0,
+                    "grasa": round(float(plan[7]) * 100, 1) if plan[7] else 0,
+                    "carbohidratos": round(float(plan[8]) * 100, 1) if plan[8] else 0
+                },
+                "media_manana": {
+                    "proteina": round(float(plan[9]) * 100, 1) if plan[9] else 0,
+                    "grasa": round(float(plan[10]) * 100, 1) if plan[10] else 0,
+                    "carbohidratos": round(float(plan[11]) * 100, 1) if plan[11] else 0
+                },
+                "almuerzo": {
+                    "proteina": round(float(plan[12]) * 100, 1) if plan[12] else 0,
+                    "grasa": round(float(plan[13]) * 100, 1) if plan[13] else 0,
+                    "carbohidratos": round(float(plan[14]) * 100, 1) if plan[14] else 0
+                },
+                "merienda": {
+                    "proteina": round(float(plan[15]) * 100, 1) if plan[15] else 0,
+                    "grasa": round(float(plan[16]) * 100, 1) if plan[16] else 0,
+                    "carbohidratos": round(float(plan[17]) * 100, 1) if plan[17] else 0
+                },
+                "media_tarde": {
+                    "proteina": round(float(plan[18]) * 100, 1) if plan[18] else 0,
+                    "grasa": round(float(plan[19]) * 100, 1) if plan[19] else 0,
+                    "carbohidratos": round(float(plan[20]) * 100, 1) if plan[20] else 0
+                },
+                "cena": {
+                    "proteina": round(float(plan[21]) * 100, 1) if plan[21] else 0,
+                    "grasa": round(float(plan[22]) * 100, 1) if plan[22] else 0,
+                    "carbohidratos": round(float(plan[23]) * 100, 1) if plan[23] else 0
+                }
+            }
+        }
+        
+        # Calcular macros en gramos por comida
+        if plan[2]:  # Si hay calorías definidas
+            proteina_total = float(plan[3])
+            grasa_total = float(plan[4])
+            ch_total = float(plan[5])
+            
+            analisis_completo["plan_nutricional"]["macros_gramos"] = {
+                "desayuno": {
+                    "proteina": round(proteina_total * float(plan[6]), 1) if plan[6] else 0,
+                    "grasa": round(grasa_total * float(plan[7]), 1) if plan[7] else 0,
+                    "carbohidratos": round(ch_total * float(plan[8]), 1) if plan[8] else 0
+                },
+                "almuerzo": {
+                    "proteina": round(proteina_total * float(plan[12]), 1) if plan[12] else 0,
+                    "grasa": round(grasa_total * float(plan[13]), 1) if plan[13] else 0,
+                    "carbohidratos": round(ch_total * float(plan[14]), 1) if plan[14] else 0
+                },
+                "cena": {
+                    "proteina": round(proteina_total * float(plan[21]), 1) if plan[21] else 0,
+                    "grasa": round(grasa_total * float(plan[22]), 1) if plan[22] else 0,
+                    "carbohidratos": round(ch_total * float(plan[23]), 1) if plan[23] else 0
+                }
+            }
+    else:
+        analisis_completo["plan_nutricional"]["tiene_plan"] = False
+    
+    # 4. PLAN ALIMENTARIO (PLANES_ALIMENTARIOS - recetas específicas)
+    try:
+        cursor = basededatos.cursor()
+        
+        # Buscar por DNI o NOMBRE_APELLIDO para compatibilidad
+        cursor.execute("""
+            SELECT ID, FECHA_CREACION, FECHA_ACTUALIZACION, TIPO_PLAN, 
+                   TOTAL_RECETAS, COMIDAS_CONFIGURADAS, CALORIAS_TOTALES
+            FROM PLANES_ALIMENTARIOS
+            WHERE (USER_DNI = ? OR NOMBRE_APELLIDO = ?) AND ACTIVO = 1
+            ORDER BY FECHA_CREACION DESC LIMIT 1
+        """, [user_dni_to_load, username_to_load])
+        
+        plan_alimentario = cursor.fetchone()
+        
+        if plan_alimentario:
+            # Parsear fecha de inicio
+            fecha_inicio = plan_alimentario[1]
+            dias_desde_inicio = 0
+            if fecha_inicio:
+                try:
+                    if isinstance(fecha_inicio, str):
+                        fecha_obj = datetime.fromisoformat(fecha_inicio.replace(' ', 'T'))
+                    else:
+                        fecha_obj = fecha_inicio
+                    dias_desde_inicio = (datetime.now() - fecha_obj).days
+                except:
+                    dias_desde_inicio = 0
+            
+            analisis_completo["plan_alimentario"] = {
+                "tiene_plan": True,
+                "fecha_inicio": fecha_inicio,
+                "fecha_actualizacion": plan_alimentario[2],
+                "tipo_plan": plan_alimentario[3],
+                "total_recetas": plan_alimentario[4] if plan_alimentario[4] else 0,
+                "comidas_configuradas": plan_alimentario[5] if plan_alimentario[5] else 0,
+                "calorias_del_plan": plan_alimentario[6] if plan_alimentario[6] else None,
+                "dias_desde_inicio": dias_desde_inicio
+            }
+        else:
+            analisis_completo["plan_alimentario"]["tiene_plan"] = False
+    except Exception as e:
+        analisis_completo["plan_alimentario"]["tiene_plan"] = False
+        analisis_completo["plan_alimentario"]["error"] = str(e)
+        print(f"Error al leer plan alimentario: {e}")
+    
+    # 5. TASAS ESPERADAS (priorizar datos del plan nutricional si existen)
+    if dinamicodata and analisis_completo["objetivo_definido"].get("tiene_objetivo"):
+        peso_actual = float(ultimo_registro[6])
+        peso_graso_actual = float(ultimo_registro[10])
+        peso_magro_actual = float(ultimo_registro[11])
+        sexo = estaticodata[0][4] if estaticodata else "M"
+        
+        # Verificar si hay estrategia guardada del planner
+        velocidad_guardada = analisis_completo["plan_nutricional"].get("velocidad_cambio") if analisis_completo["plan_nutricional"].get("tiene_plan") else None
+        
+        # Fórmula del planner para fatrate (pérdida de grasa)
+        def calculator_fatrate(fat):
+            maxloss = fat * 31
+            mapace = maxloss * 7 / 3500
+            return mapace
+        
+        fatrate_planner = calculator_fatrate(peso_graso_actual)
+        
+        # Fórmula del planner para leanrate (ganancia de músculo)
+        leanrate_planner = peso_magro_actual / 268
+        
+        # Determinar tasas según la fase
+        fase_actual = analisis_completo["diferencias"]["fase"]
+        
+        if fase_actual == "Definición (Pérdida de grasa)":
+            # Si hay velocidad guardada del planner, usarla (kg/sem, ya es negativa)
+            if velocidad_guardada and velocidad_guardada > 0:
+                # La velocidad está en gramos/semana, convertir a kg/sem
+                velocidad_kg_sem = velocidad_guardada / 1000
+                tasa_peso_semanal = -velocidad_kg_sem  # Negativa porque es pérdida
+                # Estimar: 75% de pérdida es grasa, 25% músculo (si no ideal)
+                tasa_grasa_semanal = tasa_peso_semanal * 0.75
+                tasa_musculo_semanal = tasa_peso_semanal * 0.25
+            else:
+                # En definición: pérdida de grasa según fórmula, conservar músculo
+                tasa_grasa_semanal = -fatrate_planner  # Negativo porque es pérdida
+                tasa_musculo_semanal = 0.0  # Idealmente conservar músculo
+                tasa_peso_semanal = tasa_grasa_semanal + tasa_musculo_semanal
+            
+            # Rango: ±10% de variación aceptable
+            analisis_completo["tasas_esperadas"] = {
+                "peso_min_semanal": round(tasa_peso_semanal * 0.9, 3),
+                "peso_max_semanal": round(tasa_peso_semanal * 1.1, 3),
+                "grasa_semanal": round(tasa_grasa_semanal, 3),
+                "musculo_semanal": round(tasa_musculo_semanal, 3),
+                "porcentaje_peso_min": f"{round((tasa_peso_semanal * 0.9 / peso_actual) * 100, 2)}%",
+                "porcentaje_peso_max": f"{round((tasa_peso_semanal * 1.1 / peso_actual) * 100, 2)}%",
+                "fase": "definicion",
+                "fatrate_planner": round(fatrate_planner, 3),
+                "dias_estimados": round((peso_graso_actual - peso_graso_objetivo) / fatrate_planner * 7, 0) if peso_graso_objetivo else None
+            }
+            
+        elif fase_actual == "Volumen (Ganancia muscular)":
+            # En volumen: ganancia de músculo según fórmula
+            tasa_musculo_semanal = leanrate_planner
+            # Aumento conservador de grasa (máximo 50% de la ganancia muscular)
+            tasa_grasa_semanal = leanrate_planner * 0.5
+            tasa_peso_semanal = tasa_musculo_semanal + tasa_grasa_semanal
+            
+            # Ajuste según sexo (las mujeres ganan músculo más lento)
+            if sexo == "F":
+                tasa_musculo_semanal = tasa_musculo_semanal * 0.5
+                tasa_peso_semanal = tasa_musculo_semanal + tasa_grasa_semanal
+            
+            analisis_completo["tasas_esperadas"] = {
+                "peso_min_semanal": round(tasa_peso_semanal * 0.8, 3),
+                "peso_max_semanal": round(tasa_peso_semanal * 1.2, 3),
+                "grasa_semanal": round(tasa_grasa_semanal, 3),
+                "musculo_semanal": round(tasa_musculo_semanal, 3),
+                "porcentaje_peso_min": f"{round((tasa_peso_semanal * 0.8 / peso_actual) * 100, 2)}%",
+                "porcentaje_peso_max": f"{round((tasa_peso_semanal * 1.2 / peso_actual) * 100, 2)}%",
+                "fase": "volumen",
+                "leanrate_planner": round(leanrate_planner, 3),
+                "dias_estimados": round((peso_magro_objetivo - peso_magro_actual) / leanrate_planner * 7, 0) if peso_magro_objetivo else None
+            }
+            
+        else:
+            # Mantenimiento o Transición
+            analisis_completo["tasas_esperadas"] = {
+                "peso_min_semanal": -0.1,
+                "peso_max_semanal": 0.1,
+                "grasa_semanal": 0.0,
+                "musculo_semanal": 0.0,
+                "porcentaje_peso_min": "-0.1%",
+                "porcentaje_peso_max": "0.1%",
+                "fase": "mantenimiento",
+                "fatrate_planner": round(fatrate_planner, 3),
+                "leanrate_planner": round(leanrate_planner, 3)
+            }
+    
+    # 6. TASAS ACTUALES (DESDE LA FECHA DEL PLAN NUTRICIONAL)
+    # El Plan Nutricional es el punto de referencia fijo (macros/estrategia)
+    # El Plan Alimentario (recetas) es mutable y puede cambiar sin afectar las tasas
+    if analisis_completo["plan_nutricional"].get("fecha_creacion") and analisis_completo["plan_nutricional"].get("dias_desde_creacion") is not None:
+        fecha_plan = analisis_completo["plan_nutricional"]["fecha_creacion"]
+        dias_desde_plan = analisis_completo["plan_nutricional"]["dias_desde_creacion"]
+        
+        # Filtrar registros desde la fecha del plan
+        try:
+            fecha_plan_obj = datetime.fromisoformat(fecha_plan.replace(' ', 'T'))
+        except:
+            fecha_plan_obj = None
+        
+        if fecha_plan_obj and dinamicodata:
+            # 1. Encontrar registro baseline (más cercano ANTES o IGUAL a fecha del plan)
+            baseline_registro = None
+            registros_posteriores = []
+            
+            for row in dinamicodata:
+                try:
+                    fecha_registro_str = row[2]  # Columna FECHA_REGISTRO
+                    if isinstance(fecha_registro_str, str):
+                        fecha_registro = datetime.fromisoformat(fecha_registro_str.replace(' ', 'T'))
+                    else:
+                        fecha_registro = fecha_registro_str
+                    
+                    registro_data = {
+                        "date": fecha_registro,
+                        "fat_mass": float(row[10]) if row[10] else None,
+                        "lean_mass": float(row[11]) if row[11] else None,
+                        "weight": float(row[6]) if row[6] else None
+                    }
+                    
+                    # Baseline: el más cercano antes o igual a fecha_plan
+                    if fecha_registro <= fecha_plan_obj:
+                        if baseline_registro is None or fecha_registro > baseline_registro["date"]:
+                            baseline_registro = registro_data
+                    
+                    # Registros posteriores al plan (para contar pesajes)
+                    if fecha_registro > fecha_plan_obj:
+                        registros_posteriores.append(registro_data)
+                        
+                except:
+                    continue
+            
+            # Calcular tasas si hay baseline + al menos 1 registro posterior
+            if baseline_registro and len(registros_posteriores) >= 1:
+                # Comparar: último registro posterior vs baseline
+                last_entry = registros_posteriores[-1]
+                delta_days = (last_entry["date"] - baseline_registro["date"]).days
+                
+                if delta_days > 0:
+                    fat_rate_plan = (last_entry["fat_mass"] - baseline_registro["fat_mass"]) / delta_days * 7
+                    lean_rate_plan = (last_entry["lean_mass"] - baseline_registro["lean_mass"]) / delta_days * 7
+                    peso_rate_plan = (last_entry["weight"] - baseline_registro["weight"]) / delta_days * 7
+                    
+                    # Determinar confiabilidad: 7+ días Y 3+ registros posteriores (sin contar baseline)
+                    total_pesajes = len(registros_posteriores) + 1  # +1 por el baseline
+                    datos_suficientes = delta_days >= 7 and len(registros_posteriores) >= 3
+                    
+                    # Preparar lista de pesajes para mostrar en el frontend
+                    pesajes_detallados = []
+                    
+                    # Agregar baseline
+                    pesajes_detallados.append({
+                        "fecha": baseline_registro["date"].strftime("%Y-%m-%d"),
+                        "peso": round(baseline_registro["weight"], 2),
+                        "masa_grasa": round(baseline_registro["fat_mass"], 2),
+                        "masa_magra": round(baseline_registro["lean_mass"], 2),
+                        "tipo": "baseline",
+                        "es_baseline": True
+                    })
+                    
+                    # Agregar posteriores
+                    for reg in registros_posteriores:
+                        pesajes_detallados.append({
+                            "fecha": reg["date"].strftime("%Y-%m-%d"),
+                            "peso": round(reg["weight"], 2),
+                            "masa_grasa": round(reg["fat_mass"], 2),
+                            "masa_magra": round(reg["lean_mass"], 2),
+                            "tipo": "posterior",
+                            "es_ultimo": (reg == last_entry)
+                        })
+                    
+                    analisis_completo["tasas_actuales"] = {
+                        "desde_plan": {
+                            "fat_rate": round(fat_rate_plan, 3),
+                            "lean_rate": round(lean_rate_plan, 3),
+                            "peso_rate": round(peso_rate_plan, 3),
+                            "pesajes": total_pesajes,
+                            "dias_transcurridos": delta_days,
+                            "datos_suficientes": datos_suficientes,
+                            "mensaje": "Datos confiables" if datos_suficientes else f"PRELIMINAR - Faltan {max(0, 7 - delta_days)} días y {max(0, 3 - len(registros_posteriores))} pesajes más",
+                            "extrapolado": not datos_suficientes,
+                            "cv": None,
+                            "fecha_baseline": baseline_registro["date"].strftime("%Y-%m-%d"),
+                            "fecha_ultimo": last_entry["date"].strftime("%Y-%m-%d"),
+                            "pesajes_detallados": pesajes_detallados
+                        }
+                    }
+                else:
+                    analisis_completo["tasas_actuales"] = {
+                        "desde_plan": {
+                            "fat_rate": None,
+                            "lean_rate": None,
+                            "peso_rate": None,
+                            "pesajes": len(registros_posteriores) + 1,
+                            "datos_suficientes": False,
+                            "mensaje": "El baseline y el último pesaje son del mismo día",
+                            "cv": None
+                        }
+                    }
+            else:
+                # No hay baseline o no hay registros posteriores
+                total = (1 if baseline_registro else 0) + len(registros_posteriores)
+                analisis_completo["tasas_actuales"] = {
+                    "desde_plan": {
+                        "fat_rate": None,
+                        "lean_rate": None,
+                        "peso_rate": None,
+                        "pesajes": total,
+                        "datos_suficientes": False,
+                        "mensaje": f"Necesitas baseline + al menos 1 pesaje posterior. Tienes: baseline={'Sí' if baseline_registro else 'No'}, posteriores={len(registros_posteriores)}",
+                        "cv": None
+                    }
+                }
+        else:
+            analisis_completo["tasas_actuales"] = {"desde_plan": {"datos_suficientes": False, "mensaje": "Error procesando fechas", "cv": None}}
+    else:
+        # Fallback: usar métricas del performance clock
+        metricas_mes = performance_clock["all"]["timeframes"]["month"]
+        
+        analisis_completo["tasas_actuales"] = {
+            "desde_plan": {
+                "fat_rate": metricas_mes.get("fat_rate"),
+                "lean_rate": metricas_mes.get("lean_rate"),
+                "peso_rate": (metricas_mes.get("fat_rate", 0) or 0) + (metricas_mes.get("lean_rate", 0) or 0),
+                "pesajes": metricas_mes["confidence"]["count"],
+                "datos_suficientes": metricas_mes["confidence"]["count"] >= 4,
+                "mensaje": "Sin fecha de plan - usando último mes",
+                "cv": metricas_mes["confidence"]["cv"]
+            }
+        }
+    
+    # 7. COMPARACIÓN CON OBJETIVOS (usar datos desde el plan)
+    if dinamicodata and objetivodata:
+        metricas_confiables = analisis_completo["tasas_actuales"].get("desde_plan", {})
+        
+        if metricas_confiables.get("fat_rate") is not None and metricas_confiables.get("lean_rate") is not None:
+            analisis_completo["comparacion_periodos"] = {
+                "periodo_usado": "desde_plan",
+                "pesajes_periodo": metricas_confiables.get("pesajes", 0),
+                "dias_transcurridos": metricas_confiables.get("dias_transcurridos", 0),
+                "fat_rate_actual": round(metricas_confiables["fat_rate"], 3),
+                "lean_rate_actual": round(metricas_confiables["lean_rate"], 3),
+                "peso_rate_actual": round(metricas_confiables["peso_rate"], 3),
+                "tiene_datos_suficientes": metricas_confiables.get("datos_suficientes", False),
+                "extrapolado": metricas_confiables.get("extrapolado", False),
+                "mensaje_confiabilidad": metricas_confiables.get("mensaje", "")
+            }
+            
+            # Comparar con expectativas
+            if "tasas_esperadas" in analisis_completo and analisis_completo["tasas_esperadas"]:
+                esperadas = analisis_completo["tasas_esperadas"]
+                actuales = metricas_confiables
+                
+                # Determinar si está dentro del rango esperado
+                peso_en_rango = (esperadas["peso_min_semanal"] <= actuales["peso_rate"] <= esperadas["peso_max_semanal"])
+                
+                analisis_completo["comparacion_periodos"]["evaluacion"] = {
+                    "peso_en_rango": peso_en_rango,
+                    "diferencia_peso_vs_ideal": round(actuales["peso_rate"] - ((esperadas["peso_min_semanal"] + esperadas["peso_max_semanal"]) / 2), 3),
+                    "diferencia_grasa_vs_ideal": round(actuales["fat_rate"] - esperadas["grasa_semanal"], 3),
+                    "diferencia_musculo_vs_ideal": round(actuales["lean_rate"] - esperadas["musculo_semanal"], 3)
+                }
+        else:
+            analisis_completo["comparacion_periodos"]["tiene_datos_suficientes"] = False
+    
+    # 8. DIAGNÓSTICO PRELIMINAR
+    if "comparacion_periodos" in analisis_completo and analisis_completo["comparacion_periodos"].get("tiene_datos_suficientes"):
+        comp = analisis_completo["comparacion_periodos"]
+        
+        diagnostico = {
+            "alertas": [],
+            "estado_general": "normal"
+        }
+        
+        # En definición (se espera pérdida de peso negativa)
+        if analisis_completo.get("tasas_esperadas", {}).get("fase") == "definicion":
+            peso_esperado_min = analisis_completo["tasas_esperadas"]["peso_min_semanal"]  # Ej: -0.882
+            peso_esperado_max = analisis_completo["tasas_esperadas"]["peso_max_semanal"]  # Ej: -0.721
+            
+            # Si está ganando peso cuando debería perder
+            if comp["peso_rate_actual"] > 0:
+                diagnostico["alertas"].append("⚠️ GANANDO PESO - Deberías estar perdiendo. Reducir calorías")
+                diagnostico["estado_general"] = "alerta_alta"
+            # Si pierde muy poco (cercano a 0)
+            elif comp["peso_rate_actual"] > peso_esperado_max * 0.5:  # Ej: > -0.36
+                diagnostico["alertas"].append("Pérdida de peso muy lenta - Reducir calorías un 10-15%")
+                diagnostico["estado_general"] = "alerta_media"
+            # Si pierde demasiado rápido
+            elif comp["peso_rate_actual"] < peso_esperado_min * 1.3:  # Ej: < -1.15
+                diagnostico["alertas"].append("Pérdida de peso excesiva - Riesgo de pérdida muscular. Aumentar calorías")
+                diagnostico["estado_general"] = "alerta_alta"
+            
+            # Pérdida de masa magra
+            if comp["lean_rate_actual"] < -0.1:
+                diagnostico["alertas"].append("CRÍTICO: Pérdida de masa magra detectada (-0.1 kg/sem). Aumentar proteína y calorías")
+                diagnostico["estado_general"] = "alerta_alta"
+            
+            # Ganancia de grasa en definición
+            if comp["fat_rate_actual"] > 0:
+                diagnostico["alertas"].append("Ganando grasa en definición - Reducir calorías inmediatamente")
+                diagnostico["estado_general"] = "alerta_alta"
+        
+        # En volumen
+        elif analisis_completo.get("tasas_esperadas", {}).get("fase") == "volumen":
+            peso_esperado_min = analisis_completo["tasas_esperadas"]["peso_min_semanal"]
+            peso_esperado_max = analisis_completo["tasas_esperadas"]["peso_max_semanal"]
+            
+            # Si está PERDIENDO peso cuando debería ganar
+            if comp["peso_rate_actual"] < 0:
+                diagnostico["alertas"].append("⚠️ PERDIENDO PESO - Deberías estar ganando. Aumentar calorías")
+                diagnostico["estado_general"] = "alerta_alta"
+            # Si gana muy poco (cercano a 0)
+            elif comp["peso_rate_actual"] < peso_esperado_min * 0.5:
+                diagnostico["alertas"].append("Ganancia muscular lenta - Considerar aumentar calorías")
+                diagnostico["estado_general"] = "alerta_media"
+            # Si gana demasiado rápido (superávit excesivo)
+            elif comp["peso_rate_actual"] > peso_esperado_max * 1.3:
+                diagnostico["alertas"].append("Ganancia de peso excesiva - Riesgo de acumulación de grasa. Reducir calorías")
+                diagnostico["estado_general"] = "alerta_alta"
+            
+            # Pérdida de masa magra en volumen (CRÍTICO)
+            if comp["lean_rate_actual"] < 0:
+                diagnostico["alertas"].append("CRÍTICO: Perdiendo masa magra en volumen. Aumentar calorías y proteína")
+                diagnostico["estado_general"] = "alerta_alta"
+            
+            # Ganancia de grasa excede ganancia muscular
+            if comp["fat_rate_actual"] > comp["lean_rate_actual"]:
+                diagnostico["alertas"].append("Ganancia de grasa excede ganancia muscular")
+                diagnostico["estado_general"] = "alerta_media"
+        
+        if not diagnostico["alertas"]:
+            diagnostico["alertas"].append("Progreso dentro del rango esperado")
+            diagnostico["estado_general"] = "optimo"
+        
+        analisis_completo["diagnostico"] = diagnostico
+    
+    analisis_completo["tiene_datos"] = True
+    
+    # Cerrar la base de datos después de leer todo
+    basededatos.close()
+
+    return render_template('dashboard.html', dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Vista Principal', username=session['username'], agua=agua, abdomen=abdomen, abdcatrisk=abdcatrisk, bodyscore=bodyscore, categoria=categoria, habitperformance=habitperformance, deltapeso=deltapeso, deltapg=deltapg, deltapm=deltapm, ffmi=ffmi, imc=imc, bf=bf, deltaimc=deltaimc, listaimc=listaimc, deltaffmi=deltaffmi, listaffmi=listaffmi, deltabf=deltabf, listabf=listabf, bfcat=bfcat, immccat=immccat, imccat=imccat, solver_category=solver_category, training_plan=training_plan, performance_clock=performance_clock, fatrate_target=fatrate_target, leanrate_target=leanrate_target, analisis_completo=analisis_completo, is_admin=is_admin, lista_pacientes=lista_pacientes, paciente_seleccionado=paciente_seleccionado)
 
 ### FUNCIÓN DE MANTENIMIENTO ###
 
@@ -1308,7 +1941,15 @@ def delperfildin(ID):
 def planner():
     planner_form = forms.PlannerForm(request.form)
     if request.method == 'POST':
-        functions.plannutricional(planner_form)
+        # Capturar datos de estrategia del formulario
+        estrategia = request.form.get('estrategia', '')
+        velocidad_cambio = request.form.get('velocidad_cambio', 0)
+        deficit_calorico = request.form.get('deficit_calorico', 0)
+        disponibilidad_energetica = request.form.get('disponibilidad_energetica', 0)
+        factor_actividad = request.form.get('factor_actividad', 1.55)
+        
+        # Pasar los valores a la función
+        functions.plannutricional(planner_form, estrategia, velocidad_cambio, deficit_calorico, disponibilidad_energetica, factor_actividad)
         success_message = 'Actualizado {} !'.format(planner_form.nameuser.data)
         flash(success_message)
     return render_template('planner_nuevo.html', title='Configuración de plan nutricional', form=planner_form, username=session['username'])
@@ -1325,9 +1966,33 @@ def api_plan_automatico(nombre_usuario):
         return jsonify({"error": "Acceso denegado"}), 403
     
     try:
-        # Obtener factor de actividad de query params (default 1.55)
-        factor_actividad = float(request.args.get('factor_actividad', 1.55))
+        # Obtener factor de actividad del último plan guardado O de query params
+        factor_actividad_param = request.args.get('factor_actividad')
+        
+        if not factor_actividad_param:
+            # Si no se especifica, buscar el último factor guardado
+            basededatos = sqlite3.connect('src/Basededatos')
+            cursor = basededatos.cursor()
+            cursor.execute("""
+                SELECT FACTOR_ACTIVIDAD 
+                FROM DIETA 
+                WHERE NOMBRE_APELLIDO = ? AND FACTOR_ACTIVIDAD IS NOT NULL
+                ORDER BY FECHA_CREACION DESC LIMIT 1
+            """, [nombre_usuario])
+            
+            factor_guardado = cursor.fetchone()
+            basededatos.close()
+            
+            factor_actividad = float(factor_guardado[0]) if factor_guardado and factor_guardado[0] else 1.55
+            print(f"   Factor de actividad cargado: {factor_actividad} ({'guardado' if factor_guardado else 'predeterminado'})")
+        else:
+            factor_actividad = float(factor_actividad_param)
+        
         resultado = functions.calcular_plan_nutricional_automatico(nombre_usuario, factor_actividad)
+        
+        # Agregar el factor usado en la respuesta
+        resultado['factor_actividad_usado'] = factor_actividad
+        
         return jsonify(resultado)
     except Exception as e:
         return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
@@ -1338,7 +2003,7 @@ def api_plan_automatico(nombre_usuario):
 def delplan(ID):
     basededatos = sqlite3.connect('src/Basededatos')
     cursor = basededatos.cursor()
-    cursor.execute("SELECT NOMBRE_APELLIDO FROM DIETA WHERE ID=?", ID)
+    cursor.execute("SELECT NOMBRE_APELLIDO FROM DIETA WHERE ID=?", [ID])
     NombreApellido = cursor.fetchone()[0]
     cursor.execute('DELETE FROM DIETA WHERE ID=?', [ID])
     basededatos.commit()
@@ -2079,6 +2744,401 @@ def databasemanager():
 
     # Render the template with the retrieved data and other variables
     return render_template('databasemanager.html', recipes=recipedata, alimento=alimentodata, dieta=dietadata, dinamico=dinamicodata, estatico=estaticodata, objetivo=objetivodata, title='Administrador de base de datos', username=session['username'])
+
+### FUNCIÓN PARA MOSTRAR LA BASE DE DATOS COMPLETA - VERSIÓN BETA ###
+
+@app.route('/databasemanager-beta')
+def databasemanager_beta():
+    """
+    Versión BETA del administrador de base de datos con funcionalidades avanzadas:
+    - Edición inline
+    - Búsqueda en tiempo real
+    - Exportación CSV
+    - Confirmación de eliminación
+    - TODAS las tablas de la base de datos
+    - Interface moderna mejorada
+    
+    Returns:
+        Rendered template con datos completos de TODAS las tablas
+    """
+    # Connect to the SQLite database
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+
+    # Obtener lista de TODAS las tablas
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    todas_tablas = [row[0] for row in cursor.fetchall()]
+    
+    # Crear diccionario con datos de todas las tablas
+    datos_tablas = {}
+    columnas_tablas = {}
+    
+    for tabla in todas_tablas:
+        try:
+            # Obtener datos
+            if tabla == 'PERFILDINAMICO':
+                cursor.execute(f'SELECT * FROM {tabla} ORDER BY FECHA_REGISTRO DESC')
+            else:
+                cursor.execute(f'SELECT * FROM {tabla}')
+            datos_tablas[tabla] = cursor.fetchall()
+            
+            # Obtener nombres de columnas
+            cursor.execute(f'PRAGMA table_info({tabla})')
+            columnas_tablas[tabla] = [col[1] for col in cursor.fetchall()]
+        except:
+            datos_tablas[tabla] = []
+            columnas_tablas[tabla] = []
+    
+    basededatos.close()
+
+    # Obtener tipos de datos de cada columna
+    tipos_tablas = {}
+    for tabla in todas_tablas:
+        try:
+            cursor = sqlite3.connect('src/Basededatos').cursor()
+            cursor.execute(f'PRAGMA table_info({tabla})')
+            tipos_tablas[tabla] = [col[2] for col in cursor.fetchall()]  # col[2] es el tipo
+        except:
+            tipos_tablas[tabla] = []
+    
+    # Render the BETA template with ALL tables
+    return render_template('databasemanager_beta.html', 
+                         todas_tablas=todas_tablas,
+                         datos_tablas=datos_tablas,
+                         columnas_tablas=columnas_tablas,
+                         tipos_tablas=tipos_tablas,
+                         title='Administrador de base de datos BETA - TODAS LAS TABLAS', 
+                         username=session['username'])
+
+### API PARA AJUSTE DE CALORÍAS DEL PLAN NUTRICIONAL ###
+
+@app.route('/api/plan-nutricional/ajustar-calorias', methods=['POST'])
+@csrf.exempt
+def ajustar_calorias_plan():
+    """
+    Ajusta las calorías del plan nutricional activo manteniendo la velocidad objetivo.
+    El déficit se mantiene igual. Se recalculan macros usando las fórmulas del planner.
+    Solo admin puede ajustar calorías de otros pacientes.
+    """
+    try:
+        data = request.get_json()
+        ajuste_calorias = int(data.get('ajuste', 0))  # +100 o +150
+        current_user = session.get('username')
+        
+        if not current_user:
+            return jsonify({'success': False, 'message': 'Usuario no autenticado'}), 401
+        
+        # Verificar si es admin
+        is_admin = (current_user == 'Toffaletti, Diego Alejandro')
+        
+        # Obtener paciente objetivo (puede venir del admin)
+        paciente_objetivo = data.get('paciente')
+        
+        if paciente_objetivo:
+            # Si se especifica un paciente, verificar permisos
+            if not is_admin:
+                return jsonify({'success': False, 'message': 'No autorizado. Solo administradores pueden ajustar calorías de otros pacientes.'}), 403
+            username = paciente_objetivo
+        else:
+            # Si no se especifica, usar el usuario actual
+            username = current_user
+        
+        if ajuste_calorias not in [100, 150, -100, -150]:
+            return jsonify({'success': False, 'message': 'Ajuste debe ser ±100 o ±150 kcal'}), 400
+        
+        print(f"\n{'='*60}")
+        print(f"📊 AJUSTE DE CALORÍAS - Usuario: {username}")
+        print(f"   Ajuste solicitado: {ajuste_calorias:+d} kcal")
+        
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener plan nutricional actual
+        cursor.execute("""
+            SELECT ID, CALORIAS, VELOCIDAD_CAMBIO, DEFICIT_CALORICO
+            FROM DIETA 
+            WHERE NOMBRE_APELLIDO = ?
+            ORDER BY FECHA_CREACION DESC LIMIT 1
+        """, [username])
+        
+        plan = cursor.fetchone()
+        
+        if not plan:
+            basededatos.close()
+            return jsonify({'success': False, 'message': 'No se encontró plan nutricional activo'}), 404
+        
+        plan_id = plan[0]
+        calorias_actuales = float(plan[1])
+        velocidad_cambio = float(plan[2]) if plan[2] else None
+        deficit_actual = float(plan[3]) if plan[3] else 0
+        
+        # Obtener masa magra
+        cursor.execute("""
+            SELECT PESO_MAGRO 
+            FROM PERFILDINAMICO 
+            WHERE NOMBRE_APELLIDO = ?
+            ORDER BY FECHA_REGISTRO DESC LIMIT 1
+        """, [username])
+        
+        masa_magra_row = cursor.fetchone()
+        if not masa_magra_row or not masa_magra_row[0]:
+            basededatos.close()
+            return jsonify({'success': False, 'message': 'No se encontró peso magro'}), 404
+            
+        pm = float(masa_magra_row[0])
+        
+        print(f"   Plan ID: {plan_id}")
+        print(f"   Calorías actuales: {calorias_actuales} kcal")
+        print(f"   Déficit actual: {deficit_actual} kcal (SE MANTIENE)")
+        print(f"   Velocidad objetivo: {velocidad_cambio} kg/sem (SE MANTIENE)")
+        print(f"   Peso magro: {pm} kg")
+        
+        # CALCULAR NUEVAS CALORÍAS
+        calorias_nuevas = calorias_actuales + ajuste_calorias
+        
+        # EL DÉFICIT SE MANTIENE IGUAL (misma velocidad objetivo)
+        deficit_nuevo = deficit_actual  # SE MANTIENE
+        
+        # RECALCULAR MACROS CON FÓRMULAS DEL PLANNER (functions.py líneas 1661-1664)
+        proteina_nueva = 2.513244 * pm  # Constante basada en peso magro
+        grasa_nueva = (calorias_nuevas * 0.3) / 9  # 30% de calorías
+        ch_nuevo = (calorias_nuevas - (proteina_nueva * 4) - (grasa_nueva * 9)) / 4  # Resto
+        
+        # Recalcular Disponibilidad Energética (EA)
+        ea_nuevo = calorias_nuevas / pm if pm > 0 else None
+        
+        print(f"\n   CÁLCULOS CON FÓRMULAS DEL PLANNER:")
+        print(f"   Calorías: {calorias_actuales} → {calorias_nuevas} kcal ({ajuste_calorias:+d})")
+        print(f"   Déficit: {deficit_actual} kcal (IGUAL - misma velocidad)")
+        print(f"   Proteína: 2.513244 × {pm} = {proteina_nueva:.1f}g")
+        print(f"   Grasa: ({calorias_nuevas} × 0.3) / 9 = {grasa_nueva:.1f}g")
+        print(f"   CH: ({calorias_nuevas} - {proteina_nueva*4:.0f} - {grasa_nueva*9:.0f}) / 4 = {ch_nuevo:.1f}g")
+        print(f"   EA: {ea_nuevo:.1f} kcal/kg FFM")
+        
+        # CALCULAR NUEVO FACTOR DE ACTIVIDAD (Katch-McArdle)
+        # Fórmula: TMB = 370 + (9.8 × Peso_Magro_lbs)
+        # TDEE = TMB × Factor_Actividad
+        # Calorías = TDEE - Déficit
+        # Por lo tanto: Factor_Actividad = (Calorías + Déficit) / TMB
+        
+        peso_magro_lbs = pm * 2.20462  # Convertir kg a lbs
+        tmb = 370 + (9.8 * peso_magro_lbs)
+        tdee_nuevo = calorias_nuevas + deficit_nuevo  # TDEE = Calorías del plan + Déficit
+        factor_actividad_nuevo = tdee_nuevo / tmb if tmb > 0 else 1.55
+        
+        print(f"\n   CÁLCULO DEL NUEVO FACTOR DE ACTIVIDAD:")
+        print(f"   Peso magro: {pm} kg = {peso_magro_lbs:.1f} lbs")
+        print(f"   TMB (Katch-McArdle): 370 + (9.8 × {peso_magro_lbs:.1f}) = {tmb:.0f} kcal")
+        print(f"   TDEE estimado: {calorias_nuevas:.0f} + {deficit_nuevo:.0f} = {tdee_nuevo:.0f} kcal")
+        print(f"   Factor actividad: {tdee_nuevo:.0f} / {tmb:.0f} = {factor_actividad_nuevo:.2f}")
+        print(f"   (Anterior era probablemente subestimado)")
+        
+        # Actualizar plan en la base de datos Y REINICIAR FECHA para nuevo período de medición
+        cursor.execute("""
+            UPDATE DIETA 
+            SET CALORIAS = ?,
+                PROTEINA = ?,
+                GRASA = ?,
+                CH = ?,
+                DISPONIBILIDAD_ENERGETICA = ?,
+                FACTOR_ACTIVIDAD = ?,
+                FECHA_CREACION = datetime('now', 'localtime')
+            WHERE ID = ?
+        """, [
+            round(calorias_nuevas, 0),
+            round(proteina_nueva, 1),
+            round(grasa_nueva, 1),
+            round(ch_nuevo, 1),
+            round(ea_nuevo, 1) if ea_nuevo else None,
+            round(factor_actividad_nuevo, 2),
+            plan_id
+        ])
+        
+        print(f"   🔄 Fecha del plan actualizada (nuevo baseline desde hoy)")
+        
+        basededatos.commit()
+        
+        # INVALIDAR CACHÉ DEL PLAN ALIMENTARIO para que se recalcule con nuevas calorías
+        print(f"\n   Invalidando caché del plan alimentario...")
+        
+        # Verificar si la tabla y columna existen
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='PLANES_ALIMENTARIOS'")
+        tabla_existe = cursor.fetchone()
+        
+        if tabla_existe:
+            # Verificar columnas disponibles
+            cursor.execute("PRAGMA table_info(PLANES_ALIMENTARIOS)")
+            columnas_existentes = [col[1] for col in cursor.fetchall()]
+            
+            # Construir UPDATE dinámicamente según columnas disponibles
+            campos_update = []
+            valores_update = []
+            
+            if 'CALCULOS_JSON' in columnas_existentes:
+                campos_update.append("CALCULOS_JSON = NULL")
+            
+            if 'CALORIAS_TOTALES' in columnas_existentes:
+                campos_update.append("CALORIAS_TOTALES = ?")
+                valores_update.append(round(calorias_nuevas, 0))
+            
+            if 'FECHA_ACTUALIZACION' in columnas_existentes:
+                campos_update.append("FECHA_ACTUALIZACION = datetime('now')")
+            
+            if campos_update:
+                valores_update.append(username)  # Para el WHERE
+                query = f"UPDATE PLANES_ALIMENTARIOS SET {', '.join(campos_update)} WHERE NOMBRE_APELLIDO = ? AND ACTIVO = 1"
+                cursor.execute(query, valores_update)
+                
+                rows_updated = cursor.rowcount
+                if rows_updated > 0:
+                    print(f"   ✅ Caché invalidado ({rows_updated} plan(es) alimentario(s) se recalcularán)")
+                else:
+                    print(f"   ℹ No hay plan alimentario activo (sin cambios)")
+                
+                basededatos.commit()
+            else:
+                print(f"   ⚠ Tabla PLANES_ALIMENTARIOS sin columnas de caché (esquema antiguo)")
+        else:
+            print(f"   ℹ Tabla PLANES_ALIMENTARIOS no existe (sin cambios)")
+        
+        basededatos.close()
+        
+        print(f"\n✅ PLAN ACTUALIZADO EXITOSAMENTE")
+        print(f"{'='*60}\n")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Plan ajustado: +{ajuste_calorias} kcal',
+            'datos_nuevos': {
+                'calorias': round(calorias_nuevas, 0),
+                'proteina': round(proteina_nueva, 1),
+                'grasa': round(grasa_nueva, 1),
+                'carbohidratos': round(ch_nuevo, 1),
+                'deficit': round(deficit_nuevo, 0),  # IGUAL
+                'ea': round(ea_nuevo, 1) if ea_nuevo else None,
+                'velocidad_objetivo': velocidad_cambio,  # SE MANTIENE
+                'factor_actividad': round(factor_actividad_nuevo, 2),
+                'tmb': round(tmb, 0),
+                'tdee': round(tdee_nuevo, 0)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ ERROR: {str(e)}")
+        print(f"{'='*60}\n")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+### API PARA EDICIÓN INLINE EN DATABASE MANAGER BETA ###
+
+@app.route('/api/database/update-cell', methods=['POST'])
+@csrf.exempt  # Eximir de CSRF para permitir peticiones AJAX
+def update_database_cell():
+    """
+    Endpoint para actualizar una celda específica de cualquier tabla.
+    Usado por el sistema de edición inline del Database Manager BETA.
+    Funciona con TODAS las tablas dinámicamente.
+    """
+    try:
+        data = request.get_json()
+        print(f"\n{'='*60}")
+        print(f"📥 REQUEST RECIBIDO:")
+        print(f"   Data completa: {data}")
+        
+        table_name = data.get('table')
+        pk_value = data.get('pk')
+        column_index = int(data.get('column'))
+        new_value = data.get('value')
+        
+        print(f"   Tabla: {table_name}")
+        print(f"   PK Value: {pk_value}")
+        print(f"   Columna: {column_index}")
+        print(f"   Nuevo valor: {new_value}")
+        print(f"   Tipo valor: {type(new_value)}")
+        
+        # Conectar a la base de datos
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener información de la tabla
+        cursor.execute(f'PRAGMA table_info({table_name})')
+        columnas_info = cursor.fetchall()
+        
+        if column_index >= len(columnas_info):
+            basededatos.close()
+            return jsonify({'success': False, 'message': 'Índice de columna inválido'}), 400
+        
+        # Obtener nombres y tipos de columnas
+        columnas = [col[1] for col in columnas_info]
+        tipos_columnas = [col[2] for col in columnas_info]
+        columna_pk = columnas[0]
+        columna_actualizar = columnas[column_index]
+        tipo_columna = tipos_columnas[column_index]
+        
+        print(f"   Columna PK: {columna_pk}")
+        print(f"   Columna a actualizar: {columna_actualizar}")
+        print(f"   Tipo de columna: {tipo_columna}")
+        
+        # Validar y convertir el tipo de dato
+        valor_final = new_value
+        try:
+            if tipo_columna in ['INTEGER', 'INT']:
+                valor_final = int(new_value) if new_value else None
+            elif tipo_columna in ['REAL', 'FLOAT', 'DOUBLE']:
+                valor_final = float(new_value) if new_value else None
+            elif tipo_columna in ['DATETIME', 'DATE', 'TIMESTAMP']:
+                # Aceptar múltiples formatos de fecha: pipe, espacio, T
+                if new_value:
+                    # Normalizar el formato: reemplazar | y T por espacio
+                    valor_final = new_value.replace('|', ' ').replace('T', ' ').strip()
+                else:
+                    valor_final = new_value
+        except ValueError as ve:
+            basededatos.close()
+            error_msg = f'Formato inválido para tipo {tipo_columna}: {str(ve)}'
+            print(f"❌ ERROR DE VALIDACIÓN: {error_msg}")
+            return jsonify({'success': False, 'message': error_msg}), 400
+        
+        print(f"   Valor final convertido: {valor_final} (tipo: {type(valor_final)})")
+        
+        # Actualizar el registro directamente por PK
+        query = f"UPDATE {table_name} SET {columna_actualizar} = ? WHERE {columna_pk} = ?"
+        print(f"   Query SQL: {query}")
+        print(f"   Parámetros: ({valor_final}, {pk_value})")
+        
+        cursor.execute(query, (valor_final, pk_value))
+        rows_affected = cursor.rowcount
+        print(f"   Filas afectadas: {rows_affected}")
+        
+        if rows_affected == 0:
+            basededatos.close()
+            error_msg = f'No se encontró registro con {columna_pk} = {pk_value}'
+            print(f"❌ ERROR: {error_msg}")
+            return jsonify({'success': False, 'message': error_msg}), 400
+        
+        basededatos.commit()
+        basededatos.close()
+        
+        print(f"✅ ACTUALIZACIÓN EXITOSA")
+        print(f"{'='*60}\n")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'✓ Actualizado: {table_name}.{columna_actualizar}',
+            'new_value': str(valor_final)
+        })
+    
+    except sqlite3.Error as e:
+        error_msg = f'Error de base de datos: {str(e)}'
+        print(f"❌ ERROR SQL: {error_msg}")
+        print(f"{'='*60}\n")
+        return jsonify({'success': False, 'message': error_msg}), 500
+    except Exception as e:
+        error_msg = f'Error: {str(e)}'
+        print(f"❌ ERROR GENERAL: {error_msg}")
+        print(f"{'='*60}\n")
+        return jsonify({'success': False, 'message': error_msg}), 500
 
 ### FUNCIÓN PARA MOSTRAR PROGRAMAS DE ENTRENAMIENTOS GRATUITOS ###
 
