@@ -318,24 +318,7 @@ function cargarPlanAutomatico(nombreUsuario, factorActividad = null) {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                // Mostrar error amigable en la interfaz
-                const planSection = document.getElementById('planAutomaticoSection');
-                planSection.style.display = 'block';
-                const planContent = document.getElementById('planAutomaticoContent');
-                planContent.innerHTML = `
-                    <div class="alert alert-warning d-flex align-items-center" role="alert">
-                        <i class="fa fa-exclamation-triangle fa-2x me-3"></i>
-                        <div>
-                            <h5 class="alert-heading mb-2">Objetivo no definido</h5>
-                            <p class="mb-2">${data.error}</p>
-                            <hr>
-                            <a href="/goal" class="btn btn-warning">
-                                <i class="fa fa-bullseye me-2"></i>Definir Objetivo Ahora
-                            </a>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('opcionPersonalizadaContainer').style.display = 'none';
+                console.error('Error:', data.error);
                 return;
             }
             
@@ -350,18 +333,6 @@ function cargarPlanAutomatico(nombreUsuario, factorActividad = null) {
         })
         .catch(error => {
             console.error('Error al cargar plan automático:', error);
-            const planSection = document.getElementById('planAutomaticoSection');
-            planSection.style.display = 'block';
-            const planContent = document.getElementById('planAutomaticoContent');
-            planContent.innerHTML = `
-                <div class="alert alert-danger d-flex align-items-center" role="alert">
-                    <i class="fa fa-times-circle fa-2x me-3"></i>
-                    <div>
-                        <h5 class="alert-heading mb-2">Error de conexión</h5>
-                        <p class="mb-0">No se pudo cargar el plan automático. Por favor, intenta nuevamente.</p>
-                    </div>
-                </div>
-            `;
         });
 }
 
@@ -515,6 +486,7 @@ function inicializarSliderPersonalizado(data) {
         if (deficitMaximo > 0) {
             const velocidadMaxKg = (deficitMaximo * 7) / 7700;
             porcentajeMaximo = Math.min((velocidadMaxKg / pesoKg) * 100, 1.5);
+            console.log(`🔄 Slider reinicializado - TDEE: ${tdee}, Déficit Máx: ${deficitMaximo}, Porcentaje Máx: ${porcentajeMaximo.toFixed(2)}%`);
         }
     }
     
@@ -527,6 +499,7 @@ function inicializarSliderPersonalizado(data) {
         let porcentaje = parseFloat(this.value);
         // Limitar valor sin cambiar el max del slider
         if (porcentaje > porcentajeMaximo) {
+            console.log(`⚠️ Limitando ${porcentaje}% a ${porcentajeMaximo.toFixed(2)}%`);
             porcentaje = porcentajeMaximo;
             this.value = porcentaje;
         }
@@ -675,6 +648,16 @@ document.getElementById('btnUsarPlanAutomatico').addEventListener('click', funct
     // Factor de actividad (del slider)
     const factor_actividad = document.getElementById('factor_actividad').value || 1.55;
     document.getElementById('hidden_factor_actividad').value = factor_actividad;
+    
+    console.log('Estrategia guardada:', {
+        nombre: opcionSeleccionada.nombre,
+        velocidad_kg: velocidad_kg,
+        velocidad_gramos: velocidad_kg * 1000,
+        deficit: deficit,
+        ea: ea,
+        factor_actividad: factor_actividad,
+        opcion_completa: opcionSeleccionada
+    });
     
     this.classList.remove('btn-success');
     this.classList.add('btn-primary');
