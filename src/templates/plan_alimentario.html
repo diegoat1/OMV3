@@ -145,51 +145,230 @@
         </div>
     </div>
 
-    <!-- Panel de Plan Simplificado -->
+    <!-- Panel de Plan Simplificado con Bloques -->
     <div id="panel-simplificado" class="plan-panel" style="display: none;">
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-gradient-success text-white py-3">
                         <h4 class="card-title mb-0">
-                            <i class="fa fa-layer-group me-2"></i>Plan Simplificado por Grupos
+                            <i class="fa fa-cubes me-2"></i>Plan Simplificado con Bloques
                         </h4>
                     </div>
                     <div class="card-body">
-                        <div class="alert alert-warning">
-                            <h6><i class="fa fa-code me-2"></i>En Desarrollo</h6>
-                            <p class="mb-0">Esta funcionalidad estará disponible próximamente. Por ahora, puedes usar el plan con recetas.</p>
+                        <!-- Información del sistema de bloques -->
+                        <div class="alert alert-info mb-4">
+                            <h6><i class="fa fa-info-circle me-2"></i>Sistema de Bloques Nutricionales</h6>
+                            <p class="mb-2">Memoriza tu plan usando bloques simples en lugar de gramos específicos:</p>
+                            <div class="row text-center mt-3">
+                                <div class="col-md-4">
+                                    <div class="badge bg-danger fs-6 p-2 w-100">1P = 20g Proteína</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="badge bg-warning fs-6 p-2 w-100">1G = 10g Grasa</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="badge bg-primary fs-6 p-2 w-100">1C = 25g Carbohidratos</div>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#tablaReferenciaBloques" aria-expanded="false">
+                                    <i class="fa fa-table me-1"></i>Ver Tabla de Referencia de Alimentos
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Placeholder para grupos alimentarios -->
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <i class="fa fa-bread-slice fa-2x text-warning mb-2"></i>
-                                        <h6>Cereales y Panes</h6>
-                                        <p class="text-muted small">Próximamente</p>
+                        <!-- Tabla de Referencia de Bloques (Colapsable) -->
+                        <div class="collapse mb-4" id="tablaReferenciaBloques">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0"><i class="fa fa-book me-2"></i>Tabla de Referencia: Bloques por Grupo Alimentario</h6>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-light active" data-filter="all">
+                                                Todos
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="P">
+                                                <i class="fa fa-drumstick-bite"></i> P
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="G">
+                                                <i class="fa fa-cheese"></i> G
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-light" data-filter="C">
+                                                <i class="fa fa-bread-slice"></i> C
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm mb-0" id="foodBlocksTable">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th>Grupo Alimentario</th>
+                                                    <th>Porción de Referencia</th>
+                                                    <th class="text-center text-danger">P</th>
+                                                    <th class="text-center text-warning">G</th>
+                                                    <th class="text-center text-primary">C</th>
+                                                    <th class="text-center">Momento</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="foodBlocksTableBody">
+                                                <!-- Se llenará dinámicamente -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light small text-muted">
+                                    <i class="fa fa-lightbulb me-1"></i>
+                                    <strong>Tip:</strong> Usa esta tabla para armar tus comidas mentalmente. 
+                                    Ejemplo: Desayuno de 2P·1G·1C = Huevo (0.5P·0.5G) × 2 + Leche (0.5P·0.5C)
+                                    <span class="ms-3"><i class="fa fa-info-circle"></i> Bloques redondeados a pasos de 0.5</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bloques por comida -->
+                        <div id="bloques-comidas-container" class="row">
+                            <!-- Se llenará dinámicamente con JavaScript -->
+                        </div>
+
+                        <!-- Widget de ajustes rápidos -->
+                        <div class="card bg-light mt-4" id="ajustes-rapidos-card">
+                            <div class="card-body">
+                                <h6 class="mb-3"><i class="fa fa-sliders-h me-2"></i>Ajustes Rápidos</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Comida</label>
+                                        <select class="form-select" id="ajuste-comida-select">
+                                            <option value="">Selecciona una comida...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8 mb-3">
+                                        <label class="form-label">Ajuste</label>
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-outline-danger" data-ajuste="proteina" data-valor="-1">
+                                                -1P
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" data-ajuste="proteina" data-valor="+1">
+                                                +1P
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning" data-ajuste="grasa" data-valor="-1">
+                                                -1G
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning" data-ajuste="grasa" data-valor="+1">
+                                                +1G
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary" data-ajuste="carbohidratos" data-valor="-1">
+                                                -1C
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary" data-ajuste="carbohidratos" data-valor="+1">
+                                                +1C
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="ajuste-resultado" class="alert alert-success" style="display: none;">
+                                    <!-- Se mostrará el resultado del ajuste -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Carrusel de Sugerencias -->
+                        <div class="card bg-light mt-4" id="sugerencias-container" style="display: none;">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0"><i class="fa fa-magic me-2"></i>Sugerencias para Ti</h6>
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalConstructor">
+                                        <i class="fa fa-tools me-1"></i>Constructor
+                                    </button>
+                                </div>
+                                
+                                <!-- Tabs para categorías de sugerencias -->
+                                <ul class="nav nav-pills mb-3" id="sugerencias-tabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="favoritos-tab" data-bs-toggle="pill" 
+                                                data-bs-target="#favoritos-content" type="button">
+                                            <i class="fa fa-star text-warning"></i> Favoritos
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="dinamicas-tab" data-bs-toggle="pill" 
+                                                data-bs-target="#dinamicas-content" type="button">
+                                            <i class="fa fa-lightbulb text-info"></i> Inteligentes
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="biblioteca-tab" data-bs-toggle="pill" 
+                                                data-bs-target="#biblioteca-content" type="button">
+                                            <i class="fa fa-book text-primary"></i> Biblioteca
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="recientes-tab" data-bs-toggle="pill" 
+                                                data-bs-target="#recientes-content" type="button">
+                                            <i class="fa fa-history text-secondary"></i> Recientes
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <!-- Contenido de tabs -->
+                                <div class="tab-content" id="sugerencias-tab-content">
+                                    <!-- Favoritos -->
+                                    <div class="tab-pane fade show active" id="favoritos-content">
+                                        <div class="row" id="sugerencias-favoritos-list">
+                                            <div class="col-12 text-center text-muted py-4">
+                                                <i class="fa fa-star fa-3x mb-2"></i>
+                                                <p>Aún no tienes favoritos guardados</p>
+                                                <small>Aplica una sugerencia y márcala como favorita para verla aquí</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sugerencias Dinámicas -->
+                                    <div class="tab-pane fade" id="dinamicas-content">
+                                        <div class="row" id="sugerencias-dinamicas-list">
+                                            <div class="col-12 text-center text-muted py-4">
+                                                <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                                <p>Cargando sugerencias...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Biblioteca Comunitaria -->
+                                    <div class="tab-pane fade" id="biblioteca-content">
+                                        <div class="row" id="biblioteca-list">
+                                            <div class="col-12 text-center text-muted py-4">
+                                                <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                                <p>Cargando recomendaciones...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Ajustes Recientes -->
+                                    <div class="tab-pane fade" id="recientes-content">
+                                        <div class="row" id="sugerencias-recientes-list">
+                                            <div class="col-12 text-center text-muted py-4">
+                                                <i class="fa fa-clock fa-3x mb-2"></i>
+                                                <p>No hay ajustes recientes</p>
+                                                <small>Tus últimos ajustes aparecerán aquí</small>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <i class="fa fa-drumstick-bite fa-2x text-danger mb-2"></i>
-                                        <h6>Proteínas</h6>
-                                        <p class="text-muted small">Próximamente</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <div class="card-body text-center">
-                                        <i class="fa fa-apple-alt fa-2x text-success mb-2"></i>
-                                        <h6>Frutas y Verduras</h6>
-                                        <p class="text-muted small">Próximamente</p>
-                                    </div>
-                                </div>
-                            </div>
+                        </div>
+
+                        <!-- Notas para el paciente -->
+                        <div class="alert alert-light mt-4">
+                            <h6><i class="fa fa-lightbulb me-2"></i>Cómo usar este sistema</h6>
+                            <ul class="mb-0">
+                                <li><strong>Memoriza tu patrón:</strong> "Desayuno siempre 2P · 1G · 2C"</li>
+                                <li><strong>Ejemplos de alimentos:</strong> 1P = 1 pechuga mediana, 1 lata de atún, 4 claras...</li>
+                                <li><strong>Ajustes simples:</strong> Si necesitas más energía, suma "+1C en merienda"</li>
+                                <li><strong>Flexibilidad:</strong> Intercambia alimentos del mismo grupo manteniendo los bloques</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -212,7 +391,166 @@
     </div>
 </div>
 
+<!-- Modal Constructor de Combinaciones -->
+<div class="modal fade" id="modalConstructor" tabindex="-1" aria-labelledby="modalConstructorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalConstructorLabel">
+                    <i class="fa fa-tools me-2"></i>Constructor de Combinaciones
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Selector de comida -->
+                <div class="mb-3">
+                    <label for="constructorComida" class="form-label fw-bold">Comida del día</label>
+                    <select class="form-select" id="constructorComida">
+                        <option value="">Seleccionar comida...</option>
+                        <option value="desayuno">Desayuno</option>
+                        <option value="media_manana">Media Mañana</option>
+                        <option value="almuerzo">Almuerzo</option>
+                        <option value="merienda">Merienda</option>
+                        <option value="media_tarde">Media Tarde</option>
+                        <option value="cena">Cena</option>
+                    </select>
+                </div>
+                
+                <!-- Panel de objetivo -->
+                <div class="card mb-3 border-info">
+                    <div class="card-body bg-light">
+                        <h6 class="card-title"><i class="fa fa-bullseye me-2"></i>Objetivo de la comida</h6>
+                        <div class="row text-center" id="objetivoPanel">
+                            <div class="col-4">
+                                <div class="badge bg-danger fs-6 w-100 mb-1"><span id="objProteina">0.0</span>P</div>
+                                <small class="text-muted"><span id="objProteinaGramos">0</span>g</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="badge bg-warning fs-6 w-100 mb-1"><span id="objGrasa">0.0</span>G</div>
+                                <small class="text-muted"><span id="objGrasaGramos">0</span>g</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="badge bg-primary fs-6 w-100 mb-1"><span id="objCarbohidratos">0.0</span>C</div>
+                                <small class="text-muted"><span id="objCarbohidratosGramos">0</span>g</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Panel de bloques acumulados -->
+                <div class="card mb-3 border-2" id="panelAcumulado">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fa fa-calculator me-2"></i>Bloques Acumulados</h6>
+                        <div class="row text-center mb-3">
+                            <div class="col-4">
+                                <h4 class="mb-0 text-danger"><span id="acumProteina">0.0</span>P</h4>
+                                <div class="small" id="difProteina">Selecciona comida</div>
+                            </div>
+                            <div class="col-4">
+                                <h4 class="mb-0 text-warning"><span id="acumGrasa">0.0</span>G</h4>
+                                <div class="small" id="difGrasa">Selecciona comida</div>
+                            </div>
+                            <div class="col-4">
+                                <h4 class="mb-0 text-primary"><span id="acumCarbohidratos">0.0</span>C</h4>
+                                <div class="small" id="difCarbohidratos">Selecciona comida</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botón de sugerencia inteligente -->
+                        <div class="text-center" id="sugerenciaInteligentePanel" style="display: none;">
+                            <button class="btn btn-sm btn-info" onclick="completarConCarbohidratos()">
+                                <i class="fa fa-magic me-1"></i>Completar con Carbohidratos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selector de alimentos -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fa fa-plus-circle me-2"></i>Agregar alimento</label>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <select class="form-select form-select-sm" id="filtroMacro">
+                                <option value="">Todos los macros</option>
+                                <option value="P">Rico en Proteína</option>
+                                <option value="G">Rico en Grasa</option>
+                                <option value="C">Rico en Carbohidratos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <select class="form-select form-select-sm" id="selectAlimento">
+                                <option value="">Primero selecciona comida...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control form-control-sm" id="porciones" 
+                                   min="1" max="5" value="1" placeholder="Porc.">
+                        </div>
+                    </div>
+                    <button class="btn btn-success btn-sm w-100" onclick="agregarAlimentoConstructor()">
+                        <i class="fa fa-plus me-1"></i>Agregar
+                    </button>
+                </div>
+                
+                <!-- Lista de alimentos agregados -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light py-2">
+                        <strong><i class="fa fa-list me-2"></i>Alimentos en tu combinación</strong>
+                    </div>
+                    <div class="list-group list-group-flush" id="listaAlimentosConstructor">
+                        <div class="list-group-item text-muted text-center">
+                            Aún no has agregado alimentos
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Nombre de la combinación -->
+                <div class="mb-3">
+                    <label for="aliasConstructor" class="form-label fw-bold">
+                        <i class="fa fa-tag me-2"></i>Nombre de tu combinación
+                    </label>
+                    <input type="text" class="form-control" id="aliasConstructor" 
+                           placeholder="Ej: Mi Desayuno Proteico">
+                </div>
+                
+                <!-- Opciones de guardado -->
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="enviarRevision">
+                    <label class="form-check-label" for="enviarRevision">
+                        <i class="fa fa-paper-plane me-1"></i>Enviar a nutricionista para revisión
+                    </label>
+                </div>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="publicarBiblioteca">
+                    <label class="form-check-label" for="publicarBiblioteca">
+                        <i class="fa fa-book me-1"></i>📚 Publicar en biblioteca comunitaria
+                    </label>
+                    <small class="form-text text-muted d-block ms-4">
+                        Otros usuarios podrán ver y usar esta combinación
+                    </small>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fa fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="guardarCombinacionConstructor()">
+                    <i class="fa fa-save me-1"></i>Guardar Combinación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+/* Ocultar widget de ajustes rápidos */
+#ajustes-rapidos-card {
+    display: none !important;
+}
+
 .alert {
     border-radius: 10px;
 }
@@ -392,7 +730,163 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Variable global para almacenar bloques
+let allFoodBlocks = [];
+let currentFilter = 'all';
+
+// Función para cargar bloques desde GRUPOSALIMENTOS (datos reales)
+async function loadFoodBlocks() {
+    try {
+        const res = await fetch('/api/grupos-alimentos');
+        const data = await res.json();
+        
+        if (!data.success || !data.alimentos) {
+            console.error('Error cargando grupos de alimentos');
+            return [];
+        }
+        
+        // Mapear emojis para momentos del día
+        const momentoEmojis = {
+            'desayuno': '🌅',
+            'media_manana': '☕',
+            'almuerzo': '🍽️',
+            'merienda': '🧉',
+            'media_tarde': '🥜',
+            'cena': '🌙'
+        };
+        
+        const momentoNombres = {
+            'desayuno': 'Desayuno',
+            'media_manana': 'Media Mañana',
+            'almuerzo': 'Almuerzo',
+            'merienda': 'Merienda',
+            'media_tarde': 'Media Tarde',
+            'cena': 'Cena'
+        };
+        
+        return data.alimentos.map(a => ({
+            group: a.categoria,
+            portion: `${a.descripcion} (${Math.round(a.porcion_gramos)}g)`,
+            blocks: {
+                P: a.bloques_unitarios.proteina,  // Ya vienen redondeados a 0.5 del backend
+                G: a.bloques_unitarios.grasa,
+                C: a.bloques_unitarios.carbohidratos
+            },
+            blocks_exact: a.bloques_exactos ? {  // Valores exactos para tooltips
+                P: a.bloques_exactos.proteina,
+                G: a.bloques_exactos.grasa,
+                C: a.bloques_exactos.carbohidratos
+            } : null,
+            momento: a.momentos.length 
+                ? a.momentos.map(m => `${momentoEmojis[m] || ''} ${momentoNombres[m] || m}`).join(', ')
+                : '—',
+            macro_dominante: a.macro_dominante,
+            macros_fuertes: a.macros_fuertes || [a.macro_dominante]
+        }));
+    } catch (error) {
+        console.error('Error al cargar bloques de alimentos:', error);
+        return [];
+    }
+}
+
+// Función para filtrar bloques por macro
+function filterFoodBlocks(filter) {
+    currentFilter = filter;
+    
+    let filtered = allFoodBlocks;
+    if (filter !== 'all') {
+        filtered = allFoodBlocks.filter(item => item.macros_fuertes.includes(filter));
+    }
+    
+    renderFoodBlocksTable(filtered);
+    
+    // Actualizar botones activos
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+}
+
+// Función para renderizar la tabla de bloques
+function renderFoodBlocksTable(foodBlocks) {
+    const tbody = document.getElementById('foodBlocksTableBody');
+    if (!tbody) return;
+    
+    if (foodBlocks.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fa fa-info-circle me-2"></i>
+                    ${currentFilter === 'all' 
+                        ? 'No se pudieron cargar los alimentos. Intenta recargar la página.' 
+                        : `No hay alimentos con macro dominante "${currentFilter}"`}
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = foodBlocks.map(item => {
+        // Crear tooltip con valores exactos si existen
+        const tooltipP = item.blocks_exact 
+            ? `title="Exacto: ${item.blocks_exact.P.toFixed(2)}" data-bs-toggle="tooltip"` 
+            : '';
+        const tooltipG = item.blocks_exact 
+            ? `title="Exacto: ${item.blocks_exact.G.toFixed(2)}" data-bs-toggle="tooltip"` 
+            : '';
+        const tooltipC = item.blocks_exact 
+            ? `title="Exacto: ${item.blocks_exact.C.toFixed(2)}" data-bs-toggle="tooltip"` 
+            : '';
+        
+        // Badge de macro dominante
+        const macroBadge = {
+            'P': '<span class="badge bg-danger badge-sm ms-2">P</span>',
+            'G': '<span class="badge bg-warning badge-sm ms-2">G</span>',
+            'C': '<span class="badge bg-primary badge-sm ms-2">C</span>'
+        }[item.macro_dominante] || '';
+        
+        return `
+            <tr>
+                <td><strong>${item.group}</strong>${macroBadge}</td>
+                <td class="text-muted small">${item.portion}</td>
+                <td class="text-center">
+                    <span class="badge ${item.blocks.P > 0 ? 'bg-danger' : 'bg-secondary'}" ${tooltipP}>
+                        ${item.blocks.P > 0 ? item.blocks.P : '-'}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <span class="badge ${item.blocks.G > 0 ? 'bg-warning text-dark' : 'bg-secondary'}" ${tooltipG}>
+                        ${item.blocks.G > 0 ? item.blocks.G : '-'}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <span class="badge ${item.blocks.C > 0 ? 'bg-primary' : 'bg-secondary'}" ${tooltipC}>
+                        ${item.blocks.C > 0 ? item.blocks.C : '-'}
+                    </span>
+                </td>
+                <td class="text-center small text-muted">${item.momento}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Inicializar tooltips de Bootstrap
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = tbody.querySelectorAll('[data-bs-toggle="tooltip"]');
+        [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    // Cargar y renderizar tabla de bloques desde datos reales
+    allFoodBlocks = await loadFoodBlocks();
+    renderFoodBlocksTable(allFoodBlocks);
+    
+    // Event listeners para filtros de tabla de bloques
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            filterFoodBlocks(this.dataset.filter);
+        });
+    });
+    
     // CARGAR PLAN GUARDADO AUTOMÁTICAMENTE AL INICIO
     verificarPlanGuardado();
     
@@ -1154,6 +1648,1008 @@ document.addEventListener('DOMContentLoaded', function() {
         content.innerHTML = html;
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // ========== FUNCIONES PARA PLAN SIMPLIFICADO CON BLOQUES ==========
+    
+    function cargarPlanSimplificado() {
+        fetch('/api/plan-alimentario/info')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarBloquesComidas(data.comidas, data.bloques_config);
+                    poblarSelectorComidas(data.comidas);
+                    
+                    // Cargar sugerencias automáticamente
+                    cargarSugerencias();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando plan simplificado:', error);
+            });
+    }
+    
+    function mostrarBloquesComidas(comidas, bloquesConfig) {
+        const container = document.getElementById('bloques-comidas-container');
+        let html = '';
+        
+        const ordenComidas = ['desayuno', 'media_manana', 'almuerzo', 'merienda', 'media_tarde', 'cena'];
+        const comidasOrdenadas = ordenComidas.filter(comidaId => comidas[comidaId]);
+        
+        comidasOrdenadas.forEach(comidaId => {
+            const comida = comidas[comidaId];
+            const config = getComidasConfig()[comidaId];
+            
+            html += `
+                <div class="col-md-6 mb-4">
+                    <div class="card comida-card ${config.class} h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fa ${config.icon} me-2"></i>${comida.nombre}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
+                                <h3 class="mb-0">${comida.bloques.resumen}</h3>
+                                <small class="text-muted">Bloques diarios</small>
+                            </div>
+                            <hr>
+                            <div class="row text-center small">
+                                <div class="col-4">
+                                    <div class="badge bg-danger w-100 mb-1">${comida.bloques.proteina.bloques}P</div>
+                                    <div class="text-muted">${comida.bloques.proteina.gramos_objetivo}g</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="badge bg-warning w-100 mb-1">${comida.bloques.grasa.bloques}G</div>
+                                    <div class="text-muted">${comida.bloques.grasa.gramos_objetivo}g</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="badge bg-primary w-100 mb-1">${comida.bloques.carbohidratos.bloques}C</div>
+                                    <div class="text-muted">${comida.bloques.carbohidratos.gramos_objetivo}g</div>
+                                </div>
+                            </div>
+                            <div class="mt-3 p-2 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="fa fa-info-circle me-1"></i>
+                                    Gramos originales: P:${comida.proteina}g · G:${comida.grasa}g · C:${comida.carbohidratos}g
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function poblarSelectorComidas(comidas) {
+        const select = document.getElementById('ajuste-comida-select');
+        let html = '<option value="">Selecciona una comida...</option>';
+        
+        const ordenComidas = ['desayuno', 'media_manana', 'almuerzo', 'merienda', 'media_tarde', 'cena'];
+        const comidasOrdenadas = ordenComidas.filter(comidaId => comidas[comidaId]);
+        
+        comidasOrdenadas.forEach(comidaId => {
+            const comida = comidas[comidaId];
+            html += `<option value="${comidaId}">${comida.nombre}</option>`;
+        });
+        
+        select.innerHTML = html;
+    }
+    
+    // Manejar ajustes de bloques
+    document.querySelectorAll('[data-ajuste]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const comidaSelect = document.getElementById('ajuste-comida-select');
+            const comida = comidaSelect.value;
+            
+            if (!comida) {
+                alert('Selecciona una comida primero');
+                return;
+            }
+            
+            const ajuste = this.dataset.ajuste;
+            const valor = parseInt(this.dataset.valor);
+            
+            aplicarAjuste(comida, ajuste, valor);
+        });
+    });
+    
+    function aplicarAjuste(comida, tipoAjuste, valor) {
+        const ajustes = {};
+        ajustes[tipoAjuste] = valor;
+        
+        fetch('/api/plan-alimentario/bloques/ajustar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                comida: comida,
+                ajustes: ajustes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarResultadoAjuste(data);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error aplicando ajuste:', error);
+            alert('Error al aplicar ajuste');
+        });
+    }
+    
+    function mostrarResultadoAjuste(data) {
+        const resultadoDiv = document.getElementById('ajuste-resultado');
+        const comidasConfig = getComidasConfig();
+        const comidaNombre = comidasConfig[data.comida].nombre;
+        
+        let html = `
+            <h6><i class="fa fa-check-circle me-2"></i>Ajuste aplicado a ${comidaNombre}</h6>
+            <div class="row text-center mb-3">
+                <div class="col-12">
+                    <h4 class="mb-0">${data.resultado.bloques.resumen}</h4>
+                    <small class="text-muted">Nueva distribución de bloques</small>
+                </div>
+            </div>
+            <div class="row text-center small">
+                <div class="col-4">
+                    <div class="badge bg-danger w-100 mb-1">${data.resultado.bloques.proteina}P</div>
+                    <div class="text-muted">${data.resultado.gramos.proteina}g</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-warning w-100 mb-1">${data.resultado.bloques.grasa}G</div>
+                    <div class="text-muted">${data.resultado.gramos.grasa}g</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-primary w-100 mb-1">${data.resultado.bloques.carbohidratos}C</div>
+                    <div class="text-muted">${data.resultado.gramos.carbohidratos}g</div>
+                </div>
+            </div>
+            <div class="alert alert-warning mt-3 mb-0 small">
+                <i class="fa fa-exclamation-triangle me-1"></i>
+                ${data.nota}
+            </div>
+        `;
+        
+        resultadoDiv.innerHTML = html;
+        resultadoDiv.style.display = 'block';
+        
+        // Auto-ocultar después de 10 segundos
+        setTimeout(() => {
+            resultadoDiv.style.display = 'none';
+        }, 10000);
+        
+        // Recargar sugerencias después de aplicar un ajuste
+        cargarSugerencias();
+    }
+    
+    // ========== FUNCIONES PARA CARRUSEL DE SUGERENCIAS ==========
+    
+    function cargarSugerencias(comidaFiltro = null) {
+        const url = comidaFiltro 
+            ? `/api/plan-alimentario/bloques/sugerencias?comida=${comidaFiltro}`
+            : '/api/plan-alimentario/bloques/sugerencias';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarSugerencias(data.sugerencias);
+                    document.getElementById('sugerencias-container').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando sugerencias:', error);
+            });
+    }
+    
+    function renderizarSugerencias(sugerencias) {
+        // Renderizar cada categoría
+        renderizarFavoritos(sugerencias.favoritos_usuario);
+        renderizarDinamicas(sugerencias.sugerencias_dinamicas);
+        cargarBiblioteca(); // Cargar biblioteca en lugar de presets globales
+        renderizarRecientes(sugerencias.ajustes_recientes);
+    }
+    
+    function renderizarFavoritos(favoritos) {
+        const container = document.getElementById('sugerencias-favoritos-list');
+        
+        if (!favoritos || favoritos.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fa fa-star fa-3x mb-2"></i>
+                    <p>Aún no tienes favoritos guardados</p>
+                    <small>Aplica una sugerencia y márcala como favorita para verla aquí</small>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        favoritos.forEach(sugerencia => {
+            html += crearCardSugerencia(sugerencia, true);
+        });
+        container.innerHTML = html;
+    }
+    
+    function renderizarDinamicas(dinamicas) {
+        const container = document.getElementById('sugerencias-dinamicas-list');
+        
+        if (!dinamicas || dinamicas.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fa fa-info-circle fa-3x mb-2"></i>
+                    <p>No hay sugerencias disponibles</p>
+                    <small>Las sugerencias se generan según tu plan actual</small>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        dinamicas.forEach(sugerencia => {
+            html += crearCardSugerencia(sugerencia, false);
+        });
+        container.innerHTML = html;
+    }
+    
+    function cargarBiblioteca() {
+        fetch('/api/plan-alimentario/biblioteca')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('biblioteca-list');
+                if (!data.success || !data.biblioteca || data.biblioteca.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12 text-center text-muted py-4">
+                            <i class="fa fa-book fa-3x mb-2"></i>
+                            <p>No hay combinaciones públicas aún</p>
+                            <small>Crea combinaciones y marca "Publicar en biblioteca"</small>
+                        </div>`;
+                    return;
+                }
+                container.innerHTML = data.biblioteca.map(item => crearCardBiblioteca(item)).join('');
+            })
+            .catch(err => console.error('Error biblioteca:', err));
+    }
+    
+    function crearCardBiblioteca(item) {
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0">${item.alias}</h6>
+                            <span class="badge bg-light text-dark">
+                                <i class="fa fa-user"></i> ${item.creador_username}
+                            </span>
+                        </div>
+                        <div class="text-center mb-2">
+                            <h4 class="mb-0">${item.bloques.resumen}</h4>
+                            <small class="text-muted">
+                                ${Math.round(item.gramos.proteina)}g P · 
+                                ${Math.round(item.gramos.grasa)}g G · 
+                                ${Math.round(item.gramos.carbohidratos)}g C
+                            </small>
+                        </div>
+                        <p class="text-muted small mb-2">${item.descripcion || ''}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="marcarFavorito(${item.id}, true)">
+                                <i class="fa fa-heart"></i> ${item.favoritos_total || 0}
+                            </button>
+                            <button class="btn btn-sm btn-success btn-aplicar-sugerencia"
+                                    data-sugerencia='${JSON.stringify(item).replace(/'/g,"&apos;")}'>
+                                <i class="fa fa-check"></i> Aplicar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+    
+    function marcarFavorito(id, add) {
+        fetch('/api/plan-alimentario/favoritos/' + id, { 
+            method: add ? 'POST' : 'DELETE' 
+        })
+        .then(r => r.json())
+        .then(() => {
+            cargarBiblioteca();
+            console.log('Favorito actualizado');
+        })
+        .catch(err => console.error('Error favorito:', err));
+    }
+    
+    function renderizarPresets(presets) {
+        const container = document.getElementById('sugerencias-presets-list');
+        
+        if (!presets || presets.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fa fa-book fa-3x mb-2"></i>
+                    <p>No hay presets disponibles</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Agrupar por comida
+        const porComida = {};
+        presets.forEach(preset => {
+            if (!porComida[preset.comida]) {
+                porComida[preset.comida] = [];
+            }
+            porComida[preset.comida].push(preset);
+        });
+        
+        let html = '';
+        Object.keys(porComida).forEach(comida => {
+            const comidasConfig = getComidasConfig();
+            const config = comidasConfig[comida];
+            
+            html += `
+                <div class="col-12 mb-3">
+                    <h6 class="text-muted mb-2">
+                        <i class="fa ${config.icon} me-2"></i>${config.nombre}
+                    </h6>
+                    <div class="row">
+            `;
+            
+            porComida[comida].forEach(preset => {
+                html += crearCardSugerencia(preset, false);
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function renderizarRecientes(recientes) {
+        const container = document.getElementById('sugerencias-recientes-list');
+        
+        if (!recientes || recientes.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fa fa-clock fa-3x mb-2"></i>
+                    <p>No hay ajustes recientes</p>
+                    <small>Tus últimos ajustes aparecerán aquí</small>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        recientes.forEach(reciente => {
+            html += crearCardSugerencia(reciente, false, true);
+        });
+        container.innerHTML = html;
+    }
+    
+    function crearCardSugerencia(sugerencia, esFavorito = false, esReciente = false) {
+        const badgeColor = {
+            'preset_global': 'primary',
+            'favorito': 'warning',
+            'dinamica': 'info',
+            'grupos': 'success',
+            'reciente': 'secondary'
+        }[sugerencia.tipo] || 'secondary';
+        
+        // Construir detalle de alimentos si es tipo 'grupos'
+        let alimentosDetalle = '';
+        if (sugerencia.tipo === 'grupos' && sugerencia.alimentos && sugerencia.alimentos.length > 0) {
+            alimentosDetalle = '<div class="mt-2 p-2 bg-light rounded"><small>';
+            sugerencia.alimentos.forEach(alimento => {
+                const porciones = alimento.porciones || 1;
+                const gramos = alimento.gramos_estimados || Math.round(alimento.porcion_base * porciones);
+                alimentosDetalle += `<div class="mb-1"><i class="fa fa-utensils me-1"></i><strong>${alimento.categoria}</strong> (${alimento.descripcion})`;
+                if (porciones > 1) {
+                    alimentosDetalle += ` × ${porciones}`;
+                }
+                alimentosDetalle += ` ≈ ${gramos}g</div>`;
+            });
+            alimentosDetalle += '</small></div>';
+        }
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 border-${badgeColor}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">${sugerencia.alias}</h6>
+                            ${esFavorito ? '<i class="fa fa-star text-warning"></i>' : ''}
+                            ${sugerencia.tipo === 'grupos' ? '<span class="badge bg-success badge-sm ms-1">🍽️</span>' : ''}
+                        </div>
+                        <p class="card-text small text-muted">${sugerencia.descripcion || ''}</p>
+                        
+                        <div class="text-center mb-2">
+                            <h4 class="mb-0">${sugerencia.bloques.resumen}</h4>
+                            <small class="text-muted">
+                                ${Math.round(sugerencia.gramos.proteina)}g P · 
+                                ${Math.round(sugerencia.gramos.grasa)}g G · 
+                                ${Math.round(sugerencia.gramos.carbohidratos)}g C
+                            </small>
+                            ${sugerencia.diff_display && sugerencia.diff_display !== 'Exacto' ? 
+                                `<div class="badge bg-info mt-1">${sugerencia.diff_display} vs objetivo</div>` : 
+                                sugerencia.diff_display === 'Exacto' ? '<div class="badge bg-success mt-1">✓ Exacto</div>' : ''}
+                            ${sugerencia.requiere_validacion ? '<div class="badge bg-warning mt-1"><i class="fa fa-exclamation-triangle"></i> Validar con nutricionista</div>' : ''}
+                        </div>
+                        
+                        ${alimentosDetalle}
+                        
+                        ${sugerencia.comida_nombre ? `<div class="badge bg-light text-dark mb-2 mt-2">${sugerencia.comida_nombre}</div>` : ''}
+                        ${esReciente ? `<div class="badge bg-secondary mb-2"><i class="fa fa-clock"></i> ${new Date(sugerencia.timestamp).toLocaleDateString()}</div>` : ''}
+                        
+                        <div class="btn-group w-100 mt-2" role="group">
+                            <button class="btn btn-sm btn-outline-${badgeColor} btn-aplicar-sugerencia"
+                                    data-sugerencia='${JSON.stringify(sugerencia).replace(/'/g, "&apos;")}'>
+                                <i class="fa fa-check"></i> Aplicar
+                            </button>
+                            ${!esFavorito && !esReciente ? `
+                                <button class="btn btn-sm btn-outline-warning btn-guardar-favorito"
+                                        data-sugerencia='${JSON.stringify(sugerencia).replace(/'/g, "&apos;")}'>
+                                    <i class="fa fa-star"></i> Favorito
+                                </button>
+                            ` : ''}
+                            ${esFavorito ? `
+                                <button class="btn btn-sm btn-outline-danger btn-eliminar-favorito"
+                                        data-favorito-id="${sugerencia.id}">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Event delegation para botones de sugerencias
+    document.addEventListener('click', function(e) {
+        // Aplicar sugerencia
+        if (e.target.closest('.btn-aplicar-sugerencia')) {
+            const btn = e.target.closest('.btn-aplicar-sugerencia');
+            const sugerencia = JSON.parse(btn.dataset.sugerencia);
+            aplicarSugerencia(sugerencia);
+        }
+        
+        // Guardar como favorito
+        if (e.target.closest('.btn-guardar-favorito')) {
+            const btn = e.target.closest('.btn-guardar-favorito');
+            const sugerencia = JSON.parse(btn.dataset.sugerencia);
+            guardarComoFavorito(sugerencia);
+        }
+        
+        // Eliminar favorito
+        if (e.target.closest('.btn-eliminar-favorito')) {
+            const btn = e.target.closest('.btn-eliminar-favorito');
+            const favoritoId = btn.dataset.favoritoId;
+            eliminarFavorito(favoritoId);
+        }
+    });
+    
+    function aplicarSugerencia(sugerencia) {
+        // Calcular el ajuste necesario desde el estado actual
+        // Por simplicidad, aplicamos directamente los bloques de la sugerencia
+        
+        // Mostrar en el área de resultados
+        const resultadoDiv = document.getElementById('ajuste-resultado');
+        const comidasConfig = getComidasConfig();
+        const comidaNombre = sugerencia.comida_nombre || comidasConfig[sugerencia.comida]?.nombre || 'Comida';
+        
+        resultadoDiv.innerHTML = `
+            <h6><i class="fa fa-magic me-2"></i>Sugerencia aplicada: ${sugerencia.alias}</h6>
+            <p class="mb-2">${sugerencia.descripcion}</p>
+            <div class="text-center mb-2">
+                <h4 class="mb-0">${sugerencia.bloques.resumen}</h4>
+                <small class="text-muted">Para ${comidaNombre}</small>
+            </div>
+            <div class="row text-center small">
+                <div class="col-4">
+                    <div class="badge bg-danger w-100">${sugerencia.bloques.proteina}P</div>
+                    <div class="text-muted">${Math.round(sugerencia.gramos.proteina)}g</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-warning w-100">${sugerencia.bloques.grasa}G</div>
+                    <div class="text-muted">${Math.round(sugerencia.gramos.grasa)}g</div>
+                </div>
+                <div class="col-4">
+                    <div class="badge bg-primary w-100">${sugerencia.bloques.carbohidratos}C</div>
+                    <div class="text-muted">${Math.round(sugerencia.gramos.carbohidratos)}g</div>
+                </div>
+            </div>
+            <div class="alert alert-info mt-3 mb-0 small">
+                <i class="fa fa-info-circle me-1"></i>
+                Esta es una vista previa. Para guardar permanentemente, actualiza tu plan nutricional.
+            </div>
+        `;
+        
+        resultadoDiv.style.display = 'block';
+        resultadoDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Si la sugerencia tiene ID (preset o favorito), marcar como usada
+        if (sugerencia.id) {
+            fetch(`/api/plan-alimentario/bloques/sugerencias/${sugerencia.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ marcar_usada: true })
+            }).catch(err => console.error('Error marcando como usada:', err));
+        }
+    }
+    
+    function guardarComoFavorito(sugerencia) {
+        const alias = prompt('Nombre para este favorito:', sugerencia.alias || sugerencia.bloques.resumen);
+        if (!alias) return;
+        
+        fetch('/api/plan-alimentario/bloques/sugerencias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comida: sugerencia.comida,
+                proteina: sugerencia.bloques.proteina,
+                grasa: sugerencia.bloques.grasa,
+                carbohidratos: sugerencia.bloques.carbohidratos,
+                alias: alias,
+                descripcion: sugerencia.descripcion || 'Mi combinación favorita'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✓ Guardado como favorito');
+                cargarSugerencias(); // Recargar para mostrar el nuevo favorito
+                
+                // Cambiar al tab de favoritos
+                document.getElementById('favoritos-tab').click();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error guardando favorito:', error);
+            alert('Error al guardar favorito');
+        });
+    }
+    
+    function eliminarFavorito(favoritoId) {
+        if (!confirm('¿Eliminar este favorito?')) return;
+        
+        fetch(`/api/plan-alimentario/bloques/sugerencias/${favoritoId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✓ Favorito eliminado');
+                cargarSugerencias(); // Recargar sugerencias
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error eliminando favorito:', error);
+            alert('Error al eliminar favorito');
+        });
+    }
+    
+    // ========== CONSTRUCTOR DE COMBINACIONES ==========
+    
+    let alimentosConstructor = []; // [{categoria, descripcion, porciones, bloques}, ...]
+    let objetivoComida = {proteina: 0, grasa: 0, carbohidratos: 0};
+    let alimentosDisponibles = []; // Cache de alimentos para el constructor
+    
+    // Al cambiar la comida, cargar objetivo desde el plan
+    document.getElementById('constructorComida').addEventListener('change', function() {
+        const comida = this.value;
+        if (comida) {
+            cargarObjetivoComida(comida);
+            cargarAlimentosDisponibles('', comida);
+        }
+    });
+    
+    // Al cambiar filtro de macro, recargar alimentos
+    document.getElementById('filtroMacro').addEventListener('change', function() {
+        const macro = this.value;
+        const momento = document.getElementById('constructorComida').value;
+        if (momento) {
+            cargarAlimentosDisponibles(macro, momento);
+        }
+    });
+    
+    function cargarObjetivoComida(comida) {
+        fetch('/api/plan-alimentario/info')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.comidas && data.comidas[comida]) {
+                    const comidaData = data.comidas[comida];
+                    
+                    // Usar bloques enteros (igual que en el panel)
+                    objetivoComida = {
+                        proteina: comidaData.bloques.proteina.bloques || 0,
+                        grasa: comidaData.bloques.grasa.bloques || 0,
+                        carbohidratos: comidaData.bloques.carbohidratos.bloques || 0
+                    };
+                    
+                    document.getElementById('objProteina').textContent = objetivoComida.proteina.toFixed(0);
+                    document.getElementById('objGrasa').textContent = objetivoComida.grasa.toFixed(0);
+                    document.getElementById('objCarbohidratos').textContent = objetivoComida.carbohidratos.toFixed(0);
+                    
+                    document.getElementById('objProteinaGramos').textContent = Number(comidaData.bloques.proteina.gramos_objetivo || 0).toFixed(2);
+                    document.getElementById('objGrasaGramos').textContent = Number(comidaData.bloques.grasa.gramos_objetivo || 0).toFixed(2);
+                    document.getElementById('objCarbohidratosGramos').textContent = Number(comidaData.bloques.carbohidratos.gramos_objetivo || 0).toFixed(2);
+                    
+                    // Limpiar construcción anterior al cambiar de comida
+                    alimentosConstructor = [];
+                    renderizarListaAlimentos();
+                    recalcularAcumulado();
+                } else {
+                    // Comida no configurada o sin bloques
+                    console.warn(`Comida ${comida} no tiene bloques configurados`);
+                    objetivoComida = {proteina: 0, grasa: 0, carbohidratos: 0};
+                    
+                    document.getElementById('objProteina').textContent = '0';
+                    document.getElementById('objGrasa').textContent = '0';
+                    document.getElementById('objCarbohidratos').textContent = '0';
+                    document.getElementById('objProteinaGramos').textContent = '0.00';
+                    document.getElementById('objGrasaGramos').textContent = '0.00';
+                    document.getElementById('objCarbohidratosGramos').textContent = '0.00';
+                    
+                    // Limpiar alimentos si había
+                    alimentosConstructor = [];
+                    renderizarListaAlimentos();
+                    recalcularAcumulado();
+                    
+                    alert('Esta comida no tiene bloques configurados en tu plan.');
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando objetivo:', error);
+                objetivoComida = {proteina: 0, grasa: 0, carbohidratos: 0};
+                recalcularAcumulado();
+            });
+    }
+    
+    function cargarAlimentosDisponibles(macro, momento) {
+        let url = '/api/grupos-alimentos?';
+        if (macro) url += `macro=${macro}&`;
+        if (momento) url += `momento=${momento}`;
+        
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alimentosDisponibles = data.alimentos;
+                    const select = document.getElementById('selectAlimento');
+                    select.innerHTML = '<option value="">Seleccionar alimento...</option>';
+                    
+                    data.alimentos.forEach((a, idx) => {
+                        const bloques = `${a.bloques_unitarios.proteina.toFixed(1)}P·${a.bloques_unitarios.grasa.toFixed(1)}G·${a.bloques_unitarios.carbohidratos.toFixed(1)}C`;
+                        const option = document.createElement('option');
+                        option.value = idx;
+                        option.textContent = `${a.categoria} (${a.descripcion}) - ${bloques}`;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error cargando alimentos:', error));
+    }
+    
+    function agregarAlimentoConstructor() {
+        const alimentoIdx = document.getElementById('selectAlimento').value;
+        if (!alimentoIdx) {
+            alert('Por favor selecciona un alimento');
+            return;
+        }
+        
+        const alimento = alimentosDisponibles[parseInt(alimentoIdx)];
+        const porciones = parseInt(document.getElementById('porciones').value) || 1;
+        
+        // Agregar a lista
+        alimentosConstructor.push({
+            categoria: alimento.categoria,
+            descripcion: alimento.descripcion,
+            porciones: porciones,
+            bloques: {
+                proteina: alimento.bloques_unitarios.proteina * porciones,
+                grasa: alimento.bloques_unitarios.grasa * porciones,
+                carbohidratos: alimento.bloques_unitarios.carbohidratos * porciones
+            },
+            porcion_gramos: alimento.porcion_gramos
+        });
+        
+        renderizarListaAlimentos();
+        recalcularAcumulado();
+        
+        // Reset selector
+        document.getElementById('selectAlimento').value = '';
+        document.getElementById('porciones').value = 1;
+    }
+    
+    function renderizarListaAlimentos() {
+        const lista = document.getElementById('listaAlimentosConstructor');
+        lista.innerHTML = '';
+        
+        if (alimentosConstructor.length === 0) {
+            lista.innerHTML = '<div class="list-group-item text-muted text-center">Aún no has agregado alimentos</div>';
+            return;
+        }
+        
+        alimentosConstructor.forEach((a, index) => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <div>
+                    <strong>${a.categoria}</strong> (${a.descripcion})
+                    ${a.porciones > 1 ? ` × ${a.porciones}` : ''}
+                    <br>
+                    <small class="text-muted">
+                        ${a.bloques.proteina.toFixed(1)}P · 
+                        ${a.bloques.grasa.toFixed(1)}G · 
+                        ${a.bloques.carbohidratos.toFixed(1)}C
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="eliminarAlimentoConstructor(${index})">
+                    <i class="fa fa-times"></i>
+                </button>
+            `;
+            lista.appendChild(item);
+        });
+    }
+    
+    function eliminarAlimentoConstructor(index) {
+        alimentosConstructor.splice(index, 1);
+        renderizarListaAlimentos();
+        recalcularAcumulado();
+    }
+    
+    function recalcularAcumulado() {
+        let totalP = 0, totalG = 0, totalC = 0;
+        
+        alimentosConstructor.forEach(a => {
+            totalP += a.bloques.proteina;
+            totalG += a.bloques.grasa;
+            totalC += a.bloques.carbohidratos;
+        });
+        
+        // Actualizar acumulado
+        document.getElementById('acumProteina').textContent = totalP.toFixed(1);
+        document.getElementById('acumGrasa').textContent = totalG.toFixed(1);
+        document.getElementById('acumCarbohidratos').textContent = totalC.toFixed(1);
+        
+        // Calcular diferencias
+        const diffP = objetivoComida.proteina - totalP;
+        const diffG = objetivoComida.grasa - totalG;
+        const diffC = objetivoComida.carbohidratos - totalC;
+        
+        // Mostrar falta/sobra con color
+        mostrarDiferencia('difProteina', diffP, 'P');
+        mostrarDiferencia('difGrasa', diffG, 'G');
+        mostrarDiferencia('difCarbohidratos', diffC, 'C');
+        
+        // Cambiar color del panel según precisión
+        const margen = 0.3;
+        const dentroDeMargen = Math.abs(diffP) <= margen && 
+                              Math.abs(diffG) <= margen && 
+                              Math.abs(diffC) <= margen;
+        
+        const panel = document.getElementById('panelAcumulado');
+        panel.classList.remove('border-success', 'border-warning', 'border-danger');
+        
+        if (dentroDeMargen) {
+            panel.classList.add('border-success');
+        } else if (Math.abs(diffP) > 1 || Math.abs(diffG) > 1 || Math.abs(diffC) > 1) {
+            panel.classList.add('border-danger');
+        } else {
+            panel.classList.add('border-warning');
+        }
+        
+        // Mostrar/ocultar botón de sugerencia inteligente
+        const sugerenciaPanel = document.getElementById('sugerenciaInteligentePanel');
+        if (diffC > 0.5 && alimentosConstructor.length > 0) {
+            sugerenciaPanel.style.display = 'block';
+        } else {
+            sugerenciaPanel.style.display = 'none';
+        }
+    }
+    
+    function mostrarDiferencia(elemId, diff, macro) {
+        const elem = document.getElementById(elemId);
+        elem.className = 'small';
+        
+        if (Math.abs(diff) < 0.1) {
+            elem.innerHTML = '<i class="fa fa-check text-success"></i> Exacto';
+            elem.classList.add('text-success');
+        } else if (diff > 0) {
+            elem.textContent = `Falta: ${diff.toFixed(1)}${macro}`;
+            elem.classList.add('text-warning');
+        } else {
+            elem.textContent = `Sobra: ${Math.abs(diff).toFixed(1)}${macro}`;
+            elem.classList.add('text-danger');
+        }
+    }
+    
+    function completarConCarbohidratos() {
+        const diffC = objetivoComida.carbohidratos - 
+                     alimentosConstructor.reduce((sum, a) => sum + a.bloques.carbohidratos, 0);
+        
+        if (diffC <= 0) {
+            alert('Ya tienes suficientes carbohidratos');
+            return;
+        }
+        
+        // Obtener alimentos ricos en C que NO estén en la combinación
+        const categoriasYaUsadas = alimentosConstructor.map(a => a.categoria);
+        const momento = document.getElementById('constructorComida').value;
+        
+        fetch(`/api/grupos-alimentos?macro=C&momento=${momento}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Filtrar los que NO están ya
+                    const disponibles = data.alimentos.filter(a => !categoriasYaUsadas.includes(a.categoria));
+                    
+                    if (disponibles.length === 0) {
+                        alert('No hay más alimentos disponibles ricos en carbohidratos');
+                        return;
+                    }
+                    
+                    // Buscar el que más se acerque
+                    let mejorAlimento = null;
+                    let menorError = 999;
+                    let mejorPorciones = 1;
+                    
+                    disponibles.forEach(alimento => {
+                        for (let porciones = 1; porciones <= 4; porciones++) {
+                            const bloquesC = alimento.bloques_unitarios.carbohidratos * porciones;
+                            const error = Math.abs(diffC - bloquesC);
+                            
+                            if (error < menorError) {
+                                menorError = error;
+                                mejorAlimento = alimento;
+                                mejorPorciones = porciones;
+                            }
+                        }
+                    });
+                    
+                    if (mejorAlimento) {
+                        // Agregar automáticamente
+                        alimentosConstructor.push({
+                            categoria: mejorAlimento.categoria,
+                            descripcion: mejorAlimento.descripcion,
+                            porciones: mejorPorciones,
+                            bloques: {
+                                proteina: mejorAlimento.bloques_unitarios.proteina * mejorPorciones,
+                                grasa: mejorAlimento.bloques_unitarios.grasa * mejorPorciones,
+                                carbohidratos: mejorAlimento.bloques_unitarios.carbohidratos * mejorPorciones
+                            },
+                            porcion_gramos: mejorAlimento.porcion_gramos
+                        });
+                        
+                        renderizarListaAlimentos();
+                        recalcularAcumulado();
+                        
+                        alert(`✓ Agregado: ${mejorAlimento.categoria} × ${mejorPorciones}`);
+                    }
+                }
+            })
+            .catch(error => console.error('Error completando carbohidratos:', error));
+    }
+    
+    function guardarCombinacionConstructor() {
+        const comida = document.getElementById('constructorComida').value;
+        const alias = document.getElementById('aliasConstructor').value.trim();
+        const enviarRevision = document.getElementById('enviarRevision').checked;
+        const publicar = document.getElementById('publicarBiblioteca')?.checked || false;
+        
+        if (!comida) {
+            alert('Por favor selecciona una comida');
+            return;
+        }
+        
+        if (!alias) {
+            alert('Por favor ingresa un nombre para tu combinación');
+            return;
+        }
+        
+        if (alimentosConstructor.length === 0) {
+            alert('Agrega al menos un alimento');
+            return;
+        }
+        
+        const datos = {
+            comida: comida,
+            alimentos: alimentosConstructor.map(a => ({
+                categoria: a.categoria,
+                descripcion: a.descripcion,
+                porciones: a.porciones
+            })),
+            alias: alias,
+            enviar_revision: enviarRevision,
+            es_publica: publicar
+        };
+        
+        fetch('/api/plan-alimentario/bloques/constructor', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(datos)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✓ ${data.message}\n\nBloques totales:\n${data.bloques_total.proteina}P · ${data.bloques_total.grasa}G · ${data.bloques_total.carbohidratos}C`);
+                
+                // Cerrar modal (compatible con diferentes versiones de Bootstrap)
+                const modalEl = document.getElementById('modalConstructor');
+                if (window.bootstrap && bootstrap.Modal) {
+                    const modal = bootstrap.Modal.getOrCreateInstance 
+                        ? bootstrap.Modal.getOrCreateInstance(modalEl)
+                        : new bootstrap.Modal(modalEl);
+                    modal.hide();
+                } else if (window.jQuery) {
+                    window.jQuery(modalEl).modal('hide');
+                } else {
+                    modalEl.dispatchEvent(new Event('hide.bs.modal'));
+                }
+                
+                // Limpiar constructor
+                alimentosConstructor = [];
+                renderizarListaAlimentos();
+                recalcularAcumulado();
+                document.getElementById('aliasConstructor').value = '';
+                document.getElementById('enviarRevision').checked = false;
+                document.getElementById('publicarBiblioteca').checked = false;
+                document.getElementById('constructorComida').value = '';
+                
+                // Recargar sugerencias para mostrar el nuevo favorito
+                cargarSugerencias();
+                
+                // Cambiar al tab de favoritos
+                document.getElementById('favoritos-tab').click();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error guardando combinación:', error);
+            alert('Error al guardar combinación');
+        });
+    }
+    
+    // Exponer funciones al scope global para onclick
+    window.agregarAlimentoConstructor = agregarAlimentoConstructor;
+    window.guardarCombinacionConstructor = guardarCombinacionConstructor;
+    window.eliminarAlimentoConstructor = eliminarAlimentoConstructor;
+    window.completarConCarbohidratos = completarConCarbohidratos;
+    window.completarCarbohidratosAuto = completarConCarbohidratos; // Alias
+    window.marcarFavorito = marcarFavorito;
+    
+    // Resetear modal constructor al abrirse
+    const modalConstructorEl = document.getElementById('modalConstructor');
+    if (modalConstructorEl) {
+        modalConstructorEl.addEventListener('show.bs.modal', () => {
+            const sel = document.getElementById('constructorComida');
+            if (sel) sel.value = '';
+            
+            // Resetear estado del constructor
+            alimentosConstructor = [];
+            objetivoComida = { proteina: 0, grasa: 0, carbohidratos: 0 };
+            
+            // Refrescar UI
+            renderizarListaAlimentos();
+            ['Proteina','Grasa','Carbohidratos'].forEach(k => {
+                document.getElementById('obj'+k).textContent = '0';
+                document.getElementById('obj'+k+'Gramos').textContent = '0.00';
+            });
+            recalcularAcumulado();
+        });
     }
 });
 </script>

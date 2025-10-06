@@ -4217,4 +4217,481 @@ def obtener_analisis_completo_usuario(nombre_usuario):
     finally:
         basededatos.close()
 
+##############################################
+### SISTEMA DE SUGERENCIAS DE BLOQUES ###
+##############################################
+
+def crear_tablas_bloques_sugerencias():
+    """Crea las tablas para el sistema de sugerencias de bloques nutricionales"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        # Tabla de presets y favoritos de bloques
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS PLAN_BLOQUES_PRESETS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                USER_DNI TEXT,  -- NULL para presets globales del staff
+                COMIDA TEXT NOT NULL,  -- 'desayuno', 'almuerzo', etc.
+                PROTEINA INTEGER NOT NULL,  -- bloques de proteína
+                GRASA INTEGER NOT NULL,  -- bloques de grasa
+                CARBOHIDRATOS INTEGER NOT NULL,  -- bloques de carbohidratos
+                PROTEINA_GRAMOS REAL,  -- gramos calculados
+                GRASA_GRAMOS REAL,
+                CARBOHIDRATOS_GRAMOS REAL,
+                ALIAS TEXT,  -- "Pre-entreno", "Deficit ligero", etc.
+                DESCRIPCION TEXT,  -- Descripción detallada
+                ES_FAVORITA INTEGER DEFAULT 0,  -- 1 si el usuario la marcó como favorita
+                ES_PRESET_GLOBAL INTEGER DEFAULT 0,  -- 1 si es creada por staff
+                ULTIMA_VEZ_USADA DATETIME,
+                FECHA_CREACION DATETIME DEFAULT CURRENT_TIMESTAMP,
+                VECES_USADA INTEGER DEFAULT 0
+            )
+        ''')
+        
+        # Tabla de log de ajustes aplicados
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS PLAN_BLOQUES_AJUSTES_LOG (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                USER_DNI TEXT NOT NULL,
+                COMIDA TEXT NOT NULL,
+                TIPO_AJUSTE TEXT NOT NULL,  -- 'proteina', 'grasa', 'carbohidratos'
+                VALOR_AJUSTE INTEGER NOT NULL,  -- +1, -1, +2, etc.
+                BLOQUES_RESULTADO_P INTEGER,
+                BLOQUES_RESULTADO_G INTEGER,
+                BLOQUES_RESULTADO_C INTEGER,
+                GRAMOS_RESULTADO_P REAL,
+                GRAMOS_RESULTADO_G REAL,
+                GRAMOS_RESULTADO_C REAL,
+                TIMESTAMP DATETIME DEFAULT CURRENT_TIMESTAMP,
+                APLICADO_DESDE TEXT DEFAULT 'web'  -- 'web', 'mobile', 'api'
+            )
+        ''')
+        
+        # Índices para optimizar consultas
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_presets_user ON PLAN_BLOQUES_PRESETS(USER_DNI)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_presets_comida ON PLAN_BLOQUES_PRESETS(COMIDA)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_presets_global ON PLAN_BLOQUES_PRESETS(ES_PRESET_GLOBAL)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_presets_favorita ON PLAN_BLOQUES_PRESETS(ES_FAVORITA)')
+        
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_log_user ON PLAN_BLOQUES_AJUSTES_LOG(USER_DNI)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_log_timestamp ON PLAN_BLOQUES_AJUSTES_LOG(TIMESTAMP)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_bloques_log_comida ON PLAN_BLOQUES_AJUSTES_LOG(COMIDA)')
+        
+        conn.commit()
+        print("✓ Tablas de bloques de sugerencias creadas correctamente")
+        
+    except Exception as e:
+        print(f"Error al crear tablas de bloques: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+def limpiar_cache_alimentos():
+    """Limpia el caché del catálogo de alimentos para forzar recarga."""
+    if hasattr(obtener_catalogo_alimentos_bloques, '_cache'):
+        delattr(obtener_catalogo_alimentos_bloques, '_cache')
+        print("✓ Caché del catálogo de alimentos limpiado")
+
+def _to_float(value, default=0.0):
+    """Convierte valores de base (que pueden venir con coma decimal) a float."""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        value_str = str(value).strip().replace(',', '.')
+        return float(value_str) if value_str else default
+    except (ValueError, TypeError):
+        return default
+
+
+def redondear_a_medio_bloque(valor):
+    """
+    Redondea bloques a pasos de 0.5 para UI consistente.
+    Ejemplos: 0.3 → 0.5, 0.7 → 0.5, 1.2 → 1.0, 1.8 → 2.0
+    """
+    return round(valor * 2) / 2
+
+def obtener_catalogo_alimentos_bloques():
+    """
+    Carga alimentos de GRUPOSALIMENTOS y calcula bloques nutricionales.
+    Retorna catálogo con macros por porción y bloques redondeados a 0.5.
+    Cachea el resultado para evitar hits repetidos.
+    """
+    if hasattr(obtener_catalogo_alimentos_bloques, '_cache'):
+        return obtener_catalogo_alimentos_bloques._cache
+    
+    # Bloques estándar
+    BLOQUE_PROTEINA = 20
+    BLOQUE_GRASA = 10
+    BLOQUE_CARBOHIDRATOS = 25
+    
+    # Mapeo de categorías a momentos del día (expandido para colaciones)
+    momentos_por_categoria = {
+        'Leche': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Yogur': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Queso': ['desayuno', 'media_manana', 'almuerzo', 'merienda', 'cena'],
+        'Huevo': ['desayuno', 'almuerzo', 'cena'],
+        'Avena': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Panes': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Frutas A': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Frutas B': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Frutos secos': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Vaca': ['almuerzo', 'cena'],
+        'Pollo': ['almuerzo', 'cena'],
+        'Pescado': ['almuerzo', 'cena'],
+        'Milanesa': ['almuerzo', 'cena'],
+        'Fiambres': ['desayuno', 'media_manana', 'merienda', 'media_tarde'],
+        'Arroz': ['almuerzo', 'cena'],
+        'Fideo': ['almuerzo', 'cena'],
+        'Vegetales A': ['almuerzo', 'cena'],
+        'Vegetales B': ['almuerzo', 'cena'],
+        'Vegetales C': ['almuerzo', 'cena'],
+        'Aceite': ['almuerzo', 'cena'],
+        'Legumbres': ['almuerzo', 'cena']
+    }
+    
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            SELECT CATEGORÍA, PORCION, DESCRIPCIONPORCION, 
+                   PROTEINA, GRASASTOTALES, CARBOHIDRATOS, ENERGIA
+            FROM GRUPOSALIMENTOS
+            WHERE PROTEINA IS NOT NULL 
+            AND GRASASTOTALES IS NOT NULL 
+            AND CARBOHIDRATOS IS NOT NULL
+        ''')
+        
+        alimentos = []
+        for row in cursor.fetchall():
+            categoria = row[0] if row[0] else 'Sin categoría'
+            porcion = _to_float(row[1], 100)  # Peso de la porción en gramos
+            descripcion = row[2] if row[2] else 'Sin descripción'
+            # Valores por 100g de la tabla GRUPOSALIMENTOS (pueden venir con coma decimal)
+            proteina_100g = _to_float(row[3])
+            grasa_100g = _to_float(row[4])
+            carbohidratos_100g = _to_float(row[5])
+            energia_100g = _to_float(row[6])
+            
+            # Ajustar a la porción real (ej: leche 246g tiene más proteína que 100g)
+            proteina = proteina_100g * porcion / 100
+            grasa = grasa_100g * porcion / 100
+            carbohidratos = carbohidratos_100g * porcion / 100
+            energia = energia_100g * porcion / 100
+            
+            # Calcular bloques exactos primero
+            bloques_p_exacto = proteina / BLOQUE_PROTEINA if proteina > 0 else 0
+            bloques_g_exacto = grasa / BLOQUE_GRASA if grasa > 0 else 0
+            bloques_c_exacto = carbohidratos / BLOQUE_CARBOHIDRATOS if carbohidratos > 0 else 0
+            
+            # Redondear a pasos de 0.5 para UI consistente
+            bloques_p = redondear_a_medio_bloque(bloques_p_exacto)
+            bloques_g = redondear_a_medio_bloque(bloques_g_exacto)
+            bloques_c = redondear_a_medio_bloque(bloques_c_exacto)
+
+            # Detectar aporte energético no explicado por macros (posible alcohol)
+            kcal_macros = (proteina * 4) + (carbohidratos * 4) + (grasa * 9)
+            kcal_alcohol = max(0.0, energia - kcal_macros)
+            gramos_alcohol = kcal_alcohol / 7 if kcal_alcohol > 0 else 0
+            bloques_carbo_equivalentes = kcal_alcohol / (BLOQUE_CARBOHIDRATOS * 4) if kcal_alcohol > 0 else 0
+            alcohol_info = None
+            if kcal_alcohol > 0.1:
+                alcohol_info = {
+                    'kcal_alcohol': round(kcal_alcohol, 2),
+                    'gramos_alcohol': round(gramos_alcohol, 2),
+                    'equivalente_bloques_carbohidratos': round(bloques_carbo_equivalentes, 2)
+                }
+            
+            # Identificar macro dominante Y macros fuertes (usando valores de la porción)
+            macros = {'P': proteina, 'G': grasa, 'C': carbohidratos}
+            macro_dominante = max(macros, key=macros.get)
+            
+            # Calcular macros "fuertes" (≥80% del valor máximo)
+            # Esto permite que alimentos balanceados (ej: huevo) califiquen para múltiples macros
+            valor_maximo = max(macros.values())
+            umbral = valor_maximo * 0.8
+            macros_fuertes = [macro for macro, valor in macros.items() if valor >= umbral]
+            
+            # Asignar momentos del día
+            momentos = momentos_por_categoria.get(categoria, ['almuerzo', 'cena'])  # Default a comidas principales
+            
+            alimentos.append({
+                'categoria': categoria,
+                'porcion': porcion,  # Gramos de la porción (ej: 246g para leche)
+                'descripcion': descripcion,
+                'proteina': proteina,  # Gramos en la porción completa
+                'grasa': grasa,
+                'carbohidratos': carbohidratos,
+                'energia': energia,
+                'proteina_100g': proteina_100g,  # Valores por 100g para referencia
+                'grasa_100g': grasa_100g,
+                'carbohidratos_100g': carbohidratos_100g,
+                'bloques': {
+                    'proteina': bloques_p,  # Bloques redondeados a 0.5
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c
+                },
+                'bloques_exactos': {  # Valores exactos para cálculos internos si se necesitan
+                    'proteina': bloques_p_exacto,
+                    'grasa': bloques_g_exacto,
+                    'carbohidratos': bloques_c_exacto
+                },
+                'alcohol_info': alcohol_info,
+                'macro_dominante': macro_dominante,
+                'macros_fuertes': macros_fuertes,  # Lista de macros ≥80% del máximo
+                'nombre_completo': f"{categoria} ({descripcion})",
+                'momentos': momentos
+            })
+        
+        # Cachear resultado
+        obtener_catalogo_alimentos_bloques._cache = alimentos
+        return alimentos
+        
+    except Exception as e:
+        print(f"Error cargando catálogo de alimentos: {e}")
+        return []
+    finally:
+        conn.close()
+
+def generar_combinaciones_alimentos(objetivo_bloques, catalogo, max_alimentos=3, momento_comida=None):
+    """
+    Genera combinaciones de alimentos que se acerquen al objetivo de bloques.
+    Usa backtracking para encontrar combos exactos dentro de tolerancia.
+    
+    Args:
+        objetivo_bloques: dict con {'proteina': X, 'grasa': Y, 'carbohidratos': Z}
+        catalogo: lista de alimentos con bloques calculados
+        max_alimentos: máximo de alimentos por combinación (default 3)
+        momento_comida: 'desayuno', 'almuerzo', 'cena', etc. para filtrar alimentos
+    
+    Returns:
+        lista de combinaciones válidas con porciones multiplicadas
+    """
+    combinaciones = []
+    
+    # Filtrar alimentos por momento del día
+    if momento_comida:
+        catalogo_filtrado = [a for a in catalogo if momento_comida in a.get('momentos', [])]
+    else:
+        catalogo_filtrado = catalogo
+    
+    # Identificar macro dominante del objetivo
+    obj_p = objetivo_bloques.get('proteina', 0)
+    obj_g = objetivo_bloques.get('grasa', 0)
+    obj_c = objetivo_bloques.get('carbohidratos', 0)
+    
+    macros_objetivo = {'P': obj_p, 'G': obj_g, 'C': obj_c}
+    macro_principal = max(macros_objetivo, key=macros_objetivo.get) if max(macros_objetivo.values()) > 0 else 'P'
+    
+    # Separar alimentos por macro principal
+    # Usar macros_fuertes para incluir alimentos balanceados (ej: huevo es P y G fuerte)
+    alimentos_principales = [a for a in catalogo_filtrado 
+                            if macro_principal in a.get('macros_fuertes', [a['macro_dominante']])]
+    alimentos_secundarios = [a for a in catalogo_filtrado 
+                            if macro_principal not in a.get('macros_fuertes', [a['macro_dominante']])]
+    
+    # Tolerancia ajustada para bloques redondeados a 0.5
+    tolerancia = {
+        'proteina': 0.5,  # ±0.5 bloques = 10g (compatible con redondeo)
+        'grasa': 0.5,     # ±0.5 bloques = 5g
+        'carbohidratos': 0.5  # ±0.5 bloques = 12.5g
+    }
+    
+    # Estrategia 1: Un alimento solo (con más porciones)
+    for alimento in alimentos_principales[:15]:
+        for num_porciones in range(1, 6):  # 1-5 porciones
+            bloques_total = {
+                'proteina': alimento['bloques']['proteina'] * num_porciones,
+                'grasa': alimento['bloques']['grasa'] * num_porciones,
+                'carbohidratos': alimento['bloques']['carbohidratos'] * num_porciones
+            }
+            
+            if dentro_de_tolerancia(bloques_total, objetivo_bloques, tolerancia):
+                combinaciones.append(crear_combo([alimento], [num_porciones], bloques_total))
+    
+    # Estrategia 2: Principal + Complementario
+    if max_alimentos >= 2:
+        for principal in alimentos_principales[:12]:
+            for porciones_p in range(1, 5):  # 1-4 porciones principal
+                for complementario in alimentos_secundarios[:12]:
+                    for porciones_c in range(1, 4):  # 1-3 porciones complementario
+                        bloques_total = {
+                            'proteina': (principal['bloques']['proteina'] * porciones_p + 
+                                       complementario['bloques']['proteina'] * porciones_c),
+                            'grasa': (principal['bloques']['grasa'] * porciones_p + 
+                                    complementario['bloques']['grasa'] * porciones_c),
+                            'carbohidratos': (principal['bloques']['carbohidratos'] * porciones_p + 
+                                            complementario['bloques']['carbohidratos'] * porciones_c)
+                        }
+                        
+                        if dentro_de_tolerancia(bloques_total, objetivo_bloques, tolerancia):
+                            combinaciones.append(crear_combo(
+                                [principal, complementario], 
+                                [porciones_p, porciones_c], 
+                                bloques_total
+                            ))
+    
+    # Estrategia 3: Principal + 2 Complementarios (para objetivos más complejos)
+    if max_alimentos >= 3 and len(combinaciones) < 3:
+        alimentos_carbos = [a for a in alimentos_secundarios if a['macro_dominante'] == 'C']
+        
+        for principal in alimentos_principales[:8]:
+            for porciones_p in range(1, 4):
+                for comp1 in alimentos_secundarios[:8]:
+                    for porciones_c1 in range(1, 3):
+                        for comp2 in alimentos_carbos[:6]:
+                            if comp2['categoria'] == comp1['categoria']:
+                                continue
+                            for porciones_c2 in range(1, 3):
+                                bloques_total = {
+                                    'proteina': (principal['bloques']['proteina'] * porciones_p +
+                                               comp1['bloques']['proteina'] * porciones_c1 +
+                                               comp2['bloques']['proteina'] * porciones_c2),
+                                    'grasa': (principal['bloques']['grasa'] * porciones_p +
+                                            comp1['bloques']['grasa'] * porciones_c1 +
+                                            comp2['bloques']['grasa'] * porciones_c2),
+                                    'carbohidratos': (principal['bloques']['carbohidratos'] * porciones_p +
+                                                    comp1['bloques']['carbohidratos'] * porciones_c1 +
+                                                    comp2['bloques']['carbohidratos'] * porciones_c2)
+                                }
+                                
+                                if dentro_de_tolerancia(bloques_total, objetivo_bloques, tolerancia):
+                                    combinaciones.append(crear_combo(
+                                        [principal, comp1, comp2],
+                                        [porciones_p, porciones_c1, porciones_c2],
+                                        bloques_total
+                                    ))
+                                    if len(combinaciones) >= 8:
+                                        break
+                            if len(combinaciones) >= 8:
+                                break
+    
+    # Ordenar por error y retornar top 8
+    for combo in combinaciones:
+        combo['error'] = calcular_error_bloques(objetivo_bloques, combo['bloques_total'])
+    
+    combinaciones.sort(key=lambda x: x['error'])
+    return combinaciones[:8]
+
+def dentro_de_tolerancia(bloques_actual, bloques_objetivo, tolerancia):
+    """Verifica si los bloques están dentro de la tolerancia especificada"""
+    diff_p = abs(bloques_actual['proteina'] - bloques_objetivo.get('proteina', 0))
+    diff_g = abs(bloques_actual['grasa'] - bloques_objetivo.get('grasa', 0))
+    diff_c = abs(bloques_actual['carbohidratos'] - bloques_objetivo.get('carbohidratos', 0))
+    
+    return (diff_p <= tolerancia['proteina'] and 
+            diff_g <= tolerancia['grasa'] and 
+            diff_c <= tolerancia['carbohidratos'])
+
+def crear_combo(alimentos, porciones, bloques_total):
+    """Crea un combo con alimentos y porciones especificadas"""
+    alimentos_con_porciones = []
+    descripcion_partes = []
+    
+    for alimento, num_porciones in zip(alimentos, porciones):
+        alimento_copia = alimento.copy()
+        alimento_copia['porciones'] = num_porciones
+        alimento_copia['bloques_total'] = {
+            'proteina': alimento['bloques']['proteina'] * num_porciones,
+            'grasa': alimento['bloques']['grasa'] * num_porciones,
+            'carbohidratos': alimento['bloques']['carbohidratos'] * num_porciones
+        }
+        alimento_copia['gramos_total'] = {
+            'proteina': alimento['proteina'] * num_porciones,
+            'grasa': alimento['grasa'] * num_porciones,
+            'carbohidratos': alimento['carbohidratos'] * num_porciones
+        }
+        alimentos_con_porciones.append(alimento_copia)
+        
+        if num_porciones > 1:
+            descripcion_partes.append(f"{alimento['categoria']} × {num_porciones}")
+        else:
+            descripcion_partes.append(alimento['categoria'])
+    
+    return {
+        'alimentos': alimentos_con_porciones,
+        'bloques_total': {
+            'proteina': round(bloques_total['proteina'], 2),  # Redondear solo al final
+            'grasa': round(bloques_total['grasa'], 2),
+            'carbohidratos': round(bloques_total['carbohidratos'], 2)
+        },
+        'descripcion': ' + '.join(descripcion_partes)
+    }
+
+def calcular_error_bloques(objetivo, resultado):
+    """Calcula el error total entre objetivo y resultado de bloques"""
+    error_p = abs(objetivo.get('proteina', 0) - resultado.get('proteina', 0))
+    error_g = abs(objetivo.get('grasa', 0) - resultado.get('grasa', 0))
+    error_c = abs(objetivo.get('carbohidratos', 0) - resultado.get('carbohidratos', 0))
+    return error_p + error_g + error_c
+
+def insertar_presets_globales_bloques():
+    """Inserta presets globales predefinidos por el staff"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    
+    presets_globales = [
+        # Desayuno
+        ('desayuno', 2, 1, 2, 40, 10, 50, 'Desayuno Balanceado', 'Balance estándar de macros', 1),
+        ('desayuno', 3, 1, 1, 60, 10, 25, 'Desayuno Alto en Proteína', 'Ideal para mantener saciedad', 1),
+        ('desayuno', 2, 2, 3, 40, 20, 75, 'Desayuno Pre-Entreno', 'Más carbohidratos para energía', 1),
+        ('desayuno', 1, 1, 1, 20, 10, 25, 'Desayuno Ligero', 'Para déficit calórico moderado', 1),
+        
+        # Almuerzo
+        ('almuerzo', 3, 2, 3, 60, 20, 75, 'Almuerzo Completo', 'Comida principal balanceada', 1),
+        ('almuerzo', 4, 2, 2, 80, 20, 50, 'Almuerzo Alto en Proteína', 'Para desarrollo muscular', 1),
+        ('almuerzo', 3, 1, 4, 60, 10, 100, 'Almuerzo Pre-Competencia', 'Carga de carbohidratos', 1),
+        ('almuerzo', 2, 1, 2, 40, 10, 50, 'Almuerzo Ligero', 'Déficit calórico', 1),
+        
+        # Cena
+        ('cena', 3, 2, 2, 60, 20, 50, 'Cena Balanceada', 'Cena estándar nutritiva', 1),
+        ('cena', 4, 1, 1, 80, 10, 25, 'Cena Alta en Proteína', 'Baja en carbos para la noche', 1),
+        ('cena', 2, 2, 1, 40, 20, 25, 'Cena Ligera', 'Para control de peso', 1),
+        
+        # Merienda/Snacks
+        ('merienda', 2, 1, 2, 40, 10, 50, 'Snack Post-Entreno', 'Recuperación muscular', 1),
+        ('merienda', 1, 1, 1, 20, 10, 25, 'Snack Ligero', 'Entre comidas', 1),
+        ('merienda', 2, 1, 3, 40, 10, 75, 'Snack Energético', 'Antes de actividad física', 1),
+        
+        # Media Mañana
+        ('media_manana', 1, 1, 1, 20, 10, 25, 'Colación AM', 'Snack matutino ligero', 1),
+        ('media_manana', 2, 1, 2, 40, 10, 50, 'Colación AM Completa', 'Mayor aporte nutricional', 1),
+        
+        # Media Tarde
+        ('media_tarde', 1, 1, 1, 20, 10, 25, 'Colación PM', 'Snack vespertino ligero', 1),
+        ('media_tarde', 2, 1, 2, 40, 10, 50, 'Colación Pre-Entreno', 'Antes del gimnasio', 1),
+    ]
+    
+    try:
+        for preset in presets_globales:
+            # Verificar si ya existe
+            cursor.execute('''
+                SELECT ID FROM PLAN_BLOQUES_PRESETS 
+                WHERE USER_DNI IS NULL 
+                AND COMIDA = ? 
+                AND ALIAS = ?
+                AND ES_PRESET_GLOBAL = 1
+            ''', (preset[0], preset[6]))
+            
+            if not cursor.fetchone():
+                cursor.execute('''
+                    INSERT INTO PLAN_BLOQUES_PRESETS 
+                    (USER_DNI, COMIDA, PROTEINA, GRASA, CARBOHIDRATOS, 
+                     PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+                     ALIAS, DESCRIPCION, ES_PRESET_GLOBAL)
+                    VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', preset)
+        
+        conn.commit()
+        print(f"✓ {len(presets_globales)} presets globales insertados/actualizados")
+        
+    except Exception as e:
+        print(f"Error insertando presets globales: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
 

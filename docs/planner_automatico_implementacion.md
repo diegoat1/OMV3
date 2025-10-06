@@ -9,6 +9,8 @@
 
 Se ha implementado exitosamente un sistema completo de **Plan Nutricional Automático** que calcula automáticamente las calorías y macronutrientes óptimos para cada usuario basándose en:
 
+> ℹ️ Para una visión integral del ecosistema de ONV2 consulta la [Guía completa](guia_completa.md).
+
 - ✅ Datos actuales del usuario (peso, FFM, grasa corporal)
 - ✅ Objetivo definido previamente (de la tabla OBJETIVO)
 - ✅ Velocidad de pérdida/ganancia segura (basada en % de peso corporal)

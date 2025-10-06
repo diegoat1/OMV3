@@ -3302,6 +3302,11 @@ def api_plan_alimentario_info():
     
     username = session['username']
     
+    # Definición de bloques nutricionales estándar
+    BLOQUE_PROTEINA = 20  # gramos
+    BLOQUE_GRASA = 10     # gramos
+    BLOQUE_CARBOHIDRATOS = 25  # gramos
+    
     try:
         basededatos = sqlite3.connect('src/Basededatos')
         cursor = basededatos.cursor()
@@ -3340,6 +3345,31 @@ def api_plan_alimentario_info():
         grasa_total = plan['grasa_total']
         carbohidratos_total = plan['carbohidratos_total']
         
+        # Función helper para calcular bloques
+        def calcular_bloques(gramos, gramos_por_bloque):
+            """Calcula bloques con decimales exactos y redondeados a 0.5"""
+            if gramos == 0:
+                return {
+                    'bloques': 0, 
+                    'bloques_decimal': 0.0,
+                    'bloques_redondeados': 0.0,
+                    'gramos_objetivo': 0, 
+                    'gramos_originales': 0
+                }
+            # Bloques exactos (precisión para cálculos internos)
+            bloques_decimal = round(gramos / gramos_por_bloque, 2)
+            # Bloques redondeados a 0.5 (para UI y constructor)
+            bloques_redondeados = functions.redondear_a_medio_bloque(bloques_decimal)
+            # Bloques enteros (legacy, mostrar en algunos paneles)
+            bloques_entero = max(1, round(bloques_decimal))
+            return {
+                'bloques': bloques_entero,  # Legacy: para algunos paneles
+                'bloques_decimal': bloques_decimal,  # Exacto: para auditoría
+                'bloques_redondeados': bloques_redondeados,  # UI: constructor, generador, tabla
+                'gramos_objetivo': gramos,  # Gramos reales del plan
+                'gramos_originales': gramos
+            }
+        
         # Definir las comidas en el ORDEN DESEADO
         # Usamos OrderedDict para garantizar el orden en todas las versiones de Python
         from collections import OrderedDict
@@ -3352,14 +3382,28 @@ def api_plan_alimentario_info():
         dg = plan_data[7] if len(plan_data) > 7 else 0  # DG = Desayuno Grasa %
         dc = plan_data[8] if len(plan_data) > 8 else 0  # DC = Desayuno Carbohidratos %
         if dp > 0 or dg > 0 or dc > 0:
+            proteina_gramos = round(proteina_total * dp, 2)
+            grasa_gramos = round(grasa_total * dg, 2)
+            carbohidratos_gramos = round(carbohidratos_total * dc, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['desayuno'] = {
                 'activa': True,
-                'proteina': round(proteina_total * dp, 2),  # Calcular gramos reales
-                'grasa': round(grasa_total * dg, 2),
-                'carbohidratos': round(carbohidratos_total * dc, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': dp,
                 'grasa_pct': dg,
                 'carbohidratos_pct': dc,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Desayuno',
                 'codigo': 'D',
                 'orden': 1
@@ -3370,14 +3414,28 @@ def api_plan_alimentario_info():
         mmg = plan_data[10] if len(plan_data) > 10 else 0 # MMG = Media Mañana Grasa %
         mmc = plan_data[11] if len(plan_data) > 11 else 0 # MMC = Media Mañana Carbohidratos %
         if mmp > 0 or mmg > 0 or mmc > 0:
+            proteina_gramos = round(proteina_total * mmp, 2)
+            grasa_gramos = round(grasa_total * mmg, 2)
+            carbohidratos_gramos = round(carbohidratos_total * mmc, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['media_manana'] = {
                 'activa': True,
-                'proteina': round(proteina_total * mmp, 2),
-                'grasa': round(grasa_total * mmg, 2),
-                'carbohidratos': round(carbohidratos_total * mmc, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': mmp,
                 'grasa_pct': mmg,
                 'carbohidratos_pct': mmc,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Media Mañana',
                 'codigo': 'MM',
                 'orden': 2
@@ -3388,14 +3446,28 @@ def api_plan_alimentario_info():
         ag = plan_data[13] if len(plan_data) > 13 else 0  # AG = Almuerzo Grasa %
         ac = plan_data[14] if len(plan_data) > 14 else 0  # AC = Almuerzo Carbohidratos %
         if ap > 0 or ag > 0 or ac > 0:
+            proteina_gramos = round(proteina_total * ap, 2)
+            grasa_gramos = round(grasa_total * ag, 2)
+            carbohidratos_gramos = round(carbohidratos_total * ac, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['almuerzo'] = {
                 'activa': True,
-                'proteina': round(proteina_total * ap, 2),
-                'grasa': round(grasa_total * ag, 2),
-                'carbohidratos': round(carbohidratos_total * ac, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': ap,
                 'grasa_pct': ag,
                 'carbohidratos_pct': ac,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Almuerzo',
                 'codigo': 'A',
                 'orden': 3
@@ -3406,14 +3478,28 @@ def api_plan_alimentario_info():
         mg = plan_data[16] if len(plan_data) > 16 else 0  # MG = Merienda Grasa %
         mc = plan_data[17] if len(plan_data) > 17 else 0  # MC = Merienda Carbohidratos %
         if mp > 0 or mg > 0 or mc > 0:
+            proteina_gramos = round(proteina_total * mp, 2)
+            grasa_gramos = round(grasa_total * mg, 2)
+            carbohidratos_gramos = round(carbohidratos_total * mc, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['merienda'] = {
                 'activa': True,
-                'proteina': round(proteina_total * mp, 2),
-                'grasa': round(grasa_total * mg, 2),
-                'carbohidratos': round(carbohidratos_total * mc, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': mp,
                 'grasa_pct': mg,
                 'carbohidratos_pct': mc,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Merienda',
                 'codigo': 'M',
                 'orden': 4
@@ -3424,14 +3510,28 @@ def api_plan_alimentario_info():
         mtg = plan_data[19] if len(plan_data) > 19 else 0  # MTG = Media Tarde Grasa %
         mtc = plan_data[20] if len(plan_data) > 20 else 0  # MTC = Media Tarde Carbohidratos %
         if mtp > 0 or mtg > 0 or mtc > 0:
+            proteina_gramos = round(proteina_total * mtp, 2)
+            grasa_gramos = round(grasa_total * mtg, 2)
+            carbohidratos_gramos = round(carbohidratos_total * mtc, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['media_tarde'] = {
                 'activa': True,
-                'proteina': round(proteina_total * mtp, 2),
-                'grasa': round(grasa_total * mtg, 2),
-                'carbohidratos': round(carbohidratos_total * mtc, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': mtp,
                 'grasa_pct': mtg,
                 'carbohidratos_pct': mtc,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Media Tarde',
                 'codigo': 'MT',
                 'orden': 5
@@ -3442,14 +3542,28 @@ def api_plan_alimentario_info():
         cg = plan_data[22] if len(plan_data) > 22 else 0  # CG = Cena Grasa %
         cc = plan_data[23] if len(plan_data) > 23 else 0  # CC = Cena Carbohidratos %
         if cp > 0 or cg > 0 or cc > 0:
+            proteina_gramos = round(proteina_total * cp, 2)
+            grasa_gramos = round(grasa_total * cg, 2)
+            carbohidratos_gramos = round(carbohidratos_total * cc, 2)
+            
+            bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
+            bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
+            bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            
             comidas['cena'] = {
                 'activa': True,
-                'proteina': round(proteina_total * cp, 2),
-                'grasa': round(grasa_total * cg, 2),
-                'carbohidratos': round(carbohidratos_total * cc, 2),
+                'proteina': proteina_gramos,
+                'grasa': grasa_gramos,
+                'carbohidratos': carbohidratos_gramos,
                 'proteina_pct': cp,
                 'grasa_pct': cg,
                 'carbohidratos_pct': cc,
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
+                },
                 'nombre': 'Cena',
                 'codigo': 'C',
                 'orden': 6
@@ -3462,7 +3576,13 @@ def api_plan_alimentario_info():
         return jsonify({
             'success': True,
             'plan': plan,
-            'comidas': comidas
+            'comidas': comidas,
+            'bloques_config': {
+                'proteina': BLOQUE_PROTEINA,
+                'grasa': BLOQUE_GRASA,
+                'carbohidratos': BLOQUE_CARBOHIDRATOS,
+                'descripcion': f'1P = {BLOQUE_PROTEINA}g | 1G = {BLOQUE_GRASA}g | 1C = {BLOQUE_CARBOHIDRATOS}g'
+            }
         })
         
     except Exception as e:
@@ -3889,6 +4009,923 @@ def api_plan_alimentario_lista_compras():
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/bloques/ajustar', methods=['POST'])
+@csrf.exempt
+def api_plan_alimentario_bloques_ajustar():
+    """Ajusta bloques de una comida específica y recalcula objetivos"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    username = session['username']
+    
+    # Validar datos requeridos
+    if not data.get('comida') or not data.get('ajustes'):
+        return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
+    
+    # Bloques estándar
+    BLOQUE_PROTEINA = 20
+    BLOQUE_GRASA = 10
+    BLOQUE_CARBOHIDRATOS = 25
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener plan actual
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        plan_data = cursor.fetchone()
+        
+        if not plan_data:
+            return jsonify({'success': False, 'error': 'No hay plan nutricional configurado'})
+        
+        comida_id = data['comida']  # ej: 'desayuno', 'almuerzo', etc.
+        ajustes = data['ajustes']    # ej: {'proteina': +1, 'carbohidratos': -1}
+        
+        # Mapeo de comidas a índices de columnas en DIETA
+        comidas_indices = {
+            'desayuno': {'p': 6, 'g': 7, 'c': 8},
+            'media_manana': {'p': 9, 'g': 10, 'c': 11},
+            'almuerzo': {'p': 12, 'g': 13, 'c': 14},
+            'merienda': {'p': 15, 'g': 16, 'c': 17},
+            'media_tarde': {'p': 18, 'g': 19, 'c': 20},
+            'cena': {'p': 21, 'g': 22, 'c': 23}
+        }
+        
+        if comida_id not in comidas_indices:
+            return jsonify({'success': False, 'error': 'Comida no válida'}), 400
+        
+        # Obtener totales del plan
+        proteina_total = plan_data[3] if len(plan_data) > 3 else 0
+        grasa_total = plan_data[4] if len(plan_data) > 4 else 0
+        carbohidratos_total = plan_data[5] if len(plan_data) > 5 else 0
+        libertad = plan_data[24] if len(plan_data) > 24 else 0
+        
+        # Obtener porcentajes actuales de la comida
+        indices = comidas_indices[comida_id]
+        pct_proteina_actual = plan_data[indices['p']] if len(plan_data) > indices['p'] else 0
+        pct_grasa_actual = plan_data[indices['g']] if len(plan_data) > indices['g'] else 0
+        pct_carbos_actual = plan_data[indices['c']] if len(plan_data) > indices['c'] else 0
+        
+        # Calcular gramos actuales
+        gramos_p = proteina_total * pct_proteina_actual
+        gramos_g = grasa_total * pct_grasa_actual
+        gramos_c = carbohidratos_total * pct_carbos_actual
+        
+        # Aplicar ajustes (convertir bloques a gramos)
+        if 'proteina' in ajustes:
+            gramos_p += ajustes['proteina'] * BLOQUE_PROTEINA
+        if 'grasa' in ajustes:
+            gramos_g += ajustes['grasa'] * BLOQUE_GRASA
+        if 'carbohidratos' in ajustes:
+            gramos_c += ajustes['carbohidratos'] * BLOQUE_CARBOHIDRATOS
+        
+        # Validar que no sean negativos
+        gramos_p = max(0, gramos_p)
+        gramos_g = max(0, gramos_g)
+        gramos_c = max(0, gramos_c)
+        
+        # Calcular nuevos bloques
+        bloques_p = round(gramos_p / BLOQUE_PROTEINA) if gramos_p > 0 else 0
+        bloques_g = round(gramos_g / BLOQUE_GRASA) if gramos_g > 0 else 0
+        bloques_c = round(gramos_c / BLOQUE_CARBOHIDRATOS) if gramos_c > 0 else 0
+        
+        # Calcular nuevos porcentajes (respecto al total diario)
+        nuevo_pct_p = gramos_p / proteina_total if proteina_total > 0 else 0
+        nuevo_pct_g = gramos_g / grasa_total if grasa_total > 0 else 0
+        nuevo_pct_c = gramos_c / carbohidratos_total if carbohidratos_total > 0 else 0
+        
+        # Validar que esté dentro del margen de libertad
+        margen = 1 + (libertad / 100)
+        if (nuevo_pct_p > margen or nuevo_pct_g > margen or nuevo_pct_c > margen):
+            return jsonify({
+                'success': False,
+                'error': f'El ajuste excede el margen de libertad ({libertad}%). Reduce el ajuste o consulta con tu nutricionista.',
+                'margen_libertad': libertad
+            }), 400
+        
+        # Registrar el ajuste en el log para historial
+        for tipo_ajuste, valor in ajustes.items():
+            if valor != 0:  # Solo registrar ajustes no-cero
+                cursor.execute('''
+                    INSERT INTO PLAN_BLOQUES_AJUSTES_LOG
+                    (USER_DNI, COMIDA, TIPO_AJUSTE, VALOR_AJUSTE,
+                     BLOQUES_RESULTADO_P, BLOQUES_RESULTADO_G, BLOQUES_RESULTADO_C,
+                     GRAMOS_RESULTADO_P, GRAMOS_RESULTADO_G, GRAMOS_RESULTADO_C,
+                     APLICADO_DESDE)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    user_dni, comida_id, tipo_ajuste, valor,
+                    bloques_p, bloques_g, bloques_c,
+                    round(gramos_p, 2), round(gramos_g, 2), round(gramos_c, 2),
+                    'web'
+                ))
+        
+        basededatos.commit()
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'comida': comida_id,
+            'ajuste_aplicado': ajustes,
+            'resultado': {
+                'bloques': {
+                    'proteina': bloques_p,
+                    'grasa': bloques_g,
+                    'carbohidratos': bloques_c,
+                    'resumen': f"{bloques_p}P · {bloques_g}G · {bloques_c}C"
+                },
+                'gramos': {
+                    'proteina': round(gramos_p, 2),
+                    'grasa': round(gramos_g, 2),
+                    'carbohidratos': round(gramos_c, 2)
+                },
+                'porcentajes': {
+                    'proteina': round(nuevo_pct_p, 4),
+                    'grasa': round(nuevo_pct_g, 4),
+                    'carbohidratos': round(nuevo_pct_c, 4)
+                }
+            },
+            'nota': 'Estos son valores sugeridos. Para guardarlos permanentemente, actualiza tu plan en la tabla DIETA.'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/bloques/sugerencias')
+def api_plan_alimentario_bloques_sugerencias():
+    """Obtiene sugerencias de bloques: presets globales + sugerencias dinámicas + favoritos del usuario"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    username = session['username']
+    comida_param = request.args.get('comida')  # Opcional: filtrar por comida
+    
+    # Bloques estándar
+    BLOQUE_PROTEINA = 20
+    BLOQUE_GRASA = 10
+    BLOQUE_CARBOHIDRATOS = 25
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Obtener plan actual del usuario
+        cursor.execute('SELECT * FROM DIETA WHERE NOMBRE_APELLIDO=?', [username])
+        plan_data = cursor.fetchone()
+        
+        if not plan_data:
+            return jsonify({'success': False, 'error': 'No hay plan nutricional configurado'})
+        
+        libertad = plan_data[24] if len(plan_data) > 24 else 0
+        
+        sugerencias = {
+            'presets_globales': [],
+            'favoritos_usuario': [],
+            'sugerencias_dinamicas': [],
+            'ajustes_recientes': []
+        }
+        
+        # 1. PRESETS GLOBALES del staff
+        query_presets = '''
+            SELECT ID, COMIDA, PROTEINA, GRASA, CARBOHIDRATOS,
+                   PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+                   ALIAS, DESCRIPCION, VECES_USADA
+            FROM PLAN_BLOQUES_PRESETS
+            WHERE ES_PRESET_GLOBAL = 1
+        '''
+        params_presets = []
+        
+        if comida_param:
+            query_presets += ' AND COMIDA = ?'
+            params_presets.append(comida_param)
+        
+        query_presets += ' ORDER BY VECES_USADA DESC, ALIAS ASC'
+        
+        cursor.execute(query_presets, params_presets)
+        presets = cursor.fetchall()
+        
+        for preset in presets:
+            sugerencias['presets_globales'].append({
+                'id': preset[0],
+                'comida': preset[1],
+                'bloques': {
+                    'proteina': preset[2],
+                    'grasa': preset[3],
+                    'carbohidratos': preset[4],
+                    'resumen': f"{preset[2]}P · {preset[3]}G · {preset[4]}C"
+                },
+                'gramos': {
+                    'proteina': preset[5],
+                    'grasa': preset[6],
+                    'carbohidratos': preset[7]
+                },
+                'alias': preset[8],
+                'descripcion': preset[9],
+                'veces_usada': preset[10],
+                'tipo': 'preset_global'
+            })
+        
+        # 2. FAVORITOS DEL USUARIO
+        query_favoritos = '''
+            SELECT ID, COMIDA, PROTEINA, GRASA, CARBOHIDRATOS,
+                   PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+                   ALIAS, DESCRIPCION, ULTIMA_VEZ_USADA
+            FROM PLAN_BLOQUES_PRESETS
+            WHERE USER_DNI = ? AND ES_FAVORITA = 1
+        '''
+        params_favoritos = [user_dni]
+        
+        if comida_param:
+            query_favoritos += ' AND COMIDA = ?'
+            params_favoritos.append(comida_param)
+        
+        query_favoritos += ' ORDER BY ULTIMA_VEZ_USADA DESC, ALIAS ASC'
+        
+        cursor.execute(query_favoritos, params_favoritos)
+        favoritos = cursor.fetchall()
+        
+        for fav in favoritos:
+            sugerencias['favoritos_usuario'].append({
+                'id': fav[0],
+                'comida': fav[1],
+                'bloques': {
+                    'proteina': fav[2],
+                    'grasa': fav[3],
+                    'carbohidratos': fav[4],
+                    'resumen': f"{fav[2]}P · {fav[3]}G · {fav[4]}C"
+                },
+                'gramos': {
+                    'proteina': fav[5],
+                    'grasa': fav[6],
+                    'carbohidratos': fav[7]
+                },
+                'alias': fav[8],
+                'descripcion': fav[9],
+                'ultima_vez_usada': fav[10],
+                'tipo': 'favorito'
+            })
+        
+        # 3. SUGERENCIAS DINÁMICAS basadas en alimentos reales de GRUPOSALIMENTOS
+        proteina_total = plan_data[3] if len(plan_data) > 3 else 0
+        grasa_total = plan_data[4] if len(plan_data) > 4 else 0
+        carbohidratos_total = plan_data[5] if len(plan_data) > 5 else 0
+        
+        # Cargar catálogo de alimentos con bloques calculados
+        catalogo_alimentos = functions.obtener_catalogo_alimentos_bloques()
+        
+        # Mapeo de comidas
+        comidas_indices = {
+            'desayuno': {'p': 6, 'g': 7, 'c': 8, 'nombre': 'Desayuno'},
+            'media_manana': {'p': 9, 'g': 10, 'c': 11, 'nombre': 'Media Mañana'},
+            'almuerzo': {'p': 12, 'g': 13, 'c': 14, 'nombre': 'Almuerzo'},
+            'merienda': {'p': 15, 'g': 16, 'c': 17, 'nombre': 'Merienda'},
+            'media_tarde': {'p': 18, 'g': 19, 'c': 20, 'nombre': 'Media Tarde'},
+            'cena': {'p': 21, 'g': 22, 'c': 23, 'nombre': 'Cena'}
+        }
+        
+        comidas_a_procesar = [comida_param] if comida_param and comida_param in comidas_indices else comidas_indices.keys()
+        
+        for comida_id in comidas_a_procesar:
+            if comida_id not in comidas_indices:
+                continue
+                
+            indices = comidas_indices[comida_id]
+            pct_p_base = plan_data[indices['p']] if len(plan_data) > indices['p'] else 0
+            pct_g_base = plan_data[indices['g']] if len(plan_data) > indices['g'] else 0
+            pct_c_base = plan_data[indices['c']] if len(plan_data) > indices['c'] else 0
+            
+            if pct_p_base == 0 and pct_g_base == 0 and pct_c_base == 0:
+                continue  # Comida no activa
+            
+            gramos_p_actual = proteina_total * pct_p_base
+            gramos_g_actual = grasa_total * pct_g_base
+            gramos_c_actual = carbohidratos_total * pct_c_base
+            
+            # Redondear bloques a pasos de 0.5 para sincronizar con catálogo
+            bloques_p_exacto = gramos_p_actual / BLOQUE_PROTEINA if gramos_p_actual > 0 else 0
+            bloques_g_exacto = gramos_g_actual / BLOQUE_GRASA if gramos_g_actual > 0 else 0
+            bloques_c_exacto = gramos_c_actual / BLOQUE_CARBOHIDRATOS if gramos_c_actual > 0 else 0
+            
+            bloques_p_actual = functions.redondear_a_medio_bloque(bloques_p_exacto)
+            bloques_g_actual = functions.redondear_a_medio_bloque(bloques_g_exacto)
+            bloques_c_actual = functions.redondear_a_medio_bloque(bloques_c_exacto)
+            
+            # Generar combinaciones de alimentos reales FILTRADAS por momento del día
+            objetivo_bloques = {
+                'proteina': bloques_p_actual,
+                'grasa': bloques_g_actual,
+                'carbohidratos': bloques_c_actual
+            }
+            
+            combinaciones = functions.generar_combinaciones_alimentos(
+                objetivo_bloques, 
+                catalogo_alimentos,
+                max_alimentos=3,  # Permitir hasta 3 alimentos
+                momento_comida=comida_id  # Filtrar por momento del día
+            )
+            
+            # Agregar combinaciones encontradas (ya vienen filtradas por tolerancia)
+            for combo in combinaciones:
+                bloques_combo = combo['bloques_total']
+                
+                # Calcular diferencias para mostrar al usuario
+                diff_p = bloques_combo['proteina'] - bloques_p_actual
+                diff_g = bloques_combo['grasa'] - bloques_g_actual
+                diff_c = bloques_combo['carbohidratos'] - bloques_c_actual
+                
+                # Construir texto de diferencia para badge
+                diff_text = []
+                if abs(diff_p) > 0.1:
+                    diff_text.append(f"{diff_p:+.1f}P")
+                if abs(diff_g) > 0.1:
+                    diff_text.append(f"{diff_g:+.1f}G")
+                if abs(diff_c) > 0.1:
+                    diff_text.append(f"{diff_c:+.1f}C")
+                diff_display = ' '.join(diff_text) if diff_text else "Exacto"
+                
+                # Construir descripción enriquecida con porciones
+                alimentos_detalle = []
+                for a in combo['alimentos']:
+                    porciones = a.get('porciones', 1)
+                    if porciones > 1:
+                        alimentos_detalle.append(f"{a['nombre_completo']} × {porciones}")
+                    else:
+                        alimentos_detalle.append(a['nombre_completo'])
+                
+                alimentos_texto = ' + '.join(alimentos_detalle)
+                
+                # Calcular gramos para la respuesta
+                gramos_p_combo = bloques_combo['proteina'] * BLOQUE_PROTEINA
+                gramos_g_combo = bloques_combo['grasa'] * BLOQUE_GRASA
+                gramos_c_combo = bloques_combo['carbohidratos'] * BLOQUE_CARBOHIDRATOS
+                
+                # El generador ya aplicó tolerancia estricta, no necesitamos fallback aquí
+                sugerencias['sugerencias_dinamicas'].append({
+                    'comida': comida_id,
+                    'bloques': {
+                        'proteina': bloques_combo['proteina'],
+                        'grasa': bloques_combo['grasa'],
+                        'carbohidratos': bloques_combo['carbohidratos'],
+                        'resumen': f"{bloques_combo['proteina']:.2f}P · {bloques_combo['grasa']:.2f}G · {bloques_combo['carbohidratos']:.2f}C"
+                    },
+                    'gramos': {
+                        'proteina': round(gramos_p_combo, 1),
+                        'grasa': round(gramos_g_combo, 1),
+                        'carbohidratos': round(gramos_c_combo, 1)
+                    },
+                    'alias': combo['descripcion'],
+                    'descripcion': alimentos_texto,
+                    'tipo': 'grupos',
+                    'comida_nombre': indices['nombre'],
+                    'error': round(combo['error'], 2),
+                    'diff_display': diff_display,
+                    'requiere_validacion': False,  # Ya pasó el filtro estricto
+                    'alimentos': [
+                        {
+                            'categoria': a['categoria'],
+                            'descripcion': a['descripcion'],
+                            'porcion_base': a['porcion'],
+                            'porciones': a.get('porciones', 1),
+                            'gramos_estimados': round(a['porcion'] * a.get('porciones', 1), 0),
+                            'bloques_unitarios': {
+                                'proteina': a['bloques']['proteina'],
+                                'grasa': a['bloques']['grasa'],
+                                'carbohidratos': a['bloques']['carbohidratos']
+                            },
+                            'gramos_totales': a.get('gramos_total', {
+                                'proteina': round(a['proteina'] * a.get('porciones', 1), 1),
+                                'grasa': round(a['grasa'] * a.get('porciones', 1), 1),
+                                'carbohidratos': round(a['carbohidratos'] * a.get('porciones', 1), 1)
+                            })
+                        } for a in combo['alimentos']
+                    ]
+                })
+        
+        # 4. AJUSTES RECIENTES del usuario (últimos 7 días)
+        cursor.execute('''
+            SELECT COMIDA, TIPO_AJUSTE, VALOR_AJUSTE,
+                   BLOQUES_RESULTADO_P, BLOQUES_RESULTADO_G, BLOQUES_RESULTADO_C,
+                   GRAMOS_RESULTADO_P, GRAMOS_RESULTADO_G, GRAMOS_RESULTADO_C,
+                   TIMESTAMP
+            FROM PLAN_BLOQUES_AJUSTES_LOG
+            WHERE USER_DNI = ? 
+            AND TIMESTAMP >= datetime('now', '-7 days')
+            ORDER BY TIMESTAMP DESC
+            LIMIT 10
+        ''', (user_dni,))
+        
+        ajustes = cursor.fetchall()
+        
+        for ajuste in ajustes:
+            sugerencias['ajustes_recientes'].append({
+                'comida': ajuste[0],
+                'tipo_ajuste': ajuste[1],
+                'valor_ajuste': ajuste[2],
+                'bloques': {
+                    'proteina': ajuste[3],
+                    'grasa': ajuste[4],
+                    'carbohidratos': ajuste[5],
+                    'resumen': f"{ajuste[3]}P · {ajuste[4]}G · {ajuste[5]}C"
+                },
+                'gramos': {
+                    'proteina': ajuste[6],
+                    'grasa': ajuste[7],
+                    'carbohidratos': ajuste[8]
+                },
+                'timestamp': ajuste[9],
+                'alias': f"Ajuste reciente: {'+' if ajuste[2] > 0 else ''}{ajuste[2]} {ajuste[1][0].upper()}",
+                'tipo': 'reciente'
+            })
+        
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'sugerencias': sugerencias,
+            'libertad': libertad,
+            'bloques_config': {
+                'proteina': BLOQUE_PROTEINA,
+                'grasa': BLOQUE_GRASA,
+                'carbohidratos': BLOQUE_CARBOHIDRATOS
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/bloques/sugerencias', methods=['POST'])
+@csrf.exempt
+def api_plan_alimentario_bloques_guardar_favorito():
+    """Guarda una combinación de bloques como favorita del usuario"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    data = request.get_json()
+    
+    # Validar datos requeridos
+    required = ['comida', 'proteina', 'grasa', 'carbohidratos']
+    if not all(key in data for key in required):
+        return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Calcular gramos basados en bloques estándar
+        BLOQUE_PROTEINA = 20
+        BLOQUE_GRASA = 10
+        BLOQUE_CARBOHIDRATOS = 25
+        
+        proteina_gramos = data['proteina'] * BLOQUE_PROTEINA
+        grasa_gramos = data['grasa'] * BLOQUE_GRASA
+        carbohidratos_gramos = data['carbohidratos'] * BLOQUE_CARBOHIDRATOS
+        
+        alias = data.get('alias', f"{data['proteina']}P · {data['grasa']}G · {data['carbohidratos']}C")
+        descripcion = data.get('descripcion', 'Mi combinación favorita')
+        
+        # Insertar nuevo favorito
+        cursor.execute('''
+            INSERT INTO PLAN_BLOQUES_PRESETS
+            (USER_DNI, COMIDA, PROTEINA, GRASA, CARBOHIDRATOS,
+             PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+             ALIAS, DESCRIPCION, ES_FAVORITA, ES_PRESET_GLOBAL,
+             ULTIMA_VEZ_USADA, VECES_USADA)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, datetime('now'), 0)
+        ''', (
+            user_dni, data['comida'],
+            data['proteina'], data['grasa'], data['carbohidratos'],
+            proteina_gramos, grasa_gramos, carbohidratos_gramos,
+            alias, descripcion
+        ))
+        
+        favorito_id = cursor.lastrowid
+        basededatos.commit()
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Favorito guardado exitosamente',
+            'favorito_id': favorito_id,
+            'favorito': {
+                'id': favorito_id,
+                'comida': data['comida'],
+                'bloques': {
+                    'proteina': data['proteina'],
+                    'grasa': data['grasa'],
+                    'carbohidratos': data['carbohidratos'],
+                    'resumen': f"{data['proteina']}P · {data['grasa']}G · {data['carbohidratos']}C"
+                },
+                'alias': alias,
+                'descripcion': descripcion
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/bloques/sugerencias/<int:favorito_id>', methods=['PATCH'])
+@csrf.exempt
+def api_plan_alimentario_bloques_actualizar_favorito(favorito_id):
+    """Actualiza el alias/descripción o marca/desmarca como favorita una sugerencia"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    data = request.get_json()
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Verificar que el favorito pertenece al usuario
+        cursor.execute('''
+            SELECT ID FROM PLAN_BLOQUES_PRESETS
+            WHERE ID = ? AND USER_DNI = ?
+        ''', (favorito_id, user_dni))
+        
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'error': 'Favorito no encontrado o no autorizado'}), 404
+        
+        # Construir UPDATE dinámicamente según campos recibidos
+        campos_actualizar = []
+        valores = []
+        
+        if 'alias' in data:
+            campos_actualizar.append('ALIAS = ?')
+            valores.append(data['alias'])
+        
+        if 'descripcion' in data:
+            campos_actualizar.append('DESCRIPCION = ?')
+            valores.append(data['descripcion'])
+        
+        if 'es_favorita' in data:
+            campos_actualizar.append('ES_FAVORITA = ?')
+            valores.append(1 if data['es_favorita'] else 0)
+        
+        if 'marcar_usada' in data and data['marcar_usada']:
+            campos_actualizar.append('ULTIMA_VEZ_USADA = datetime("now")')
+            campos_actualizar.append('VECES_USADA = VECES_USADA + 1')
+        
+        if not campos_actualizar:
+            return jsonify({'success': False, 'error': 'No hay campos para actualizar'}), 400
+        
+        valores.append(favorito_id)
+        
+        query = f'''
+            UPDATE PLAN_BLOQUES_PRESETS
+            SET {', '.join(campos_actualizar)}
+            WHERE ID = ?
+        '''
+        
+        cursor.execute(query, valores)
+        basededatos.commit()
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Favorito actualizado exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/plan-alimentario/bloques/sugerencias/<int:favorito_id>', methods=['DELETE'])
+@csrf.exempt
+def api_plan_alimentario_bloques_eliminar_favorito(favorito_id):
+    """Elimina un favorito del usuario"""
+    if 'DNI' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    try:
+        basededatos = sqlite3.connect('src/Basededatos')
+        cursor = basededatos.cursor()
+        
+        # Verificar que el favorito pertenece al usuario y NO es preset global
+        cursor.execute('''
+            SELECT ID FROM PLAN_BLOQUES_PRESETS
+            WHERE ID = ? AND USER_DNI = ? AND ES_PRESET_GLOBAL = 0
+        ''', (favorito_id, user_dni))
+        
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'error': 'Favorito no encontrado, no autorizado o es preset global'}), 404
+        
+        # Eliminar favorito
+        cursor.execute('DELETE FROM PLAN_BLOQUES_PRESETS WHERE ID = ?', (favorito_id,))
+        basededatos.commit()
+        basededatos.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Favorito eliminado exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+##############################################
+### CONSTRUCTOR DE COMBINACIONES ###
+##############################################
+
+@app.route('/api/grupos-alimentos')
+def api_grupos_alimentos():
+    """
+    Retorna alimentos de GRUPOSALIMENTOS filtrados opcionalmente por macro dominante.
+    Usado por el constructor de combinaciones.
+    
+    Query params:
+    - macro: P, G o C (opcional) - filtra por macro dominante
+    - momento: desayuno, almuerzo, cena, etc. (opcional)
+    """
+    macro_filtro = request.args.get('macro')
+    momento_filtro = request.args.get('momento')
+    
+    # Obtener catálogo completo
+    catalogo = functions.obtener_catalogo_alimentos_bloques()
+    
+    # Aplicar filtros
+    if macro_filtro:
+        # Usar macros_fuertes para filtrado más inclusivo
+        catalogo = [a for a in catalogo 
+                   if macro_filtro.upper() in a.get('macros_fuertes', [a['macro_dominante']])]
+    
+    if momento_filtro:
+        catalogo = [a for a in catalogo if momento_filtro in a.get('momentos', [])]
+    
+    # Formatear respuesta
+    alimentos_response = []
+    for alimento in catalogo:
+        alimentos_response.append({
+            'categoria': alimento['categoria'],
+            'descripcion': alimento['descripcion'],
+            'porcion_gramos': alimento['porcion'],
+            'bloques_unitarios': {
+                'proteina': alimento['bloques']['proteina'],  # Ya redondeado a 0.5
+                'grasa': alimento['bloques']['grasa'],
+                'carbohidratos': alimento['bloques']['carbohidratos']
+            },
+            'bloques_exactos': {  # Valores exactos para tooltips/auditoría
+                'proteina': round(alimento['bloques_exactos']['proteina'], 4),
+                'grasa': round(alimento['bloques_exactos']['grasa'], 4),
+                'carbohidratos': round(alimento['bloques_exactos']['carbohidratos'], 4)
+            },
+            'gramos_porcion': {
+                'proteina': round(alimento['proteina'], 2),
+                'grasa': round(alimento['grasa'], 2),
+                'carbohidratos': round(alimento['carbohidratos'], 2)
+            },
+            'gramos_100g': {
+                'proteina': alimento['proteina_100g'],
+                'grasa': alimento['grasa_100g'],
+                'carbohidratos': alimento['carbohidratos_100g']
+            },
+            'macro_dominante': alimento['macro_dominante'],
+            'macros_fuertes': alimento.get('macros_fuertes', [alimento['macro_dominante']]),
+            'momentos': alimento.get('momentos', []),
+            'alcohol_info': alimento.get('alcohol_info')
+        })
+    
+    return jsonify({
+        'success': True,
+        'alimentos': alimentos_response,
+        'total': len(alimentos_response)
+    })
+
+@app.route('/api/plan-alimentario/bloques/constructor', methods=['POST'])
+@csrf.exempt
+def api_plan_alimentario_bloques_guardar_constructor():
+    """
+    Guarda una combinación creada por el usuario en el constructor.
+    Similar a guardar favorito pero con detalles completos de alimentos.
+    """
+    if 'username' not in session:
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    user_dni = session.get('DNI')
+    
+    data = request.get_json()
+    comida = data.get('comida')
+    alimentos = data.get('alimentos', [])  # [{categoria, descripcion, porciones}, ...]
+    alias = data.get('alias')
+    enviar_revision = data.get('enviar_revision', False)
+    
+    if not comida or not alimentos or not alias:
+        return jsonify({'success': False, 'error': 'Faltan datos'}), 400
+    
+    # Calcular bloques totales
+    BLOQUE_PROTEINA = 20
+    BLOQUE_GRASA = 10
+    BLOQUE_CARBOHIDRATOS = 25
+    
+    catalogo = functions.obtener_catalogo_alimentos_bloques()
+    
+    bloques_total_p = 0
+    bloques_total_g = 0
+    bloques_total_c = 0
+    gramos_total_p = 0
+    gramos_total_g = 0
+    gramos_total_c = 0
+    
+    alimentos_detalle = []
+    
+    for alimento_data in alimentos:
+        # Buscar en catálogo
+        alimento_encontrado = next((a for a in catalogo 
+                                   if a['categoria'] == alimento_data['categoria'] 
+                                   and a['descripcion'] == alimento_data['descripcion']), None)
+        
+        if alimento_encontrado:
+            porciones = alimento_data.get('porciones', 1)
+            bloques_total_p += alimento_encontrado['bloques']['proteina'] * porciones
+            bloques_total_g += alimento_encontrado['bloques']['grasa'] * porciones
+            bloques_total_c += alimento_encontrado['bloques']['carbohidratos'] * porciones
+            
+            gramos_total_p += alimento_encontrado['proteina'] * porciones
+            gramos_total_g += alimento_encontrado['grasa'] * porciones
+            gramos_total_c += alimento_encontrado['carbohidratos'] * porciones
+            
+            alimentos_detalle.append({
+                'categoria': alimento_data['categoria'],
+                'descripcion': alimento_data['descripcion'],
+                'porciones': porciones,
+                'porcion_gramos': alimento_encontrado['porcion'],
+                'bloques': {
+                    'proteina': alimento_encontrado['bloques']['proteina'],
+                    'grasa': alimento_encontrado['bloques']['grasa'],
+                    'carbohidratos': alimento_encontrado['bloques']['carbohidratos']
+                }
+            })
+    
+    # Preparar datos para biblioteca
+    import json
+    detalle_json = json.dumps(alimentos_detalle, ensure_ascii=False)
+    creador_username = session.get('username', 'Usuario')
+    es_publica = 1 if data.get('es_publica') else 0
+    
+    basededatos = sqlite3.connect('src/Basededatos')
+    cursor = basededatos.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO PLAN_BLOQUES_PRESETS
+            (USER_DNI, COMIDA, PROTEINA, GRASA, CARBOHIDRATOS,
+             PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+             ALIAS, DESCRIPCION, ES_FAVORITA, ES_PRESET_GLOBAL,
+             ULTIMA_VEZ_USADA, VECES_USADA,
+             CREADOR_USERNAME, DETALLE_JSON, ES_PUBLICA, FAVORITOS_TOTAL)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, 0)
+        ''', (
+            user_dni, comida,
+            round(bloques_total_p, 1), round(bloques_total_g, 1), round(bloques_total_c, 1),
+            round(gramos_total_p, 2), round(gramos_total_g, 2), round(gramos_total_c, 2),
+            alias,
+            ' + '.join([f"{a['categoria']} ({a['descripcion']}) × {a['porciones']}" for a in alimentos_detalle]),
+            1,  # ES_FAVORITA
+            0,  # ES_PRESET_GLOBAL
+            creador_username,
+            detalle_json,
+            es_publica
+        ))
+        
+        favorito_id = cursor.lastrowid
+        basededatos.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Combinación guardada exitosamente',
+            'favorito_id': favorito_id,
+            'bloques_total': {
+                'proteina': round(bloques_total_p, 1),
+                'grasa': round(bloques_total_g, 1),
+                'carbohidratos': round(bloques_total_c, 1)
+            }
+        })
+        
+    except Exception as e:
+        basededatos.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        basededatos.close()
+
+@app.route('/api/plan-alimentario/biblioteca')
+def api_biblioteca_combinaciones():
+    """
+    Devuelve todas las combinaciones públicas de la biblioteca.
+    Ordenadas por popularidad (favoritos) y fecha.
+    """
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        conn = sqlite3.connect('src/Basededatos')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT ID, COMIDA, ALIAS, DESCRIPCION,
+                   PROTEINA, GRASA, CARBOHIDRATOS,
+                   PROTEINA_GRAMOS, GRASA_GRAMOS, CARBOHIDRATOS_GRAMOS,
+                   CREADOR_USERNAME, FAVORITOS_TOTAL, DETALLE_JSON, FECHA_CREACION
+            FROM PLAN_BLOQUES_PRESETS
+            WHERE ES_PUBLICA = 1
+            ORDER BY FAVORITOS_TOTAL DESC, FECHA_CREACION DESC
+        """)
+        filas = cursor.fetchall()
+        conn.close()
+        
+        items = []
+        for r in filas:
+            items.append({
+                'id': r[0],
+                'comida': r[1],
+                'alias': r[2],
+                'descripcion': r[3],
+                'bloques': {
+                    'proteina': r[4],
+                    'grasa': r[5],
+                    'carbohidratos': r[6],
+                    'resumen': f"{r[4]}P · {r[5]}G · {r[6]}C"
+                },
+                'gramos': {
+                    'proteina': r[7],
+                    'grasa': r[8],
+                    'carbohidratos': r[9]
+                },
+                'creador_username': r[10] or 'Anónimo',
+                'favoritos_total': r[11] or 0,
+                'detalle_json': r[12],
+                'fecha_creacion': r[13],
+                'tipo': 'biblioteca'
+            })
+        
+        return jsonify({
+            'success': True,
+            'biblioteca': items
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/plan-alimentario/favoritos/<int:preset_id>', methods=['POST', 'DELETE'])
+@csrf.exempt
+def api_favorito_toggle(preset_id):
+    """
+    Marca o desmarca una combinación como favorita.
+    POST: Agregar a favoritos
+    DELETE: Quitar de favoritos
+    Los triggers de BD actualizan FAVORITOS_TOTAL automáticamente.
+    """
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    user_dni = session['DNI']
+    
+    try:
+        conn = sqlite3.connect('src/Basededatos')
+        cursor = conn.cursor()
+        
+        if request.method == 'POST':
+            # Agregar a favoritos (INSERT OR IGNORE evita duplicados)
+            cursor.execute("""
+                INSERT OR IGNORE INTO PLAN_BLOQUES_FAVORITOS (PRESET_ID, USER_DNI)
+                VALUES (?, ?)
+            """, (preset_id, user_dni))
+        else:  # DELETE
+            # Quitar de favoritos
+            cursor.execute("""
+                DELETE FROM PLAN_BLOQUES_FAVORITOS
+                WHERE PRESET_ID = ? AND USER_DNI = ?
+            """, (preset_id, user_dni))
+        
+        conn.commit()
+        
+        # Obtener el contador actualizado (actualizado por trigger)
+        cursor.execute("""
+            SELECT FAVORITOS_TOTAL FROM PLAN_BLOQUES_PRESETS
+            WHERE ID = ?
+        """, (preset_id,))
+        result = cursor.fetchone()
+        favoritos_total = result[0] if result else 0
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'favoritos_total': favoritos_total,
+            'action': 'added' if request.method == 'POST' else 'removed'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 ##############################################
 ### NUEVOS ENDPOINTS PARA FUNCIONALIDADES EXTENDIDAS ###
@@ -4464,6 +5501,10 @@ def api_programas_prevencion():
             return jsonify({'error': str(e)}), 500
 
 ### FUNCIÓN PARA CORRER LA APLICACIÓN
+
+# Inicializar tablas de bloques al startup
+functions.crear_tablas_bloques_sugerencias()
+functions.insertar_presets_globales_bloques()
 
 if __name__ == '__main__':
     app.config['TEMPLATES AUTO_RELOAD'] = True
