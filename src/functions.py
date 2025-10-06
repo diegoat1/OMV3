@@ -4326,6 +4326,7 @@ def obtener_catalogo_alimentos_bloques():
     BLOQUE_PROTEINA = 20
     BLOQUE_GRASA = 10
     BLOQUE_CARBOHIDRATOS = 25
+    BLOQUE_ENERGIA = 100  # 1E = 100 kcal
     
     # Mapeo de categorías a momentos del día (expandido para colaciones)
     momentos_por_categoria = {
@@ -4415,6 +4416,18 @@ def obtener_catalogo_alimentos_bloques():
             umbral = valor_maximo * 0.8
             macros_fuertes = [macro for macro, valor in macros.items() if valor >= umbral]
             
+            # Calcular bloques de energía (E)
+            # E_total = energía total de P+G+C
+            # E_gc = energía solo de G+C (para modo "Proteína")
+            kcal_total = (proteina * 4) + (grasa * 9) + (carbohidratos * 4)
+            kcal_gc = (grasa * 9) + (carbohidratos * 4)
+            
+            bloques_e_total_exacto = kcal_total / BLOQUE_ENERGIA if kcal_total > 0 else 0
+            bloques_e_gc_exacto = kcal_gc / BLOQUE_ENERGIA if kcal_gc > 0 else 0
+            
+            bloques_e_total = redondear_a_medio_bloque(bloques_e_total_exacto)
+            bloques_e_gc = redondear_a_medio_bloque(bloques_e_gc_exacto)
+            
             # Asignar momentos del día
             momentos = momentos_por_categoria.get(categoria, ['almuerzo', 'cena'])  # Default a comidas principales
             
@@ -4438,6 +4451,15 @@ def obtener_catalogo_alimentos_bloques():
                     'proteina': bloques_p_exacto,
                     'grasa': bloques_g_exacto,
                     'carbohidratos': bloques_c_exacto
+                },
+                'energia_bloques': {
+                    'kcal_total': round(kcal_total, 1),
+                    'kcal_gc': round(kcal_gc, 1),
+                    'bloques_total': bloques_e_total,
+                    'bloques_gc': bloques_e_gc,
+                    'bloques_total_exacto': bloques_e_total_exacto,
+                    'bloques_gc_exacto': bloques_e_gc_exacto,
+                    'bloque_kcal': BLOQUE_ENERGIA
                 },
                 'alcohol_info': alcohol_info,
                 'macro_dominante': macro_dominante,

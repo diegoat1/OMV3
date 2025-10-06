@@ -3306,6 +3306,7 @@ def api_plan_alimentario_info():
     BLOQUE_PROTEINA = 20  # gramos
     BLOQUE_GRASA = 10     # gramos
     BLOQUE_CARBOHIDRATOS = 25  # gramos
+    BLOQUE_ENERGIA = 100  # 1E = 100 kcal
     
     try:
         basededatos = sqlite3.connect('src/Basededatos')
@@ -3370,6 +3371,30 @@ def api_plan_alimentario_info():
                 'gramos_originales': gramos
             }
         
+        # Función helper para calcular energía
+        def calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos):
+            """Calcula bloques de energía (E) a partir de macros en gramos"""
+            # E_total = energía completa de P+G+C
+            # E_gc = energía solo de G+C (para modo Proteína)
+            kcal_total = (proteina_gramos * 4) + (grasa_gramos * 9) + (carbohidratos_gramos * 4)
+            kcal_gc = (grasa_gramos * 9) + (carbohidratos_gramos * 4)
+            
+            bloques_e_total_decimal = kcal_total / BLOQUE_ENERGIA if kcal_total > 0 else 0
+            bloques_e_gc_decimal = kcal_gc / BLOQUE_ENERGIA if kcal_gc > 0 else 0
+            
+            bloques_e_total = functions.redondear_a_medio_bloque(bloques_e_total_decimal)
+            bloques_e_gc = functions.redondear_a_medio_bloque(bloques_e_gc_decimal)
+            
+            return {
+                'kcal_total': round(kcal_total, 1),
+                'kcal_gc': round(kcal_gc, 1),
+                'bloques_total': bloques_e_total,
+                'bloques_gc': bloques_e_gc,
+                'bloques_total_decimal': round(bloques_e_total_decimal, 2),
+                'bloques_gc_decimal': round(bloques_e_gc_decimal, 2),
+                'bloque_kcal': BLOQUE_ENERGIA
+            }
+        
         # Definir las comidas en el ORDEN DESEADO
         # Usamos OrderedDict para garantizar el orden en todas las versiones de Python
         from collections import OrderedDict
@@ -3389,6 +3414,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['desayuno'] = {
                 'activa': True,
@@ -3404,6 +3430,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Desayuno',
                 'codigo': 'D',
                 'orden': 1
@@ -3421,6 +3448,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['media_manana'] = {
                 'activa': True,
@@ -3436,6 +3464,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Media Mañana',
                 'codigo': 'MM',
                 'orden': 2
@@ -3453,6 +3482,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['almuerzo'] = {
                 'activa': True,
@@ -3468,6 +3498,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Almuerzo',
                 'codigo': 'A',
                 'orden': 3
@@ -3485,6 +3516,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['merienda'] = {
                 'activa': True,
@@ -3500,6 +3532,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Merienda',
                 'codigo': 'M',
                 'orden': 4
@@ -3517,6 +3550,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['media_tarde'] = {
                 'activa': True,
@@ -3532,6 +3566,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Media Tarde',
                 'codigo': 'MT',
                 'orden': 5
@@ -3549,6 +3584,7 @@ def api_plan_alimentario_info():
             bloques_p = calcular_bloques(proteina_gramos, BLOQUE_PROTEINA)
             bloques_g = calcular_bloques(grasa_gramos, BLOQUE_GRASA)
             bloques_c = calcular_bloques(carbohidratos_gramos, BLOQUE_CARBOHIDRATOS)
+            energia = calcular_energia(proteina_gramos, grasa_gramos, carbohidratos_gramos)
             
             comidas['cena'] = {
                 'activa': True,
@@ -3564,6 +3600,7 @@ def api_plan_alimentario_info():
                     'carbohidratos': bloques_c,
                     'resumen': f"{bloques_p['bloques']}P · {bloques_g['bloques']}G · {bloques_c['bloques']}C"
                 },
+                'energia': energia,
                 'nombre': 'Cena',
                 'codigo': 'C',
                 'orden': 6

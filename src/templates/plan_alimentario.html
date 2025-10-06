@@ -156,19 +156,48 @@
                         </h4>
                     </div>
                     <div class="card-body">
+                        <!-- Selector de Nivel de Complejidad -->
+                        <div class="card mb-4 border-2">
+                            <div class="card-body">
+                                <h6 class="mb-3"><i class="fa fa-sliders-h me-2"></i>Nivel de Complejidad</h6>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="complexityMode" id="modeCompleto" value="completo" checked>
+                                    <label class="btn btn-outline-primary" for="modeCompleto">
+                                        <i class="fa fa-list me-1"></i>Completo<br><small class="text-muted">(P·G·C)</small>
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="complexityMode" id="modeProteina" value="proteina">
+                                    <label class="btn btn-outline-success" for="modeProteina">
+                                        <i class="fa fa-drumstick-bite me-1"></i>Proteína<br><small class="text-muted">(P+E)</small>
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="complexityMode" id="modeCalorias" value="calorias">
+                                    <label class="btn btn-outline-warning" for="modeCalorias">
+                                        <i class="fa fa-fire me-1"></i>Calorías<br><small class="text-muted">(E)</small>
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-2 text-center">
+                                    <strong>E = Energía:</strong> 1E = 100 kcal | Elige el nivel que mejor se adapte a tus necesidades
+                                </small>
+                            </div>
+                        </div>
+                        
                         <!-- Información del sistema de bloques -->
-                        <div class="alert alert-info mb-4">
+                        <div class="alert alert-info mb-4" id="bloquesInfo">
                             <h6><i class="fa fa-info-circle me-2"></i>Sistema de Bloques Nutricionales</h6>
-                            <p class="mb-2">Memoriza tu plan usando bloques simples en lugar de gramos específicos:</p>
-                            <div class="row text-center mt-3">
-                                <div class="col-md-4">
+                            <p class="mb-2" id="bloquesDescripcion">Memoriza tu plan usando bloques simples en lugar de gramos específicos:</p>
+                            <div class="row text-center mt-3" id="bloquesBadges">
+                                <div class="col-md-3" id="badgeProteina">
                                     <div class="badge bg-danger fs-6 p-2 w-100">1P = 20g Proteína</div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3" id="badgeGrasa">
                                     <div class="badge bg-warning fs-6 p-2 w-100">1G = 10g Grasa</div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3" id="badgeCarbohidratos">
                                     <div class="badge bg-primary fs-6 p-2 w-100">1C = 25g Carbohidratos</div>
+                                </div>
+                                <div class="col-md-3" id="badgeEnergia">
+                                    <div class="badge bg-success fs-6 p-2 w-100">1E = 100 kcal</div>
                                 </div>
                             </div>
                             <div class="text-center mt-3">
@@ -806,15 +835,52 @@ function filterFoodBlocks(filter) {
     });
 }
 
+// Función para actualizar header de tabla según modo
+function actualizarHeaderTabla() {
+    const thead = document.querySelector('#foodBlocksTable thead tr');
+    if (!thead) return;
+    
+    const mode = window.complexityMode || 'completo';
+    
+    if (mode === 'completo') {
+        thead.innerHTML = `
+            <th>Grupo Alimentario</th>
+            <th>Porción de Referencia</th>
+            <th class="text-center text-danger">P</th>
+            <th class="text-center text-warning">G</th>
+            <th class="text-center text-primary">C</th>
+            <th class="text-center">Momento</th>
+        `;
+    } else if (mode === 'proteina') {
+        thead.innerHTML = `
+            <th>Grupo Alimentario</th>
+            <th>Porción de Referencia</th>
+            <th class="text-center text-danger">P</th>
+            <th class="text-center text-success">E<small>(G+C)</small></th>
+            <th class="text-center">Momento</th>
+        `;
+    } else {
+        thead.innerHTML = `
+            <th>Grupo Alimentario</th>
+            <th>Porción de Referencia</th>
+            <th class="text-center text-success">E<small>(Total)</small></th>
+            <th class="text-center">Momento</th>
+        `;
+    }
+}
+
 // Función para renderizar la tabla de bloques
 function renderFoodBlocksTable(foodBlocks) {
     const tbody = document.getElementById('foodBlocksTableBody');
     if (!tbody) return;
     
+    const mode = window.complexityMode || 'completo';
+    const colspan = mode === 'completo' ? 6 : mode === 'proteina' ? 5 : 4;
+    
     if (foodBlocks.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center text-muted py-4">
+                <td colspan="${colspan}" class="text-center text-muted py-4">
                     <i class="fa fa-info-circle me-2"></i>
                     ${currentFilter === 'all' 
                         ? 'No se pudieron cargar los alimentos. Intenta recargar la página.' 
@@ -826,6 +892,15 @@ function renderFoodBlocksTable(foodBlocks) {
     }
     
     tbody.innerHTML = foodBlocks.map(item => {
+        // Calcular bloques de energía si hay datos
+        let bloqueE_total = 0, bloqueE_gc = 0;
+        if (item.blocks_exact) {
+            const kcalTotal = (item.blocks_exact.P * 20 * 4) + (item.blocks_exact.G * 10 * 9) + (item.blocks_exact.C * 25 * 4);
+            const kcalGC = (item.blocks_exact.G * 10 * 9) + (item.blocks_exact.C * 25 * 4);
+            bloqueE_total = Math.round((kcalTotal / 100) * 2) / 2; // Redondear a 0.5
+            bloqueE_gc = Math.round((kcalGC / 100) * 2) / 2;
+        }
+        
         // Crear tooltip con valores exactos si existen
         const tooltipP = item.blocks_exact 
             ? `title="Exacto: ${item.blocks_exact.P.toFixed(2)}" data-bs-toggle="tooltip"` 
@@ -836,6 +911,9 @@ function renderFoodBlocksTable(foodBlocks) {
         const tooltipC = item.blocks_exact 
             ? `title="Exacto: ${item.blocks_exact.C.toFixed(2)}" data-bs-toggle="tooltip"` 
             : '';
+        const tooltipE = bloqueE_total > 0
+            ? `title="Total: ${bloqueE_total.toFixed(1)}E" data-bs-toggle="tooltip"`
+            : '';
         
         // Badge de macro dominante
         const macroBadge = {
@@ -844,10 +922,11 @@ function renderFoodBlocksTable(foodBlocks) {
             'C': '<span class="badge bg-primary badge-sm ms-2">C</span>'
         }[item.macro_dominante] || '';
         
-        return `
-            <tr>
-                <td><strong>${item.group}</strong>${macroBadge}</td>
-                <td class="text-muted small">${item.portion}</td>
+        // Construir columnas según modo
+        let columnasNutricionales = '';
+        if (mode === 'completo') {
+            // Modo completo: P, G, C
+            columnasNutricionales = `
                 <td class="text-center">
                     <span class="badge ${item.blocks.P > 0 ? 'bg-danger' : 'bg-secondary'}" ${tooltipP}>
                         ${item.blocks.P > 0 ? item.blocks.P : '-'}
@@ -863,6 +942,37 @@ function renderFoodBlocksTable(foodBlocks) {
                         ${item.blocks.C > 0 ? item.blocks.C : '-'}
                     </span>
                 </td>
+            `;
+        } else if (mode === 'proteina') {
+            // Modo proteína: P y E_gc
+            columnasNutricionales = `
+                <td class="text-center">
+                    <span class="badge ${item.blocks.P > 0 ? 'bg-danger' : 'bg-secondary'}" ${tooltipP}>
+                        ${item.blocks.P > 0 ? item.blocks.P : '-'}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <span class="badge ${bloqueE_gc > 0 ? 'bg-success' : 'bg-secondary'}" ${tooltipE}>
+                        ${bloqueE_gc > 0 ? bloqueE_gc.toFixed(1) : '-'}
+                    </span>
+                </td>
+            `;
+        } else {
+            // Modo calorías: solo E_total
+            columnasNutricionales = `
+                <td class="text-center">
+                    <span class="badge ${bloqueE_total > 0 ? 'bg-success' : 'bg-secondary'}" ${tooltipE}>
+                        ${bloqueE_total > 0 ? bloqueE_total.toFixed(1) : '-'}
+                    </span>
+                </td>
+            `;
+        }
+        
+        return `
+            <tr>
+                <td><strong>${item.group}</strong>${macroBadge}</td>
+                <td class="text-muted small">${item.portion}</td>
+                ${columnasNutricionales}
                 <td class="text-center small text-muted">${item.momento}</td>
             </tr>
         `;
@@ -875,7 +985,91 @@ function renderFoodBlocksTable(foodBlocks) {
     }
 }
 
+function actualizarVistaPorModo() {
+    const mode = window.complexityMode || 'completo';
+    
+    console.log('=== actualizarVistaPorModo ===');
+    console.log('Modo actual:', mode);
+    console.log('window.planData:', window.planData);
+    console.log('window.sugerenciasData:', window.sugerenciasData);
+    
+    // Actualizar badges de información
+    const badgeP = document.getElementById('badgeProteina');
+    const badgeG = document.getElementById('badgeGrasa');
+    const badgeC = document.getElementById('badgeCarbohidratos');
+    const badgeE = document.getElementById('badgeEnergia');
+    
+    if (mode === 'completo') {
+        // Mostrar P, G, C - Ocultar E
+        if (badgeP) badgeP.style.display = 'block';
+        if (badgeG) badgeG.style.display = 'block';
+        if (badgeC) badgeC.style.display = 'block';
+        if (badgeE) badgeE.style.display = 'none';
+        
+        // Actualizar descripción
+        document.getElementById('bloquesDescripcion').textContent = 
+            'Memoriza tu plan usando bloques simples de Proteína, Grasa y Carbohidratos:';
+            
+    } else if (mode === 'proteina') {
+        // Mostrar P y E - Ocultar G, C
+        if (badgeP) badgeP.style.display = 'block';
+        if (badgeG) badgeG.style.display = 'none';
+        if (badgeC) badgeC.style.display = 'none';
+        if (badgeE) badgeE.style.display = 'block';
+        
+        // Actualizar descripción
+        document.getElementById('bloquesDescripcion').textContent = 
+            'Controla tu proteína y energía restante (grasas + carbohidratos):';
+            
+    } else if (mode === 'calorias') {
+        // Solo mostrar E - Ocultar P, G, C
+        if (badgeP) badgeP.style.display = 'none';
+        if (badgeG) badgeG.style.display = 'none';
+        if (badgeC) badgeC.style.display = 'none';
+        if (badgeE) badgeE.style.display = 'block';
+        
+        // Actualizar descripción
+        document.getElementById('bloquesDescripcion').textContent = 
+            'Enfoque simplificado: solo controla tu energía total (calorías):';
+    }
+    
+    // Actualizar header y tabla de referencia
+    actualizarHeaderTabla();
+    renderFoodBlocksTable(allFoodBlocks);
+    
+    // Si hay datos de plan cargados, actualizarlos (verificar que funciones existan)
+    console.log('Verificando si re-renderizar comidas...');
+    console.log('window.planData existe:', !!window.planData);
+    console.log('window.planData.comidas existe:', !!(window.planData && window.planData.comidas));
+    console.log('mostrarBloquesComidas es función:', typeof mostrarBloquesComidas === 'function');
+    
+    if (window.planData && window.planData.comidas && typeof mostrarBloquesComidas === 'function') {
+        console.log('✓ Re-renderizando comidas con modo:', mode);
+        // Re-renderizar el panel de comidas con el nuevo modo
+        mostrarBloquesComidas(window.planData.comidas, window.planData.bloquesConfig);
+    } else {
+        console.log('✗ NO se puede re-renderizar comidas');
+    }
+    
+    // Recargar sugerencias para actualizar formato (verificar que funciones existan)
+    if (window.sugerenciasData) {
+        // Re-renderizar cada tipo de sugerencia
+        if (window.sugerenciasData.favoritos && typeof renderizarSugerenciasFavoritas === 'function') {
+            renderizarSugerenciasFavoritas(window.sugerenciasData.favoritos);
+        }
+        if (window.sugerenciasData.dinamicas && typeof renderizarSugerenciasDinamicas === 'function') {
+            renderizarSugerenciasDinamicas(window.sugerenciasData.dinamicas);
+        }
+        if (window.sugerenciasData.recientes && typeof renderizarSugerenciasRecientes === 'function') {
+            renderizarSugerenciasRecientes(window.sugerenciasData.recientes);
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Variable global para modo de complejidad
+    window.complexityMode = 'completo'; // completo | proteina | calorias
+    
     // Cargar y renderizar tabla de bloques desde datos reales
     allFoodBlocks = await loadFoodBlocks();
     renderFoodBlocksTable(allFoodBlocks);
@@ -884,6 +1078,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('[data-filter]').forEach(btn => {
         btn.addEventListener('click', function() {
             filterFoodBlocks(this.dataset.filter);
+        });
+    });
+    
+    // Event listeners para cambio de modo de complejidad
+    document.querySelectorAll('input[name="complexityMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            window.complexityMode = this.value;
+            actualizarVistaPorModo();
         });
     });
     
@@ -1656,12 +1858,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         fetch('/api/plan-alimentario/info')
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.success && data.comidas) {
                     mostrarBloquesComidas(data.comidas, data.bloques_config);
                     poblarSelectorComidas(data.comidas);
                     
                     // Cargar sugerencias automáticamente
                     cargarSugerencias();
+                } else {
+                    alert('Error cargando plan simplificado: ' + data.error);
                 }
             })
             .catch(error => {
@@ -1672,6 +1876,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     function mostrarBloquesComidas(comidas, bloquesConfig) {
         const container = document.getElementById('bloques-comidas-container');
         let html = '';
+        const mode = window.complexityMode || 'completo';
+        
+        console.log('mostrarBloquesComidas - modo:', mode);
+        console.log('mostrarBloquesComidas - comidas:', comidas);
         
         const ordenComidas = ['desayuno', 'media_manana', 'almuerzo', 'merienda', 'media_tarde', 'cena'];
         const comidasOrdenadas = ordenComidas.filter(comidaId => comidas[comidaId]);
@@ -1679,6 +1887,89 @@ document.addEventListener('DOMContentLoaded', async function() {
         comidasOrdenadas.forEach(comidaId => {
             const comida = comidas[comidaId];
             const config = getComidasConfig()[comidaId];
+            
+            console.log(`Procesando ${comidaId}:`, {
+                proteina: comida.proteina,
+                grasa: comida.grasa,
+                carbohidratos: comida.carbohidratos,
+                energia: comida.energia,
+                bloques: comida.bloques
+            });
+            
+            // Generar resumen según modo
+            let resumen = '';
+            let columnasHTML = '';
+            let infoGramos = '';
+            
+            // Calcular energía con fallback si no viene del backend
+            const calcularEnergiaFallback = (c) => {
+                if (c.energia) {
+                    console.log(`${comidaId} - usando energia del backend:`, c.energia);
+                    return c.energia;
+                }
+                const p = parseFloat(c.proteina) || 0;
+                const g = parseFloat(c.grasa) || 0;
+                const ch = parseFloat(c.carbohidratos) || 0;
+                const kcal_total = (p * 4) + (g * 9) + (ch * 4);
+                const kcal_gc = (g * 9) + (ch * 4);
+                const toBloques = v => Math.round((v / 100) * 2) / 2;
+                console.log(`${comidaId} - calculando energia fallback:`, {p, g, ch, kcal_total, kcal_gc});
+                return {
+                    kcal_total,
+                    kcal_gc,
+                    bloques_total: toBloques(kcal_total),
+                    bloques_gc: toBloques(kcal_gc),
+                    bloque_kcal: 100
+                };
+            };
+            
+            if (mode === 'completo') {
+                // Modo completo: P · G · C
+                resumen = comida.bloques.resumen;
+                columnasHTML = `
+                    <div class="col-4">
+                        <div class="badge bg-danger w-100 mb-1">${comida.bloques.proteina.bloques}P</div>
+                        <div class="text-muted">${comida.bloques.proteina.gramos_objetivo}g</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="badge bg-warning w-100 mb-1">${comida.bloques.grasa.bloques}G</div>
+                        <div class="text-muted">${comida.bloques.grasa.gramos_objetivo}g</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="badge bg-primary w-100 mb-1">${comida.bloques.carbohidratos.bloques}C</div>
+                        <div class="text-muted">${comida.bloques.carbohidratos.gramos_objetivo}g</div>
+                    </div>
+                `;
+                infoGramos = `P:${comida.proteina}g · G:${comida.grasa}g · C:${comida.carbohidratos}g`;
+                
+            } else if (mode === 'proteina') {
+                // Modo proteína: P y E_gc
+                const energia = calcularEnergiaFallback(comida);
+                resumen = `${comida.bloques.proteina.bloques}P · ${energia.bloques_gc.toFixed(1)}E`;
+                columnasHTML = `
+                    <div class="col-6">
+                        <div class="badge bg-danger w-100 mb-1">${comida.bloques.proteina.bloques}P</div>
+                        <div class="text-muted">${comida.bloques.proteina.gramos_objetivo}g proteína</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="badge bg-success w-100 mb-1">${energia.bloques_gc.toFixed(1)}E</div>
+                        <div class="text-muted">${Math.round(energia.kcal_gc)} kcal (G+C)</div>
+                    </div>
+                `;
+                infoGramos = `${comida.proteina}g P · ${Math.round((comida.grasa || 0) + (comida.carbohidratos || 0))}g (G+C)`;
+                
+            } else {
+                // Modo calorías: solo E_total
+                const energia = calcularEnergiaFallback(comida);
+                resumen = `${energia.bloques_total.toFixed(1)}E`;
+                columnasHTML = `
+                    <div class="col-12">
+                        <div class="badge bg-success w-100 mb-1">${energia.bloques_total.toFixed(1)}E</div>
+                        <div class="text-muted">${Math.round(energia.kcal_total)} kcal totales</div>
+                    </div>
+                `;
+                infoGramos = `${Math.round(energia.kcal_total)} kcal totales`;
+            }
             
             html += `
                 <div class="col-md-6 mb-4">
@@ -1690,28 +1981,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                         </div>
                         <div class="card-body">
                             <div class="text-center mb-3">
-                                <h3 class="mb-0">${comida.bloques.resumen}</h3>
+                                <h3 class="mb-0">${resumen}</h3>
                                 <small class="text-muted">Bloques diarios</small>
                             </div>
                             <hr>
                             <div class="row text-center small">
-                                <div class="col-4">
-                                    <div class="badge bg-danger w-100 mb-1">${comida.bloques.proteina.bloques}P</div>
-                                    <div class="text-muted">${comida.bloques.proteina.gramos_objetivo}g</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="badge bg-warning w-100 mb-1">${comida.bloques.grasa.bloques}G</div>
-                                    <div class="text-muted">${comida.bloques.grasa.gramos_objetivo}g</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="badge bg-primary w-100 mb-1">${comida.bloques.carbohidratos.bloques}C</div>
-                                    <div class="text-muted">${comida.bloques.carbohidratos.gramos_objetivo}g</div>
-                                </div>
+                                ${columnasHTML}
                             </div>
                             <div class="mt-3 p-2 bg-light rounded">
                                 <small class="text-muted">
                                     <i class="fa fa-info-circle me-1"></i>
-                                    Gramos originales: P:${comida.proteina}g · G:${comida.grasa}g · C:${comida.carbohidratos}g
+                                    ${infoGramos}
                                 </small>
                             </div>
                         </div>
@@ -1721,7 +2001,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         
         container.innerHTML = html;
+        
+        // Guardar referencia para re-renderizado
+        window.planData = {comidas, bloquesConfig};
     }
+    
+    // Exponer función en scope global para que actualizarVistaPorModo() pueda llamarla
+    window.mostrarBloquesComidas = mostrarBloquesComidas;
     
     function poblarSelectorComidas(comidas) {
         const select = document.getElementById('ajuste-comida-select');
@@ -1850,14 +2136,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     function renderizarSugerencias(sugerencias) {
+        // Guardar en variable global para re-renderizado
+        window.sugerenciasData = window.sugerenciasData || {};
+        window.sugerenciasData.favoritos = sugerencias.favoritos_usuario;
+        window.sugerenciasData.dinamicas = sugerencias.sugerencias_dinamicas;
+        window.sugerenciasData.recientes = sugerencias.ajustes_recientes;
+        
         // Renderizar cada categoría
-        renderizarFavoritos(sugerencias.favoritos_usuario);
-        renderizarDinamicas(sugerencias.sugerencias_dinamicas);
+        renderizarSugerenciasFavoritas(sugerencias.favoritos_usuario);
+        renderizarSugerenciasDinamicas(sugerencias.sugerencias_dinamicas);
         cargarBiblioteca(); // Cargar biblioteca en lugar de presets globales
-        renderizarRecientes(sugerencias.ajustes_recientes);
+        renderizarSugerenciasRecientes(sugerencias.ajustes_recientes);
     }
     
-    function renderizarFavoritos(favoritos) {
+    function renderizarSugerenciasFavoritas(favoritos) {
         const container = document.getElementById('sugerencias-favoritos-list');
         
         if (!favoritos || favoritos.length === 0) {
@@ -1878,7 +2170,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         container.innerHTML = html;
     }
     
-    function renderizarDinamicas(dinamicas) {
+    // Exponer en scope global
+    window.renderizarSugerenciasFavoritas = renderizarSugerenciasFavoritas;
+    
+    function renderizarSugerenciasDinamicas(dinamicas) {
         const container = document.getElementById('sugerencias-dinamicas-list');
         
         if (!dinamicas || dinamicas.length === 0) {
@@ -1898,6 +2193,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         container.innerHTML = html;
     }
+    
+    // Exponer en scope global
+    window.renderizarSugerenciasDinamicas = renderizarSugerenciasDinamicas;
     
     function cargarBiblioteca() {
         fetch('/api/plan-alimentario/biblioteca')
@@ -2013,7 +2311,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         container.innerHTML = html;
     }
     
-    function renderizarRecientes(recientes) {
+    function renderizarSugerenciasRecientes(recientes) {
         const container = document.getElementById('sugerencias-recientes-list');
         
         if (!recientes || recientes.length === 0) {
@@ -2034,6 +2332,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         container.innerHTML = html;
     }
     
+    // Exponer en scope global
+    window.renderizarSugerenciasRecientes = renderizarSugerenciasRecientes;
+    
     function crearCardSugerencia(sugerencia, esFavorito = false, esReciente = false) {
         const badgeColor = {
             'preset_global': 'primary',
@@ -2042,6 +2343,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             'grupos': 'success',
             'reciente': 'secondary'
         }[sugerencia.tipo] || 'secondary';
+        
+        const mode = window.complexityMode || 'completo';
         
         // Construir detalle de alimentos si es tipo 'grupos'
         let alimentosDetalle = '';
@@ -2059,6 +2362,27 @@ document.addEventListener('DOMContentLoaded', async function() {
             alimentosDetalle += '</small></div>';
         }
         
+        // Generar resumen según modo
+        let resumenBloques = '';
+        let detalleGramos = '';
+        
+        if (mode === 'completo') {
+            resumenBloques = sugerencia.bloques.resumen;
+            detalleGramos = `${Math.round(sugerencia.gramos.proteina)}g P · ${Math.round(sugerencia.gramos.grasa)}g G · ${Math.round(sugerencia.gramos.carbohidratos)}g C`;
+        } else if (mode === 'proteina') {
+            // Calcular E_gc
+            const kcalGC = (sugerencia.gramos.grasa * 9) + (sugerencia.gramos.carbohidratos * 4);
+            const bloquesEGC = Math.round((kcalGC / 100) * 2) / 2;
+            resumenBloques = `${sugerencia.bloques.proteina.toFixed(2)}P · ${bloquesEGC.toFixed(1)}E`;
+            detalleGramos = `${Math.round(sugerencia.gramos.proteina)}g P · ${Math.round(kcalGC)} kcal (G+C)`;
+        } else {
+            // Calcular E_total
+            const kcalTotal = (sugerencia.gramos.proteina * 4) + (sugerencia.gramos.grasa * 9) + (sugerencia.gramos.carbohidratos * 4);
+            const bloquesETotal = Math.round((kcalTotal / 100) * 2) / 2;
+            resumenBloques = `${bloquesETotal.toFixed(1)}E`;
+            detalleGramos = `${Math.round(kcalTotal)} kcal totales`;
+        }
+        
         return `
             <div class="col-md-6 col-lg-4 mb-3">
                 <div class="card h-100 border-${badgeColor}">
@@ -2071,11 +2395,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <p class="card-text small text-muted">${sugerencia.descripcion || ''}</p>
                         
                         <div class="text-center mb-2">
-                            <h4 class="mb-0">${sugerencia.bloques.resumen}</h4>
+                            <h4 class="mb-0">${resumenBloques}</h4>
                             <small class="text-muted">
-                                ${Math.round(sugerencia.gramos.proteina)}g P · 
-                                ${Math.round(sugerencia.gramos.grasa)}g G · 
-                                ${Math.round(sugerencia.gramos.carbohidratos)}g C
+                                ${detalleGramos}
                             </small>
                             ${sugerencia.diff_display && sugerencia.diff_display !== 'Exacto' ? 
                                 `<div class="badge bg-info mt-1">${sugerencia.diff_display} vs objetivo</div>` : 
@@ -2653,4 +2975,5 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 </script>
+<script src="/static/js/complexity_mode.js?v=1"></script>
 {% endblock %}
