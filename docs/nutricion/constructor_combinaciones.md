@@ -1,12 +1,12 @@
-# 🔨 CONSTRUCTOR DE COMBINACIONES - Implementación Base
+﻿# ðŸ”¨ CONSTRUCTOR DE COMBINACIONES - ImplementaciÃ³n Base
 
 ## **Concepto General**
 
-Sistema interactivo que permite al **paciente crear sus propias combinaciones** de alimentos guiado por bloques nutricionales, con validación en tiempo real y opción de guardar/compartir con el nutricionista.
+Sistema interactivo que permite al **paciente crear sus propias combinaciones** de alimentos guiado por bloques nutricionales, con validaciÃ³n en tiempo real y opciÃ³n de guardar/compartir con el nutricionista.
 
 ---
 
-## **✅ Backend Implementado**
+## **âœ… Backend Implementado**
 
 ### **1. API de Grupos Alimentarios**
 
@@ -16,11 +16,11 @@ Sistema interactivo que permite al **paciente crear sus propias combinaciones** 
 - `macro`: P, G o C (filtra por macros fuertes - incluye alimentos balanceados)
 - `momento`: desayuno, almuerzo, cena, etc.
 
-**Nota**: Usa sistema de `macros_fuertes` (≥80% del macro máximo) para incluir alimentos balanceados como el huevo (fuerte en P y G)
+**Nota**: Usa sistema de `macros_fuertes` (â‰¥80% del macro mÃ¡ximo) para incluir alimentos balanceados como el huevo (fuerte en P y G)
 
 **Ejemplo de uso**:
 ```bash
-# Obtener alimentos ricos en proteína para desayuno
+# Obtener alimentos ricos en proteÃ­na para desayuno
 GET /api/grupos-alimentos?macro=P&momento=desayuno
 
 # Respuesta
@@ -80,7 +80,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
 ```json
 {
   "success": true,
-  "message": "Combinación guardada exitosamente",
+  "message": "CombinaciÃ³n guardada exitosamente",
   "favorito_id": 42,
   "bloques_total": {
     "proteina": 1.5,
@@ -90,15 +90,15 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
 }
 ```
 
-**Características**:
-- ✅ Calcula bloques automáticamente
-- ✅ Guarda en `PLAN_BLOQUES_PRESETS` con `ES_FAVORITA=1`
-- ✅ Aparece después en tab "Favoritos"
-- ✅ Soporte para `enviar_revision` (pendiente implementar tabla de revisiones)
+**CaracterÃ­sticas**:
+- âœ… Calcula bloques automÃ¡ticamente
+- âœ… Guarda en `PLAN_BLOQUES_PRESETS` con `ES_FAVORITA=1`
+- âœ… Aparece despuÃ©s en tab "Favoritos"
+- âœ… Soporte para `enviar_revision` (pendiente implementar tabla de revisiones)
 
 ---
 
-## **🎨 Frontend a Implementar (Modal Constructor)**
+## **ðŸŽ¨ Frontend a Implementar (Modal Constructor)**
 
 ### **Estructura HTML**
 
@@ -109,7 +109,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title">
-          <i class="fa fa-tools"></i> Constructor de Combinación
+          <i class="fa fa-tools"></i> Constructor de CombinaciÃ³n
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
@@ -117,10 +117,10 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
       <div class="modal-body">
         <!-- Selector de comida -->
         <div class="mb-3">
-          <label>Comida del día</label>
+          <label>Comida del dÃ­a</label>
           <select class="form-select" id="constructorComida">
             <option value="desayuno">Desayuno</option>
-            <option value="media_manana">Media Mañana</option>
+            <option value="media_manana">Media MaÃ±ana</option>
             <option value="almuerzo">Almuerzo</option>
             <option value="merienda">Merienda</option>
             <option value="cena">Cena</option>
@@ -167,7 +167,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
               </div>
             </div>
             
-            <!-- Botón de sugerencia inteligente -->
+            <!-- BotÃ³n de sugerencia inteligente -->
             <div class="text-center mt-3">
               <button class="btn btn-sm btn-info" onclick="completarConCarbohidratos()">
                 <i class="fa fa-magic"></i> Completar con Carbohidratos
@@ -182,7 +182,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
           <div class="input-group">
             <select class="form-select" id="filtroMacro">
               <option value="">Todos</option>
-              <option value="P">Rico en Proteína</option>
+              <option value="P">Rico en ProteÃ­na</option>
               <option value="G">Rico en Grasa</option>
               <option value="C">Rico en Carbohidratos</option>
             </select>
@@ -200,19 +200,19 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
         <!-- Lista de alimentos agregados -->
         <div class="card mb-3">
           <div class="card-header">
-            <strong>Alimentos en tu combinación</strong>
+            <strong>Alimentos en tu combinaciÃ³n</strong>
           </div>
           <div class="list-group list-group-flush" id="listaAlimentosConstructor">
-            <!-- Se puebla dinámicamente -->
+            <!-- Se puebla dinÃ¡micamente -->
             <div class="list-group-item text-muted text-center">
-              Aún no has agregado alimentos
+              AÃºn no has agregado alimentos
             </div>
           </div>
         </div>
         
-        <!-- Nombre de la combinación -->
+        <!-- Nombre de la combinaciÃ³n -->
         <div class="mb-3">
-          <label>Nombre de tu combinación</label>
+          <label>Nombre de tu combinaciÃ³n</label>
           <input type="text" class="form-control" id="aliasConstructor" 
                  placeholder="Ej: Mi Desayuno Proteico">
         </div>
@@ -221,7 +221,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
         <div class="form-check">
           <input class="form-check-input" type="checkbox" id="enviarRevision">
           <label class="form-check-label" for="enviarRevision">
-            <i class="fa fa-paper-plane"></i> Enviar a nutricionista para revisión
+            <i class="fa fa-paper-plane"></i> Enviar a nutricionista para revisiÃ³n
           </label>
         </div>
       </div>
@@ -231,7 +231,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
           Cancelar
         </button>
         <button type="button" class="btn btn-success" onclick="guardarCombinacionConstructor()">
-          <i class="fa fa-save"></i> Guardar Combinación
+          <i class="fa fa-save"></i> Guardar CombinaciÃ³n
         </button>
       </div>
     </div>
@@ -241,7 +241,7 @@ GET /api/grupos-alimentos?macro=P&momento=desayuno
 
 ---
 
-## **📜 JavaScript del Constructor**
+## **ðŸ“œ JavaScript del Constructor**
 
 ```javascript
 let alimentosConstructor = []; // [{categoria, descripcion, porciones, bloques}, ...]
@@ -299,7 +299,7 @@ function cargarAlimentosDisponibles(macro, momento) {
                 select.append('<option value="">Seleccionar alimento...</option>');
                 
                 data.alimentos.forEach(a => {
-                    const bloques = `${a.bloques_unitarios.proteina.toFixed(1)}P·${a.bloques_unitarios.grasa.toFixed(1)}G·${a.bloques_unitarios.carbohidratos.toFixed(1)}C`;
+                    const bloques = `${a.bloques_unitarios.proteina.toFixed(1)}PÂ·${a.bloques_unitarios.grasa.toFixed(1)}GÂ·${a.bloques_unitarios.carbohidratos.toFixed(1)}C`;
                     select.append(
                         `<option value='${JSON.stringify(a)}'>${a.categoria} (${a.descripcion}) - ${bloques}</option>`
                     );
@@ -308,7 +308,7 @@ function cargarAlimentosDisponibles(macro, momento) {
         });
 }
 
-// Agregar alimento a la combinación
+// Agregar alimento a la combinaciÃ³n
 function agregarAlimentoConstructor() {
     const alimentoJSON = $('#selectAlimento').val();
     if (!alimentoJSON) return;
@@ -330,7 +330,7 @@ function agregarAlimentoConstructor() {
     });
     
     renderizarListaAlimentos();
-    recalcularAcumulado(); // ✅ RECALCULO EN TIEMPO REAL
+    recalcularAcumulado(); // âœ… RECALCULO EN TIEMPO REAL
 }
 
 // Renderizar lista de alimentos
@@ -339,7 +339,7 @@ function renderizarListaAlimentos() {
     lista.empty();
     
     if (alimentosConstructor.length === 0) {
-        lista.append('<div class="list-group-item text-muted text-center">Aún no has agregado alimentos</div>');
+        lista.append('<div class="list-group-item text-muted text-center">AÃºn no has agregado alimentos</div>');
         return;
     }
     
@@ -348,11 +348,11 @@ function renderizarListaAlimentos() {
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <strong>${a.categoria}</strong> (${a.descripcion})
-                    ${a.porciones > 1 ? ` × ${a.porciones}` : ''}
+                    ${a.porciones > 1 ? ` Ã— ${a.porciones}` : ''}
                     <br>
                     <small class="text-muted">
-                        ${a.bloques.proteina.toFixed(1)}P · 
-                        ${a.bloques.grasa.toFixed(1)}G · 
+                        ${a.bloques.proteina.toFixed(1)}P Â· 
+                        ${a.bloques.grasa.toFixed(1)}G Â· 
                         ${a.bloques.carbohidratos.toFixed(1)}C
                     </small>
                 </div>
@@ -371,7 +371,7 @@ function eliminarAlimentoConstructor(index) {
     recalcularAcumulado();
 }
 
-// ✅ RECALCULAR ACUMULADO Y MOSTRAR FALTA/SOBRA
+// âœ… RECALCULAR ACUMULADO Y MOSTRAR FALTA/SOBRA
 function recalcularAcumulado() {
     let totalP = 0, totalG = 0, totalC = 0;
     
@@ -396,8 +396,8 @@ function recalcularAcumulado() {
     mostrarDiferencia('#difGrasa', diffG, 'G');
     mostrarDiferencia('#difCarbohidratos', diffC, 'C');
     
-    // Cambiar color del panel si está dentro del margen
-    const margen = 0.3; // ±0.3 bloques
+    // Cambiar color del panel si estÃ¡ dentro del margen
+    const margen = 0.3; // Â±0.3 bloques
     const dentroDe Margen = Math.abs(diffP) <= margen && 
                             Math.abs(diffG) <= margen && 
                             Math.abs(diffC) <= margen;
@@ -422,7 +422,7 @@ function mostrarDiferencia(selector, diff, macro) {
     }
 }
 
-// ✅ COMPLETAR CON CARBOHIDRATOS (Sugerencia inversa)
+// âœ… COMPLETAR CON CARBOHIDRATOS (Sugerencia inversa)
 function completarConCarbohidratos() {
     const diffC = objetivoComida.carbohidratos - alimentosConstructor.reduce((sum, a) => sum + a.bloques.carbohidratos, 0);
     
@@ -431,7 +431,7 @@ function completarConCarbohidratos() {
         return;
     }
     
-    // Obtener alimentos ricos en C que NO estén en la combinación
+    // Obtener alimentos ricos en C que NO estÃ©n en la combinaciÃ³n
     const categoriasYaUsadas = alimentosConstructor.map(a => a.categoria);
     const momento = $('#constructorComida').val();
     
@@ -439,10 +439,10 @@ function completarConCarbohidratos() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Filtrar los que NO están ya en la combinación
+                // Filtrar los que NO estÃ¡n ya en la combinaciÃ³n
                 const disponibles = data.alimentos.filter(a => !categoriasYaUsadas.includes(a.categoria));
                 
-                // Buscar el que más se acerque
+                // Buscar el que mÃ¡s se acerque
                 let mejorAlimento = null;
                 let menorError = 999;
                 let mejorPorciones = 1;
@@ -461,7 +461,7 @@ function completarConCarbohidratos() {
                 });
                 
                 if (mejorAlimento) {
-                    // Agregar automáticamente
+                    // Agregar automÃ¡ticamente
                     alimentosConstructor.push({
                         categoria: mejorAlimento.categoria,
                         descripcion: mejorAlimento.descripcion,
@@ -477,17 +477,17 @@ function completarConCarbohidratos() {
                     renderizarListaAlimentos();
                     recalcularAcumulado();
                     
-                    alert(`✓ Agregado: ${mejorAlimento.categoria} × ${mejorPorciones}`);
+                    alert(`âœ“ Agregado: ${mejorAlimento.categoria} Ã— ${mejorPorciones}`);
                 }
             }
         });
 }
 
-// Guardar combinación
+// Guardar combinaciÃ³n
 function guardarCombinacionConstructor() {
     const alias = $('#aliasConstructor').val().trim();
     if (!alias) {
-        alert('Por favor ingresa un nombre para tu combinación');
+        alert('Por favor ingresa un nombre para tu combinaciÃ³n');
         return;
     }
     
@@ -515,7 +515,7 @@ function guardarCombinacionConstructor() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`✓ ${data.message}\nBloques totales: ${data.bloques_total.proteina}P · ${data.bloques_total.grasa}G · ${data.bloques_total.carbohidratos}C`);
+            alert(`âœ“ ${data.message}\nBloques totales: ${data.bloques_total.proteina}P Â· ${data.bloques_total.grasa}G Â· ${data.bloques_total.carbohidratos}C`);
             $('#modalConstructor').modal('hide');
             cargarSugerencias(); // Recargar favoritos
         } else {
@@ -527,12 +527,12 @@ function guardarCombinacionConstructor() {
 
 ---
 
-## **🎨 Integración en UI Existente**
+## **ðŸŽ¨ IntegraciÃ³n en UI Existente**
 
-**Agregar botón en plan_alimentario.html**:
+**Agregar botÃ³n en plan_alimentario.html**:
 
 ```html
-<!-- En la sección de sugerencias de bloques -->
+<!-- En la secciÃ³n de sugerencias de bloques -->
 <div class="card-header d-flex justify-content-between align-items-center">
     <h5>Sugerencias de Bloques</h5>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalConstructor">
@@ -543,15 +543,15 @@ function guardarCombinacionConstructor() {
 
 ---
 
-## **📊 Flujo Completo del Usuario**
+## **ðŸ“Š Flujo Completo del Usuario**
 
 1. **Abrir Constructor**
-   - Click en botón "Constructor"
+   - Click en botÃ³n "Constructor"
    - Modal se abre con objetivo de la comida cargado
 
 2. **Seleccionar Comida**
    - Elegir desayuno/almuerzo/cena
-   - Sistema carga objetivo automáticamente desde plan
+   - Sistema carga objetivo automÃ¡ticamente desde plan
 
 3. **Agregar Alimentos**
    - Filtrar por macro (P/G/C) opcional
@@ -559,25 +559,25 @@ function guardarCombinacionConstructor() {
    - Elegir porciones (1-5)
    - Click "+"
    
-4. **Ver Recálculo en Tiempo Real**
+4. **Ver RecÃ¡lculo en Tiempo Real**
    - Panel muestra bloques acumulados
    - Indica "Falta X" o "Sobra X" por macro
    - Cambia color: verde (dentro margen), amarillo (cerca), rojo (lejos)
 
 5. **Sugerencia Inteligente** (Opcional)
    - Click "Completar con Carbohidratos"
-   - Sistema busca alimento rico en C que NO esté ya
-   - Lo agrega automáticamente con porciones óptimas
+   - Sistema busca alimento rico en C que NO estÃ© ya
+   - Lo agrega automÃ¡ticamente con porciones Ã³ptimas
 
-6. **Guardar Combinación**
+6. **Guardar CombinaciÃ³n**
    - Ingresar nombre (ej: "Mi Desayuno Proteico")
    - Check "Enviar a nutricionista" (opcional)
    - Click "Guardar"
-   - Aparece en tab "Favoritos" ✓
+   - Aparece en tab "Favoritos" âœ“
 
 ---
 
-## **🔮 Mejoras Futuras**
+## **ðŸ”® Mejoras Futuras**
 
 ### **1. Biblioteca Personal ("Mis Combinaciones")**
 ```sql
@@ -588,7 +588,7 @@ ALTER TABLE PLAN_BLOQUES_PRESETS ADD COLUMN ES_CONSTRUCTOR INTEGER DEFAULT 0;
 WHERE ES_CONSTRUCTOR = 1 AND USER_DNI = ?
 ```
 
-### **2. Sistema de Revisión por Nutricionista**
+### **2. Sistema de RevisiÃ³n por Nutricionista**
 ```sql
 CREATE TABLE PLAN_BLOQUES_REVISIONES (
     ID INTEGER PRIMARY KEY,
@@ -608,7 +608,7 @@ CREATE TABLE PLAN_BLOQUES_REVISIONES (
 <!-- En dashboard.html -->
 <div class="card">
     <div class="card-header">
-        <i class="fa fa-clipboard-check"></i> Combinaciones Pendientes de Revisión
+        <i class="fa fa-clipboard-check"></i> Combinaciones Pendientes de RevisiÃ³n
         <span class="badge bg-warning">3</span>
     </div>
     <div class="card-body">
@@ -617,10 +617,10 @@ CREATE TABLE PLAN_BLOQUES_REVISIONES (
 </div>
 ```
 
-### **3. Análisis Nutricional Ampliado**
-- Mostrar calorías totales
+### **3. AnÃ¡lisis Nutricional Ampliado**
+- Mostrar calorÃ­as totales
 - Calcular densidad nutricional
-- Score de variedad (penalty si repite misma categoría)
+- Score de variedad (penalty si repite misma categorÃ­a)
 - Sugerencias de micronutrientes faltantes
 
 ### **4. Compartir Combinaciones**
@@ -630,25 +630,26 @@ CREATE TABLE PLAN_BLOQUES_REVISIONES (
 
 ---
 
-## **✅ Estado Actual**
+## **âœ… Estado Actual**
 
 | Componente | Estado |
 |------------|--------|
-| API `/api/grupos-alimentos` | ✅ FUNCIONAL |
-| API `/api/.../constructor` POST | ✅ FUNCIONAL |
-| Cálculo de bloques backend | ✅ FUNCIONAL |
-| Guardado en DB | ✅ FUNCIONAL |
-| Modal HTML | 🟡 DISEÑO LISTO (no implementado) |
-| JavaScript constructor | 🟡 CÓDIGO LISTO (no implementado) |
-| Integración UI | 🟡 PENDIENTE |
-| Sistema de revisiones | 🔴 PENDIENTE |
+| API `/api/grupos-alimentos` | âœ… FUNCIONAL |
+| API `/api/.../constructor` POST | âœ… FUNCIONAL |
+| CÃ¡lculo de bloques backend | âœ… FUNCIONAL |
+| Guardado en DB | âœ… FUNCIONAL |
+| Modal HTML | ðŸŸ¡ DISEÃ‘O LISTO (no implementado) |
+| JavaScript constructor | ðŸŸ¡ CÃ“DIGO LISTO (no implementado) |
+| IntegraciÃ³n UI | ðŸŸ¡ PENDIENTE |
+| Sistema de revisiones | ðŸ”´ PENDIENTE |
 
 ---
 
-**🎉 El backend del Constructor está listo. Solo falta implementar el modal JavaScript en el frontend para que los pacientes puedan crear sus combinaciones interactivamente con recálculo en tiempo real.**
+**ðŸŽ‰ El backend del Constructor estÃ¡ listo. Solo falta implementar el modal JavaScript en el frontend para que los pacientes puedan crear sus combinaciones interactivamente con recÃ¡lculo en tiempo real.**
 
 ---
 
 **Archivo**: `CONSTRUCTOR_COMBINACIONES.md`  
 **Fecha**: 2025-10-04  
-**Versión**: 1.0.0
+**VersiÃ³n**: 1.0.0
+

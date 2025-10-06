@@ -1,33 +1,33 @@
-# ONV2 — Plataforma de Salud, Nutrición y Entrenamiento
+﻿# ONV2 â€” Plataforma de Salud, NutriciÃ³n y Entrenamiento
 
-Aplicación web (Flask + SQLite + Jinja + Bootstrap) para planificar alimentación por bloques, registrar métricas de salud y ofrecer flujos de coaching/telemedicina y dashboards. Incluye un sistema de “bloques” nutricionales (P/G/C), un constructor de combinaciones, sugerencias inteligentes basadas en catálogo de alimentos y una biblioteca/favoritos de combinaciones.
+AplicaciÃ³n web (Flask + SQLite + Jinja + Bootstrap) para planificar alimentaciÃ³n por bloques, registrar mÃ©tricas de salud y ofrecer flujos de coaching/telemedicina y dashboards. Incluye un sistema de bloques nutricionales (P/G/C), un constructor de combinaciones, sugerencias inteligentes basadas en catÃ¡logo de alimentos y una biblioteca con favoritos.
 
-## Características
+## CaracterÃ­sticas
 
 - Plan alimentario por bloques (P, G, C) con objetivos por comida y equivalencias visuales.
-- Constructor de combinaciones (modal) con cálculo en tiempo real y validación de objetivos.
-- Sugerencias inteligentes (combinador) a partir de `GRUPOSALIMENTOS` con tolerancias por macro y filtro por momento del día.
-- Biblioteca y favoritos de combinaciones (presets públicos del staff y combinaciones guardadas por usuarios).
-- Módulos de salud: medidas corporales, signos vitales, historia clínica, citas médicas, documentos, etc.
-- Dashboards y vistas analíticas (fuerza, rendimiento, resúmenes).
+- Constructor de combinaciones (modal) con cÃ¡lculo en tiempo real y validaciÃ³n de objetivos.
+- Sugerencias inteligentes a partir de `GRUPOSALIMENTOS` con tolerancias por macro y filtro por momento del dÃ­a.
+- Biblioteca y favoritos de combinaciones (presets pÃºblicos del staff y combinaciones guardadas por usuarios).
+- MÃ³dulos de salud: medidas corporales, signos vitales, historia clÃ­nica, citas mÃ©dicas, documentos, etc.
+- Dashboards y vistas analÃ­ticas (fuerza, rendimiento, resÃºmenes).
 - Bot de WhatsApp (enviar/recibir) con tablas de soporte.
 
-## Tecnologías
+## TecnologÃ­as
 
 - Backend: Python 3.x, Flask, SQLite (archivo `src/Basededatos`)
 - Frontend: Jinja2, Bootstrap, Font Awesome, JS nativo (Fetch)
-- Datos: SQLite (tablas clínicas + nutrición + biblioteca/favoritos)
+- Datos: SQLite (tablas clÃ­nicas + nutriciÃ³n + biblioteca/favoritos)
 
 ## Estructura del repositorio
 
-- `src/main.py` — App Flask, rutas y APIs principales
-- `src/functions.py` — Lógica de negocio (catálogo de alimentos, combinador, utilidades)
-- `src/templates/` — Vistas Jinja (por ejemplo `plan_alimentario.html`, `base.html`)
-- `src/static/` — CSS/JS/imagenes (Bootstrap, scripts de páginas, gauges, etc.)
-- `scripts/` — Utilidades y sincronización de base (p. ej. `sync_database_schema.py`)
-- `docs/` — Documentación funcional y guías
-- `requirements.txt` — Dependencias Python
-- `src/Basededatos` — Base de datos SQLite usada por la app
+- `src/main.py` â€” App Flask, rutas y APIs principales
+- `src/functions.py` â€” LÃ³gica de negocio (catÃ¡logo de alimentos, combinador, utilidades)
+- `src/templates/` â€” Vistas Jinja (por ejemplo `plan_alimentario.html`, `base.html`)
+- `src/static/` â€” CSS/JS/imagenes (Bootstrap, scripts de pÃ¡ginas, gauges, etc.)
+- `migrations/` â€” Scripts de migraciÃ³n (SQL/PowerShell)
+- `docs/` â€” DocumentaciÃ³n funcional y guÃ­as
+- `requirements.txt` â€” Dependencias Python
+- `src/Basededatos` â€” Base de datos SQLite usada por la app
 
 ## Puesta en marcha
 
@@ -35,7 +35,7 @@ Aplicación web (Flask + SQLite + Jinja + Bootstrap) para planificar alimentaci�
 - Python 3.9+ (recomendado)
 - `pip` y (opcional) `virtualenv`
 
-2) Instalación
+2) InstalaciÃ³n
 ```
 python -m venv .venv
 # Windows
@@ -49,49 +49,43 @@ pip install -r requirements.txt
 3) Ejecutar la app
 ```
 python src/main.py
-# Servirá en http://127.0.0.1:8000
+# ServirÃ¡ en http://127.0.0.1:8000
 ```
 La base de datos se ubica en `src/Basededatos`. El arranque crea/actualiza tablas auxiliares de sugerencias si faltan.
 
+## DocumentaciÃ³n
+
+- Ãndice: `docs/README.md`
+- GuÃ­a completa: `docs/guia/guia_completa.md`
+- Planner automÃ¡tico: `docs/nutricion/planner_automatico_implementacion.md`
+- Biblioteca/favoritos: `docs/biblioteca/implementacion_biblioteca_completa.md`
+- Tests/VerificaciÃ³n: `docs/testing/constructor.md`, `docs/testing/verificacion_bloques.md`
+- Migraciones: `docs/migraciones/recuperacion_urgente.md`
+- Cambios: `CHANGELOG.md`
+
 ## Endpoints clave
 
-- `GET /api/plan-alimentario/info`
-  - Devuelve el plan del usuario (bloques por comida, gramos objetivo y metadatos).
-- `GET /api/grupos-alimentos?macro=P|G|C&momento=desayuno|almuerzo|...`
-  - Expone el catálogo de `GRUPOSALIMENTOS` con bloques por porción y filtros.
-- `GET /api/plan-alimentario/bloques/sugerencias`
-  - Entrega “sugerencias inteligentes”, favoritos del usuario y presets globales.
-- `POST /api/plan-alimentario/bloques/sugerencias`
-  - Guarda una combinación como favorita del usuario.
-- `PATCH /api/plan-alimentario/bloques/sugerencias/<id>`
-  - Actualiza alias/estado; también se usa para marcar como “usada”.
-- `DELETE /api/plan-alimentario/bloques/sugerencias/<id>`
-  - Elimina un favorito del usuario.
-- `POST /api/plan-alimentario/bloques/constructor`
-  - Guarda una combinación creada en el constructor (incluye detalle de alimentos).
-
-Si tu instancia incluye la biblioteca pública de combinaciones:
-- `GET /api/plan-alimentario/biblioteca` — Lista combinaciones públicas (autor + favoritos)
-- `POST/DELETE /api/plan-alimentario/favoritos/<preset_id>` — Marca/Quita favorito y actualiza contador
-
-## Flujo “Plan Simplificado” (bloques)
-
-1. El usuario define su plan en la tabla `DIETA` (totales y porcentajes por comida).
-2. El frontend carga `GET /api/plan-alimentario/info` y muestra objetivos por comida.
-3. El usuario usa el “Constructor” para sumar alimentos (desde `GRUPOSALIMENTOS`) y alcanzar el objetivo.
-4. Puede guardar combinaciones como favoritos o publicarlas en la biblioteca.
+- `GET /api/plan-alimentario/info`: Plan del usuario (bloques por comida, gramos objetivo y metadatos).
+- `GET /api/grupos-alimentos?macro=P|G|C&momento=desayuno|almuerzo|...`: CatÃ¡logo `GRUPOSALIMENTOS` con bloques por porciÃ³n y filtros.
+- `GET /api/plan-alimentario/bloques/sugerencias`: Sugerencias inteligentes, favoritos y presets globales.
+- `POST /api/plan-alimentario/bloques/sugerencias`: Crear favorito.
+- `PATCH /api/plan-alimentario/bloques/sugerencias/<id>`: Actualizar alias/estado; marcar como usada.
+- `DELETE /api/plan-alimentario/bloques/sugerencias/<id>`: Eliminar favorito.
+- `POST /api/plan-alimentario/bloques/constructor`: Guardar combinaciÃ³n (detalle de alimentos).
+- `GET /api/plan-alimentario/biblioteca`: Listar combinaciones pÃºblicas (autor + favoritos).
+- `POST/DELETE /api/plan-alimentario/favoritos/<preset_id>`: Toggle de favoritos y contador.
 
 ## Base de datos (SQLite)
 
 Archivo: `src/Basededatos`
 
 Tablas relevantes:
-- Nutrición: `DIETA`, `GRUPOSALIMENTOS`, `PLANES_ALIMENTARIOS`
+- NutriciÃ³n: `DIETA`, `GRUPOSALIMENTOS`, `PLANES_ALIMENTARIOS`
 - Sugerencias/biblioteca: `PLAN_BLOQUES_PRESETS`, `PLAN_BLOQUES_FAVORITOS`, `PLAN_BLOQUES_AJUSTES_LOG`
 - Salud: `MEDIDAS_CORPORALES`, `SIGNOS_VITALES`, `HISTORIA_MEDICA`, `CITAS_MEDICAS`, `DOCUMENTOS_MEDICOS`
 - Usuarios/otros: `USUARIOS`, `MATRIZ_ENTRENAMIENTO`, `PLANES_ENTRENAMIENTO`, etc.
 
-Copia/merge de datos entre bases (PowerShell + sqlite3):
+Operaciones comunes (PowerShell + sqlite3):
 ```
 # Backup
 Copy-Item src\Basededatos src\Basededatos_backup -Force
@@ -100,13 +94,12 @@ sqlite3 src\Basededatos "ATTACH 'src/Basededatos (3)' AS old; \
   INSERT OR REPLACE INTO DIETA SELECT * FROM old.DIETA; DETACH old;"
 ```
 
-## Scripts útiles
+## Migraciones
 
-- `scripts/sync_database_schema.py` — sincronización de esquema
-- `scripts/analyze_db_differences.py` — diferencias entre bases
-- `scripts/apply_db_sync.py` — aplica cambios
+- Script automatizado: `migrations/ejecutar_migracion_004.ps1`
+- SQL corregido: `migrations/004_biblioteca_favoritos_FIXED.sql`
 
-En PowerShell, para ejecutar scripts `.sql` usa:
+En PowerShell, para ejecutar `.sql`:
 ```
 sqlite3 src\Basededatos ".read migrations/NNN_script.sql"
 # o bien
@@ -115,36 +108,32 @@ Get-Content migrations\NNN_script.sql | sqlite3 src\Basededatos
 
 ## Desarrollo
 
-- El servidor corre en modo debug y recarga plantillas automáticamente.
-- Estilo JS simple (vanilla), sin bundlers. Mantén las funciones que se usan desde HTML accesibles en `window`.
-- Para limpiar la caché del catálogo de alimentos:
+- Servidor en modo debug con recarga de plantillas.
+- JS simple (vanilla), sin bundlers. MantÃ©n funciones usadas desde HTML en `window`.
+- Limpiar cachÃ© del catÃ¡logo de alimentos:
 ```
-# Dentro de la app o consola interactiva
 from src import functions
 functions.limpiar_cache_alimentos()
 ```
 
 ## Pruebas
 
-- `test_planner_api.py` contiene pruebas/ejemplos para los endpoints del planner.
-- Ejecuta pruebas si tienes `pytest` instalado (`pip install -r requirements.txt` ya lo incluye si corresponde):
-```
-python -m pytest -q
-```
+- No se incluyen tests automatizados en el repo por ahora. Usa los pasos de `docs/testing/` y los endpoints anteriores para pruebas manuales.
 
 ## Problemas frecuentes
 
-- PowerShell no soporta redirección `<` como bash. Usa `.read` o `Get-Content | sqlite3`.
-- “bootstrap.Modal.getInstance is not a function”: usa `getOrCreateInstance` o un fallback a jQuery si tu Bootstrap es antiguo.
+- PowerShell no soporta redirecciÃ³n `<` como bash. Usa `.read` o `Get-Content | sqlite3`.
+- Para Bootstrap 5, usa `getOrCreateInstance` para modales.
 - Si no aparecen sugerencias inteligentes, revisa que `GRUPOSALIMENTOS` tenga datos y que `GET /api/plan-alimentario/info` devuelva bloques para la comida elegida.
 
 ## Roadmap breve
 
-- Afinar Biblioteca (paginación/filtros y conteo de favoritos en vivo)
-- Afinar tolerancias/heurísticas del combinador para todas las comidas
+- Afinar biblioteca (paginaciÃ³n/filtros y conteo de favoritos en vivo)
+- Afinar tolerancias/heurÃ­sticas del combinador para todas las comidas
 - Exportar/Importar presets (JSON) y compartir por usuario
 
----
+â€”
 
-¿Dudas o mejoras? Abre un issue o comenta directamente sobre los archivos en `src/templates/plan_alimentario.html` y `src/main.py`.
+Â¿Dudas o mejoras? AbrÃ­ un issue o comentÃ¡ en `src/templates/plan_alimentario.html` y `src/main.py`.
+
 

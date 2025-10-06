@@ -1,52 +1,52 @@
-# 🍽️ SISTEMA DE SUGERENCIAS CON ALIMENTOS REALES
+﻿# ðŸ½ï¸ SISTEMA DE SUGERENCIAS CON ALIMENTOS REALES
 
-## **Actualización Mayor - Sistema de Bloques Nutricionales**
+## **ActualizaciÃ³n Mayor - Sistema de Bloques Nutricionales**
 
 ### **Fecha**: 2025-10-04
-### **Versión**: 2.0.0
+### **VersiÃ³n**: 2.0.0
 
 ---
 
-## **📋 Resumen de Cambios**
+## **ðŸ“‹ Resumen de Cambios**
 
-Se ha mejorado completamente el sistema de sugerencias dinámicas para generar **combinaciones basadas en alimentos reales** de la tabla `GRUPOSALIMENTOS`, en lugar de simples ajustes abstractos (+1P, -1C, etc.).
+Se ha mejorado completamente el sistema de sugerencias dinÃ¡micas para generar **combinaciones basadas en alimentos reales** de la tabla `GRUPOSALIMENTOS`, en lugar de simples ajustes abstractos (+1P, -1C, etc.).
 
-### **Antes** ❌
+### **Antes** âŒ
 ```
-Sugerencias genéricas:
-- "Más Energía: +1C"
-- "Más Proteína: +1P"
-- "Déficit Ligero: -1C"
+Sugerencias genÃ©ricas:
+- "MÃ¡s EnergÃ­a: +1C"
+- "MÃ¡s ProteÃ­na: +1P"
+- "DÃ©ficit Ligero: -1C"
 ```
 
-### **Ahora** ✅
+### **Ahora** âœ…
 ```
 Sugerencias con alimentos reales:
-- "Pollo (Pata muslo) + Arroz (Porción)"
-  → 1.3P · 0.7G · 1.0C (26g P, 7g G, 25g C)
+- "Pollo (Pata muslo) + Arroz (PorciÃ³n)"
+  â†’ 1.3P Â· 0.7G Â· 1.0C (26g P, 7g G, 25g C)
   
-- "Pescado (Lata de atún)"
-  → 1.2P · 0.6G · 0.0C (24g P, 6g G, 1g C)
+- "Pescado (Lata de atÃºn)"
+  â†’ 1.2P Â· 0.6G Â· 0.0C (24g P, 6g G, 1g C)
   
 - "Huevo (Unidad) + Avena (Media taza)"
-  → 0.7P · 0.7G · 0.5C (15g P, 14g G, 13g C)
+  â†’ 0.7P Â· 0.7G Â· 0.5C (15g P, 14g G, 13g C)
 ```
 
 ---
 
-## **🔧 Cambios Implementados**
+## **ðŸ”§ Cambios Implementados**
 
 ### **1. Backend - Nuevas Funciones en `functions.py`**
 
 #### **`obtener_catalogo_alimentos_bloques()`**
 Carga todos los alimentos de `GRUPOSALIMENTOS` y calcula bloques nutricionales.
 
-**Características**:
-- ✅ Lee: CATEGORÍA, PORCION, DESCRIPCIONPORCION, PROTEINA, GRASASTOTALES, CARBOHIDRATOS
-- ✅ Calcula bloques: P/20, G/10, C/25
-- ✅ Identifica macro dominante (P, G o C)
-- ✅ **Cachea resultado** para evitar hits repetidos a BD
-- ✅ Retorna lista completa con estructura:
+**CaracterÃ­sticas**:
+- âœ… Lee: CATEGORÃA, PORCION, DESCRIPCIONPORCION, PROTEINA, GRASASTOTALES, CARBOHIDRATOS
+- âœ… Calcula bloques: P/20, G/10, C/25
+- âœ… Identifica macro dominante (P, G o C)
+- âœ… **Cachea resultado** para evitar hits repetidos a BD
+- âœ… Retorna lista completa con estructura:
 
 ```python
 {
@@ -75,7 +75,7 @@ Genera combinaciones inteligentes de alimentos que se acerquen al objetivo.
 **Estrategias Implementadas**:
 
 **1. Estrategia Principal**: Un alimento dominante
-- Identifica macro principal del objetivo (ej: si objetivo es 2P·1G·2C → principal es P)
+- Identifica macro principal del objetivo (ej: si objetivo es 2PÂ·1GÂ·2C â†’ principal es P)
 - Busca en alimentos con macro dominante = P
 - Calcula error total de bloques
 - Acepta si error < 2.0 bloques
@@ -83,17 +83,17 @@ Genera combinaciones inteligentes de alimentos que se acerquen al objetivo.
 **2. Estrategia Complementaria**: Principal + Complementario
 - Combina alimento principal con uno de diferente macro dominante
 - Ej: Pollo (P dominante) + Arroz (C dominante)
-- Error más estricto < 1.5 bloques
+- Error mÃ¡s estricto < 1.5 bloques
 - Retorna top 5 combinaciones
 
-**Algoritmo de Selección**:
+**Algoritmo de SelecciÃ³n**:
 ```python
-# Objetivo: 2P · 1G · 2C
+# Objetivo: 2P Â· 1G Â· 2C
 macros_objetivo = {'P': 2, 'G': 1, 'C': 2}
 macro_principal = 'P'  # El mayor
 
 alimentos_principales = [alimentos con dominante='P']
-alimentos_complementarios = [alimentos con dominante≠'P']
+alimentos_complementarios = [alimentos con dominanteâ‰ 'P']
 
 # Genera combos y calcula error
 for combo in combinaciones:
@@ -105,7 +105,7 @@ for combo in combinaciones:
 ---
 
 #### **`calcular_error_bloques(objetivo, resultado)`**
-Función helper que calcula distancia total entre objetivo y resultado.
+FunciÃ³n helper que calcula distancia total entre objetivo y resultado.
 
 ```python
 error = abs(obj_p - res_p) + abs(obj_g - res_g) + abs(obj_c - res_c)
@@ -117,16 +117,16 @@ error = abs(obj_p - res_p) + abs(obj_g - res_g) + abs(obj_c - res_c)
 
 #### **`GET /api/plan-alimentario/bloques/sugerencias`**
 
-**Sección "Sugerencias Dinámicas" Reescrita**:
+**SecciÃ³n "Sugerencias DinÃ¡micas" Reescrita**:
 
-##### **Antes** (líneas 4260-4365):
-- Generaba variantes genéricas (+1P, +1C, -1C, etc.)
+##### **Antes** (lÃ­neas 4260-4365):
+- Generaba variantes genÃ©ricas (+1P, +1C, -1C, etc.)
 - Sin referencia a alimentos reales
-- Validación incorrecta contra 1.0
+- ValidaciÃ³n incorrecta contra 1.0
 
 ##### **Ahora**:
 ```python
-# Cargar catálogo de alimentos
+# Cargar catÃ¡logo de alimentos
 catalogo_alimentos = functions.obtener_catalogo_alimentos_bloques()
 
 # Para cada comida activa
@@ -145,14 +145,14 @@ for comida in comidas_activas:
         max_alimentos=2
     )
     
-    # Validar cada combinación con margen de libertad CORREGIDO
+    # Validar cada combinaciÃ³n con margen de libertad CORREGIDO
     for combo in combinaciones:
-        # Calcular porcentajes de la combinación
+        # Calcular porcentajes de la combinaciÃ³n
         pct_p_combo = gramos_p_combo / proteina_total
         pct_g_combo = gramos_g_combo / grasa_total
         pct_c_combo = gramos_c_combo / carbohidratos_total
         
-        # ✅ CORREGIDO: Validar contra porcentaje BASE ± libertad
+        # âœ… CORREGIDO: Validar contra porcentaje BASE Â± libertad
         # Antes: comparaba contra 1.0 (incorrecto)
         # Ahora: compara contra pct_base
         pct_p_min = pct_p_base * (1 - margen_libertad)
@@ -164,42 +164,42 @@ for comida in comidas_activas:
 
 ---
 
-### **3. Corrección Crítica - Validación de Libertad**
+### **3. CorrecciÃ³n CrÃ­tica - ValidaciÃ³n de Libertad**
 
-#### **Problema Anterior** ❌
+#### **Problema Anterior** âŒ
 ```python
 margen = 1 + (libertad / 100)  # ej: 1.10 para 10%
 if pct_p_var <= margen and pct_g_var <= margen and pct_c_var <= margen:
-    # ✗ Compara contra 1.0, no contra el porcentaje base
+    # âœ— Compara contra 1.0, no contra el porcentaje base
     # Permite que cualquier comida llegue hasta 100%+10% del total
 ```
 
-#### **Solución Implementada** ✅
+#### **SoluciÃ³n Implementada** âœ…
 ```python
 margen_libertad = libertad / 100  # ej: 0.10 para 10%
 
-# Calcular límites basados en porcentaje BASE de la comida
+# Calcular lÃ­mites basados en porcentaje BASE de la comida
 pct_p_min = pct_p_base * (1 - margen_libertad)  # ej: 0.25 * 0.9 = 0.225
 pct_p_max = pct_p_base * (1 + margen_libertad)  # ej: 0.25 * 1.1 = 0.275
 
-# Validar que la sugerencia esté dentro del rango
+# Validar que la sugerencia estÃ© dentro del rango
 if (pct_p_min <= pct_p_combo <= pct_p_max and 
     pct_g_min <= pct_g_combo <= pct_g_max and 
     pct_c_min <= pct_c_combo <= pct_c_max):
-    # ✓ Solo acepta sugerencias que respetan el margen respecto al base
+    # âœ“ Solo acepta sugerencias que respetan el margen respecto al base
 ```
 
-**Ejemplo Numérico**:
-- Desayuno base: 25% proteína total, 10% libertad
-- Rango válido: 22.5% - 27.5%
+**Ejemplo NumÃ©rico**:
+- Desayuno base: 25% proteÃ­na total, 10% libertad
+- Rango vÃ¡lido: 22.5% - 27.5%
 - Antes: aceptaba hasta 110% (incorrecto)
-- Ahora: solo 22.5%-27.5% ✓
+- Ahora: solo 22.5%-27.5% âœ“
 
 ---
 
-## **📊 Estructura de Respuesta Mejorada**
+## **ðŸ“Š Estructura de Respuesta Mejorada**
 
-### **Sugerencias Dinámicas (tipo: 'grupos')**
+### **Sugerencias DinÃ¡micas (tipo: 'grupos')**
 
 ```json
 {
@@ -211,7 +211,7 @@ if (pct_p_min <= pct_p_combo <= pct_p_max and
           "proteina": 1.3,
           "grasa": 0.7,
           "carbohidratos": 1.0,
-          "resumen": "1.3P · 0.7G · 1.0C"
+          "resumen": "1.3P Â· 0.7G Â· 1.0C"
         },
         "gramos": {
           "proteina": 26.6,
@@ -219,7 +219,7 @@ if (pct_p_min <= pct_p_combo <= pct_p_max and
           "carbohidratos": 25.1
         },
         "alias": "Pollo + Arroz",
-        "descripcion": "Pollo (Pata muslo) + Arroz (Porción)",
+        "descripcion": "Pollo (Pata muslo) + Arroz (PorciÃ³n)",
         "tipo": "grupos",
         "comida_nombre": "Desayuno",
         "alimentos": [
@@ -230,7 +230,7 @@ if (pct_p_min <= pct_p_combo <= pct_p_max and
           },
           {
             "categoria": "Arroz",
-            "descripcion": "Porción",
+            "descripcion": "PorciÃ³n",
             "porcion": 80
           }
         ]
@@ -242,31 +242,31 @@ if (pct_p_min <= pct_p_combo <= pct_p_max and
 
 ---
 
-## **🎯 Beneficios del Nuevo Sistema**
+## **ðŸŽ¯ Beneficios del Nuevo Sistema**
 
 ### **Para el Paciente**
-✅ **Sugerencias Concretas**: "Pollo + Arroz" en lugar de "+1P +1C"
-✅ **Porciones Reales**: Ve cantidades exactas (210g, 1 taza, etc.)
-✅ **Fácil de Comprar**: Sabe qué alimentos conseguir
-✅ **Educativo**: Aprende qué combinar para lograr sus bloques
-✅ **Aplicables**: Puede usar exactamente esos alimentos
+âœ… **Sugerencias Concretas**: "Pollo + Arroz" en lugar de "+1P +1C"
+âœ… **Porciones Reales**: Ve cantidades exactas (210g, 1 taza, etc.)
+âœ… **FÃ¡cil de Comprar**: Sabe quÃ© alimentos conseguir
+âœ… **Educativo**: Aprende quÃ© combinar para lograr sus bloques
+âœ… **Aplicables**: Puede usar exactamente esos alimentos
 
 ### **Para el Nutricionista**
-✅ **Basado en Tabla Real**: Usa GRUPOSALIMENTOS existente
-✅ **Validación Correcta**: Respeta margen de libertad real
-✅ **Trazabilidad**: Sabe qué alimentos sugiere el sistema
-✅ **Escalable**: Fácil agregar nuevos alimentos a GRUPOSALIMENTOS
+âœ… **Basado en Tabla Real**: Usa GRUPOSALIMENTOS existente
+âœ… **ValidaciÃ³n Correcta**: Respeta margen de libertad real
+âœ… **Trazabilidad**: Sabe quÃ© alimentos sugiere el sistema
+âœ… **Escalable**: FÃ¡cil agregar nuevos alimentos a GRUPOSALIMENTOS
 
 ### **Performance**
-✅ **Caché Inteligente**: Catálogo se carga 1 vez y se reutiliza
-✅ **Algoritmo Eficiente**: Solo 100-150 comparaciones por comida
-✅ **Top 5 Combos**: Evita sobrecarga de opciones
+âœ… **CachÃ© Inteligente**: CatÃ¡logo se carga 1 vez y se reutiliza
+âœ… **Algoritmo Eficiente**: Solo 100-150 comparaciones por comida
+âœ… **Top 5 Combos**: Evita sobrecarga de opciones
 
 ---
 
-## **🧪 Ejemplos de Uso Real**
+## **ðŸ§ª Ejemplos de Uso Real**
 
-### **Caso 1: Desayuno 2P · 1G · 2C**
+### **Caso 1: Desayuno 2P Â· 1G Â· 2C**
 
 **Entrada**:
 ```python
@@ -275,23 +275,23 @@ objetivo = {'proteina': 2, 'grasa': 1, 'carbohidratos': 2}
 
 **Salida** (ejemplos):
 1. **Huevo (Unidad) + Avena (Media taza)**
-   - Bloques: 0.7P · 0.7G · 0.5C
+   - Bloques: 0.7P Â· 0.7G Â· 0.5C
    - Gramos: 15g P, 14g G, 13g C
    - Error: 1.6 bloques
 
 2. **Yogur (Taza) + Panes (Tajada)**
-   - Bloques: 0.7P · 0.3G · 2.4C
+   - Bloques: 0.7P Â· 0.3G Â· 2.4C
    - Gramos: 13g P, 5g G, 62g C
    - Error: 1.6 bloques
 
 3. **Milanesa (Milanesa)**
-   - Bloques: 1.3P · 1.0G · 0.3C
+   - Bloques: 1.3P Â· 1.0G Â· 0.3C
    - Gramos: 25g P, 10g G, 8g C
    - Error: 1.7 bloques
 
 ---
 
-### **Caso 2: Almuerzo 4P · 2G · 3C (plan alto en proteína)**
+### **Caso 2: Almuerzo 4P Â· 2G Â· 3C (plan alto en proteÃ­na)**
 
 **Entrada**:
 ```python
@@ -299,18 +299,18 @@ objetivo = {'proteina': 4, 'grasa': 2, 'carbohidratos': 3}
 ```
 
 **Salida** (ejemplos):
-1. **Vaca (Costeleta) + Arroz (Porción)**
-   - Bloques: 1.4P · 1.2G · 1.0C
+1. **Vaca (Costeleta) + Arroz (PorciÃ³n)**
+   - Bloques: 1.4P Â· 1.2G Â· 1.0C
    - Gramos: 28g P, 12g G, 25g C
    - Error: 4.4 bloques (no pasa - error > 1.5)
 
-2. **Pollo (Pata muslo) + Fideo (Porción)**
-   - Bloques: 1.6P · 0.8G · 1.2C
+2. **Pollo (Pata muslo) + Fideo (PorciÃ³n)**
+   - Bloques: 1.6P Â· 0.8G Â· 1.2C
    - Gramos: 32g P, 8g G, 31g C
    - Error: 4.0 bloques (no pasa)
 
-3. **Pescado (Lata atún) + Pescado (Lata atún)** (si permite repetir)
-   - Bloques: 2.5P · 1.2G · 0.1C
+3. **Pescado (Lata atÃºn) + Pescado (Lata atÃºn)** (si permite repetir)
+   - Bloques: 2.5P Â· 1.2G Â· 0.1C
    - Gramos: 49g P, 12g G, 2g C
    - Error: 4.4 bloques
 
@@ -318,11 +318,11 @@ objetivo = {'proteina': 4, 'grasa': 2, 'carbohidratos': 3}
 
 ---
 
-## **🔍 Validación y Testing**
+## **ðŸ” ValidaciÃ³n y Testing**
 
 ### **Pruebas Recomendadas**
 
-#### **Test 1: Carga de Catálogo**
+#### **Test 1: Carga de CatÃ¡logo**
 ```bash
 # Verificar cantidad de alimentos
 python -c "from src import functions; cat = functions.obtener_catalogo_alimentos_bloques(); print(f'Alimentos cargados: {len(cat)}'); print(cat[:3])"
@@ -330,7 +330,7 @@ python -c "from src import functions; cat = functions.obtener_catalogo_alimentos
 # Resultado esperado: ~20-50 alimentos con estructura completa
 ```
 
-#### **Test 2: Generación de Combos**
+#### **Test 2: GeneraciÃ³n de Combos**
 ```bash
 # Probar generador
 python -c "
@@ -354,7 +354,7 @@ curl http://localhost:8000/api/plan-alimentario/bloques/sugerencias?comida=desay
 
 ---
 
-## **📈 Próximas Mejoras (Opcionales)**
+## **ðŸ“ˆ PrÃ³ximas Mejoras (Opcionales)**
 
 ### **1. Guardar en BD como Presets**
 ```python
@@ -377,23 +377,23 @@ def guardar_combo_como_preset(combo, user_dni=None):
     ))
 ```
 
-### **2. Métricas de Uso**
-- Registrar qué combos se aplican más
+### **2. MÃ©tricas de Uso**
+- Registrar quÃ© combos se aplican mÃ¡s
 - Priorizar combos populares en ranking
 - Aprender preferencias del usuario
 
 ### **3. Ajustes Avanzados**
 - Soporte para 3+ alimentos en combos
 - Filtros por tipo (vegetariano, bajo sodio, etc.)
-- Sustituciones automáticas por alergias
+- Sustituciones automÃ¡ticas por alergias
 
 ---
 
-## **🐛 Debugging**
+## **ðŸ› Debugging**
 
 ### **Problema: No aparecen sugerencias**
 ```python
-# Verificar que hay alimentos en catálogo
+# Verificar que hay alimentos en catÃ¡logo
 catalogo = functions.obtener_catalogo_alimentos_bloques()
 print(f"Alimentos: {len(catalogo)}")
 
@@ -404,7 +404,7 @@ print(f"Objetivo bloques: {objetivo_bloques}")
 print(f"Libertad: {libertad}%, Margen: {margen_libertad}")
 ```
 
-### **Problema: Error de validación**
+### **Problema: Error de validaciÃ³n**
 ```python
 # Verificar rangos de porcentajes
 print(f"Base: P={pct_p_base}, G={pct_g_base}, C={pct_c_base}")
@@ -415,45 +415,46 @@ print(f"Dentro?: {pct_p_min <= pct_p_combo <= pct_p_max}")
 
 ---
 
-## **✅ Checklist de Implementación**
+## **âœ… Checklist de ImplementaciÃ³n**
 
-- [x] Crear `obtener_catalogo_alimentos_bloques()` con caché
+- [x] Crear `obtener_catalogo_alimentos_bloques()` con cachÃ©
 - [x] Crear `generar_combinaciones_alimentos()` con algoritmo inteligente
 - [x] Crear `calcular_error_bloques()` helper
-- [x] Reescribir sección sugerencias_dinamicas en endpoint
-- [x] Corregir validación de libertad (contra pct_base, no 1.0)
+- [x] Reescribir secciÃ³n sugerencias_dinamicas en endpoint
+- [x] Corregir validaciÃ³n de libertad (contra pct_base, no 1.0)
 - [x] Agregar campo 'alimentos' a respuesta JSON
 - [x] Marcar tipo='grupos' para diferencia en frontend
-- [ ] Probar con datos reales de producción
+- [ ] Probar con datos reales de producciÃ³n
 - [ ] Optimizar algoritmo si > 500ms respuesta
 - [ ] (Opcional) Guardar combos populares como presets
 
 ---
 
-## **📝 Notas Finales**
+## **ðŸ“ Notas Finales**
 
 ### **Compatibilidad**
-✅ **Frontend**: Sin cambios necesarios - estructura JSON compatible
-✅ **BD**: Solo lee GRUPOSALIMENTOS (no modifica)
-✅ **Cache**: Implementado en memoria (se limpia al reiniciar)
+âœ… **Frontend**: Sin cambios necesarios - estructura JSON compatible
+âœ… **BD**: Solo lee GRUPOSALIMENTOS (no modifica)
+âœ… **Cache**: Implementado en memoria (se limpia al reiniciar)
 
 ### **Performance**
-- Primera carga: ~50-100ms (lectura BD + cálculos)
-- Cargas subsecuentes: < 1ms (caché)
-- Generación combos: ~20-50ms por comida
+- Primera carga: ~50-100ms (lectura BD + cÃ¡lculos)
+- Cargas subsecuentes: < 1ms (cachÃ©)
+- GeneraciÃ³n combos: ~20-50ms por comida
 - Total endpoint: ~150-300ms (aceptable)
 
 ### **Escalabilidad**
 - Funciona con 20-200 alimentos en GRUPOSALIMENTOS
-- Si > 200 alimentos, considerar índices o filtros
-- Algoritmo O(n²) peor caso, pero limitado a top 10x10
+- Si > 200 alimentos, considerar Ã­ndices o filtros
+- Algoritmo O(nÂ²) peor caso, pero limitado a top 10x10
 
 ---
 
-**🎉 El sistema ahora genera sugerencias prácticas basadas en alimentos reales, facilitando la adherencia del paciente y mejorando la experiencia nutricional.**
+**ðŸŽ‰ El sistema ahora genera sugerencias prÃ¡cticas basadas en alimentos reales, facilitando la adherencia del paciente y mejorando la experiencia nutricional.**
 
 ---
 
 **Autor**: Sistema ONV2  
 **Fecha**: 2025-10-04  
-**Versión**: 2.0.0
+**VersiÃ³n**: 2.0.0
+

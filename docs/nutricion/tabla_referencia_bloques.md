@@ -1,115 +1,115 @@
-# 📊 Tabla de Referencia de Bloques Nutricionales
+﻿# ðŸ“Š Tabla de Referencia de Bloques Nutricionales
 
-## **Implementación Completa (DATOS REALES)**
+## **ImplementaciÃ³n Completa (DATOS REALES)**
 
 Se ha agregado una **tabla de referencia de bloques por grupo alimentario** al Plan Alimentario Simplificado que **lee directamente de la tabla GRUPOSALIMENTOS** usando el endpoint `/api/grupos-alimentos`.
 
 ---
 
-## **🎯 Ubicación**
+## **ðŸŽ¯ UbicaciÃ³n**
 
-**Ruta**: Plan Alimentario → Plan Simplificado → Botón "Ver Tabla de Referencia de Alimentos"
+**Ruta**: Plan Alimentario â†’ Plan Simplificado â†’ BotÃ³n "Ver Tabla de Referencia de Alimentos"
 
-La tabla es **colapsable** y está ubicada justo debajo del sistema de bloques nutricionales (1P = 20g, etc.)
+La tabla es **colapsable** y estÃ¡ ubicada justo debajo del sistema de bloques nutricionales (1P = 20g, etc.)
 
 ---
 
-## **✨ Características**
+## **âœ¨ CaracterÃ­sticas**
 
-### **1. Diseño Visual**
+### **1. DiseÃ±o Visual**
 
-- **Colapsable**: Se oculta/muestra con un botón
-- **Responsive**: Tabla con scroll horizontal en móviles
-- **Color-coded**: Badges de colores según macro
-  - 🔴 Rojo: Proteína (P) - si > 0
-  - 🟡 Amarillo: Grasa (G) - si > 0
-  - 🔵 Azul: Carbohidratos (C) - si > 0
-  - ⚪ Gris: Si macro = 0
-- **Iconos**: Emojis para momento del día (🌅 Desayuno, 🍽️ Almuerzo, 🌙 Cena, etc.)
+- **Colapsable**: Se oculta/muestra con un botÃ³n
+- **Responsive**: Tabla con scroll horizontal en mÃ³viles
+- **Color-coded**: Badges de colores segÃºn macro
+  - ðŸ”´ Rojo: ProteÃ­na (P) - si > 0
+  - ðŸŸ¡ Amarillo: Grasa (G) - si > 0
+  - ðŸ”µ Azul: Carbohidratos (C) - si > 0
+  - âšª Gris: Si macro = 0
+- **Iconos**: Emojis para momento del dÃ­a (ðŸŒ… Desayuno, ðŸ½ï¸ Almuerzo, ðŸŒ™ Cena, etc.)
 
 ### **2. Fuente de Datos**
 
-✅ **Datos dinámicos desde `GRUPOSALIMENTOS`**:
+âœ… **Datos dinÃ¡micos desde `GRUPOSALIMENTOS`**:
 - Lee mediante `GET /api/grupos-alimentos`
 - Usa `obtener_catalogo_alimentos_bloques()` del backend
-- Bloques calculados por **porción real** (no por 100g)
+- Bloques calculados por **porciÃ³n real** (no por 100g)
 - Incluye `macros_fuertes` (alimentos balanceados como huevo)
-- Momentos del día configurados en `functions.py`
+- Momentos del dÃ­a configurados en `functions.py`
 
-La tabla muestra **todos los alimentos** de tu catálogo (cantidad variable según DB):
+La tabla muestra **todos los alimentos** de tu catÃ¡logo (cantidad variable segÃºn DB):
 
-#### **Proteínas Magras (4 items)**
-- Pollo/Pavo (pechuga): 100g → 2P·0G·0C
-- Pescado blanco: 100g → 2P·0G·0C
-- Carne magra: 100g → 2P·1G·0C
-- Huevo: 1 unidad → 1P·1G·0C
+#### **ProteÃ­nas Magras (4 items)**
+- Pollo/Pavo (pechuga): 100g â†’ 2PÂ·0GÂ·0C
+- Pescado blanco: 100g â†’ 2PÂ·0GÂ·0C
+- Carne magra: 100g â†’ 2PÂ·1GÂ·0C
+- Huevo: 1 unidad â†’ 1PÂ·1GÂ·0C
 
-#### **Lácteos (4 items)**
-- Leche descremada: 1 taza → 1P·0G·1C
-- Yogur natural: 1 taza → 1P·0G·1C
-- Queso magro: 50g → 1P·1G·0C
-- Queso untable light: 2 cdas → 0P·1G·0C
+#### **LÃ¡cteos (4 items)**
+- Leche descremada: 1 taza â†’ 1PÂ·0GÂ·1C
+- Yogur natural: 1 taza â†’ 1PÂ·0GÂ·1C
+- Queso magro: 50g â†’ 1PÂ·1GÂ·0C
+- Queso untable light: 2 cdas â†’ 0PÂ·1GÂ·0C
 
 #### **Carbohidratos - Cereales (5 items)**
-- Arroz blanco cocido: 1/2 taza → 0P·0G·1C
-- Pasta cocida: 1/2 taza → 0P·0G·1C
-- Avena cruda: 3 cdas (30g) → 1P·0G·1C
-- Pan integral: 1 rebanada → 0P·0G·1C
-- Pan lactal: 2 rebanadas → 0P·0G·1C
+- Arroz blanco cocido: 1/2 taza â†’ 0PÂ·0GÂ·1C
+- Pasta cocida: 1/2 taza â†’ 0PÂ·0GÂ·1C
+- Avena cruda: 3 cdas (30g) â†’ 1PÂ·0GÂ·1C
+- Pan integral: 1 rebanada â†’ 0PÂ·0GÂ·1C
+- Pan lactal: 2 rebanadas â†’ 0PÂ·0GÂ·1C
 
 #### **Carbohidratos - Legumbres (3 items)**
-- Lentejas cocidas: 1/2 taza → 1P·0G·1C
-- Garbanzos cocidos: 1/2 taza → 1P·0G·1C
-- Porotos negros: 1/2 taza → 1P·0G·1C
+- Lentejas cocidas: 1/2 taza â†’ 1PÂ·0GÂ·1C
+- Garbanzos cocidos: 1/2 taza â†’ 1PÂ·0GÂ·1C
+- Porotos negros: 1/2 taza â†’ 1PÂ·0GÂ·1C
 
 #### **Frutas (4 items)**
-- Manzana/Pera: 1 unidad med. → 0P·0G·1C
-- Banana: 1/2 unidad → 0P·0G·1C
-- Naranja/Mandarina: 1 unidad → 0P·0G·1C
-- Frutillas: 1 taza → 0P·0G·1C
+- Manzana/Pera: 1 unidad med. â†’ 0PÂ·0GÂ·1C
+- Banana: 1/2 unidad â†’ 0PÂ·0GÂ·1C
+- Naranja/Mandarina: 1 unidad â†’ 0PÂ·0GÂ·1C
+- Frutillas: 1 taza â†’ 0PÂ·0GÂ·1C
 
 #### **Vegetales (3 items)**
-- Vegetales A (lechuga, acelga): Libre → 0P·0G·0C
-- Vegetales B (zanahoria, tomate): 1 taza → 0P·0G·0.5C
-- Papa/Batata: 1 unidad chica → 0P·0G·1C
+- Vegetales A (lechuga, acelga): Libre â†’ 0PÂ·0GÂ·0C
+- Vegetales B (zanahoria, tomate): 1 taza â†’ 0PÂ·0GÂ·0.5C
+- Papa/Batata: 1 unidad chica â†’ 0PÂ·0GÂ·1C
 
 #### **Grasas (4 items)**
-- Aceite/Manteca: 1 cdta (5g) → 0P·1G·0C
-- Palta: 1/4 unidad → 0P·1G·0C
-- Frutos secos: 7-10 unidades → 0P·1G·0C
-- Semillas (chía, lino): 1 cda → 0P·1G·0C
+- Aceite/Manteca: 1 cdta (5g) â†’ 0PÂ·1GÂ·0C
+- Palta: 1/4 unidad â†’ 0PÂ·1GÂ·0C
+- Frutos secos: 7-10 unidades â†’ 0PÂ·1GÂ·0C
+- Semillas (chÃ­a, lino): 1 cda â†’ 0PÂ·1GÂ·0C
 
 #### **Fiambres (2 items)**
-- Jamón cocido magro: 50g → 1P·0G·0C
-- Pavo/Pollo fiambre: 50g → 1P·0G·0C
+- JamÃ³n cocido magro: 50g â†’ 1PÂ·0GÂ·0C
+- Pavo/Pollo fiambre: 50g â†’ 1PÂ·0GÂ·0C
 
 ### **3. Columnas de la Tabla**
 
-| Columna | Descripción | Ejemplo |
+| Columna | DescripciÃ³n | Ejemplo |
 |---------|-------------|---------|
 | **Grupo Alimentario** | Nombre del alimento | "Huevo" |
-| **Porción de Referencia** | Medida casera | "1 unidad" |
-| **P** | Bloques de Proteína | 1 |
+| **PorciÃ³n de Referencia** | Medida casera | "1 unidad" |
+| **P** | Bloques de ProteÃ­na | 1 |
 | **G** | Bloques de Grasa | 1 |
 | **C** | Bloques de Carbohidratos | 0 |
-| **Momento** | Cuándo consumir | "🌅 Desayuno/Almuerzo/Cena" |
+| **Momento** | CuÃ¡ndo consumir | "ðŸŒ… Desayuno/Almuerzo/Cena" |
 
 ### **4. Tip en Footer**
 
-La tabla incluye un ejemplo práctico:
+La tabla incluye un ejemplo prÃ¡ctico:
 
 > **Tip:** Usa esta tabla para armar tus comidas mentalmente.  
-> Ejemplo: Desayuno de 2P·1G·1C = Huevo (1P·1G) + Leche (1P·0G·1C)
+> Ejemplo: Desayuno de 2PÂ·1GÂ·1C = Huevo (1PÂ·1G) + Leche (1PÂ·0GÂ·1C)
 
 ---
 
-## **💻 Implementación Técnica**
+## **ðŸ’» ImplementaciÃ³n TÃ©cnica**
 
 ### **Archivos Modificados**
 
 **`src/templates/plan_alimentario.html`**
 
-#### **HTML (líneas 182-213)**
+#### **HTML (lÃ­neas 182-213)**
 
 ```html
 <!-- Tabla de Referencia de Bloques (Colapsable) -->
@@ -127,7 +127,7 @@ La tabla incluye un ejemplo práctico:
                     <thead class="table-light sticky-top">
                         <tr>
                             <th>Grupo Alimentario</th>
-                            <th>Porción de Referencia</th>
+                            <th>PorciÃ³n de Referencia</th>
                             <th class="text-center text-danger">P</th>
                             <th class="text-center text-warning">G</th>
                             <th class="text-center text-primary">C</th>
@@ -135,7 +135,7 @@ La tabla incluye un ejemplo práctico:
                         </tr>
                     </thead>
                     <tbody id="foodBlocksTableBody">
-                        <!-- Se llena dinámicamente -->
+                        <!-- Se llena dinÃ¡micamente -->
                     </tbody>
                 </table>
             </div>
@@ -148,10 +148,10 @@ La tabla incluye un ejemplo práctico:
 </div>
 ```
 
-#### **JavaScript (líneas 701-788)**
+#### **JavaScript (lÃ­neas 701-788)**
 
 ```javascript
-// Función para cargar bloques desde GRUPOSALIMENTOS (datos reales)
+// FunciÃ³n para cargar bloques desde GRUPOSALIMENTOS (datos reales)
 async function loadFoodBlocks() {
     try {
         const res = await fetch('/api/grupos-alimentos');
@@ -162,19 +162,19 @@ async function loadFoodBlocks() {
             return [];
         }
         
-        // Mapear emojis para momentos del día
+        // Mapear emojis para momentos del dÃ­a
         const momentoEmojis = {
-            'desayuno': '🌅',
-            'media_manana': '☕',
-            'almuerzo': '🍽️',
-            'merienda': '🧉',
-            'media_tarde': '🥜',
-            'cena': '🌙'
+            'desayuno': 'ðŸŒ…',
+            'media_manana': 'â˜•',
+            'almuerzo': 'ðŸ½ï¸',
+            'merienda': 'ðŸ§‰',
+            'media_tarde': 'ðŸ¥œ',
+            'cena': 'ðŸŒ™'
         };
         
         const momentoNombres = {
             'desayuno': 'Desayuno',
-            'media_manana': 'Media Mañana',
+            'media_manana': 'Media MaÃ±ana',
             'almuerzo': 'Almuerzo',
             'merienda': 'Merienda',
             'media_tarde': 'Media Tarde',
@@ -192,7 +192,7 @@ async function loadFoodBlocks() {
             },
             momento: a.momentos.length 
                 ? a.momentos.map(m => `${momentoEmojis[m] || ''} ${momentoNombres[m] || m}`).join(', ')
-                : '—',
+                : 'â€”',
             macros_fuertes: a.macros_fuertes || [a.macro_dominante]
         }));
     } catch (error) {
@@ -201,7 +201,7 @@ async function loadFoodBlocks() {
     }
 }
 
-// Función de renderizado (acepta array como parámetro)
+// FunciÃ³n de renderizado (acepta array como parÃ¡metro)
 function renderFoodBlocksTable(foodBlocks) {
     const tbody = document.getElementById('foodBlocksTableBody');
     if (!tbody) return;
@@ -211,7 +211,7 @@ function renderFoodBlocksTable(foodBlocks) {
             <tr>
                 <td colspan="6" class="text-center text-muted py-4">
                     <i class="fa fa-info-circle me-2"></i>
-                    No se pudieron cargar los alimentos. Intenta recargar la página.
+                    No se pudieron cargar los alimentos. Intenta recargar la pÃ¡gina.
                 </td>
             </tr>
         `;
@@ -247,34 +247,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Cargar y renderizar tabla desde datos reales
     const foodBlocks = await loadFoodBlocks();
     renderFoodBlocksTable(foodBlocks);
-    // ... resto del código
+    // ... resto del cÃ³digo
 });
 ```
 
-**Ventajas del enfoque dinámico**:
-- ✅ Refleja cambios en `GRUPOSALIMENTOS` automáticamente
-- ✅ Usa bloques por porción (corrección aplicada anteriormente)
-- ✅ Incluye `macros_fuertes` (huevo aparece como proteico Y graso)
-- ✅ Momentos del día configurados en backend
-- ✅ Fácil de mantener (sin duplicar datos)
+**Ventajas del enfoque dinÃ¡mico**:
+- âœ… Refleja cambios en `GRUPOSALIMENTOS` automÃ¡ticamente
+- âœ… Usa bloques por porciÃ³n (correcciÃ³n aplicada anteriormente)
+- âœ… Incluye `macros_fuertes` (huevo aparece como proteico Y graso)
+- âœ… Momentos del dÃ­a configurados en backend
+- âœ… FÃ¡cil de mantener (sin duplicar datos)
 
 ---
 
-## **🎨 Estilos Utilizados**
+## **ðŸŽ¨ Estilos Utilizados**
 
 La tabla reutiliza estilos existentes de Bootstrap 5:
 
-- `table-responsive`: Scroll horizontal en móviles
+- `table-responsive`: Scroll horizontal en mÃ³viles
 - `table-hover`: Efecto hover en filas
 - `table-sm`: Tabla compacta
 - `badge bg-danger/warning/primary`: Badges de colores
 - `sticky-top`: Header fijo al hacer scroll
-- `collapse`: Animación de mostrar/ocultar
+- `collapse`: AnimaciÃ³n de mostrar/ocultar
 - `border-info`: Borde azul del card
 
 ---
 
-## **📱 Responsive**
+## **ðŸ“± Responsive**
 
 ### **Desktop**
 - Tabla completa visible
@@ -292,33 +292,33 @@ La tabla reutiliza estilos existentes de Bootstrap 5:
 
 ---
 
-## **🔄 Flujo de Usuario**
+## **ðŸ”„ Flujo de Usuario**
 
 1. Usuario entra a **Plan Alimentario**
 2. Selecciona **Plan Simplificado**
 3. Ve el sistema de bloques (1P = 20g, etc.)
 4. Click en **"Ver Tabla de Referencia de Alimentos"**
-5. Tabla se expande con animación
+5. Tabla se expande con animaciÃ³n
 6. Usuario consulta bloques por alimento
 7. Puede cerrar la tabla haciendo click nuevamente
 
 ---
 
-## **✅ Ventajas**
+## **âœ… Ventajas**
 
 1. **Educativo**: Usuario aprende equivalencias de bloques
-2. **Práctico**: Consulta rápida sin salir de la app
+2. **PrÃ¡ctico**: Consulta rÃ¡pida sin salir de la app
 3. **Visual**: Colores y emojis facilitan lectura
 4. **No invasivo**: Colapsable para no ocupar espacio
-5. **Reutilizable**: Datos en constante JavaScript fácil de mantener
+5. **Reutilizable**: Datos en constante JavaScript fÃ¡cil de mantener
 
 ---
 
-## **🚀 Expansiones Futuras**
+## **ðŸš€ Expansiones Futuras**
 
 ### **Filtros**
 ```javascript
-// Filtrar por momento del día
+// Filtrar por momento del dÃ­a
 function filterByMoment(moment) {
     return foodBlocks.filter(item => item.momento.includes(moment));
 }
@@ -329,7 +329,7 @@ function filterByMacro(macro) {
 }
 ```
 
-### **Búsqueda**
+### **BÃºsqueda**
 ```html
 <input type="text" class="form-control mb-2" 
        placeholder="Buscar alimento..." 
@@ -375,11 +375,11 @@ def api_bloques_referencia():
 
 ---
 
-## **📝 Notas de Mantenimiento**
+## **ðŸ“ Notas de Mantenimiento**
 
 ### **Agregar Nuevo Alimento**
 
-1. Editar `plan_alimentario.html` línea ~701
+1. Editar `plan_alimentario.html` lÃ­nea ~701
 2. Agregar nuevo objeto al array `foodBlocks`:
 
 ```javascript
@@ -389,12 +389,12 @@ const foodBlocks = [
         group: 'Tofu', 
         portion: '100g', 
         blocks: { P: 1, G: 1, C: 0 }, 
-        momento: '🍽️ Almuerzo/Cena' 
+        momento: 'ðŸ½ï¸ Almuerzo/Cena' 
     }
 ];
 ```
 
-3. La tabla se actualiza automáticamente al recargar
+3. La tabla se actualiza automÃ¡ticamente al recargar
 
 ### **Modificar Bloques Existentes**
 
@@ -406,19 +406,19 @@ huevo.blocks.P = 1.5; // Ahora 1.5P en vez de 1P
 
 ---
 
-## **🧪 Testing**
+## **ðŸ§ª Testing**
 
-### **Verificación Visual**
+### **VerificaciÃ³n Visual**
 
-1. Abrir Plan Alimentario → Plan Simplificado
-2. Verificar botón "Ver Tabla de Referencia" visible
-3. Click botón → Tabla se expande
+1. Abrir Plan Alimentario â†’ Plan Simplificado
+2. Verificar botÃ³n "Ver Tabla de Referencia" visible
+3. Click botÃ³n â†’ Tabla se expande
 4. Verificar 33 filas (alimentos)
 5. Verificar badges de colores correctos
 6. Verificar emojis de momento visibles
-7. Resize navegador → Verificar scroll horizontal en móvil
+7. Resize navegador â†’ Verificar scroll horizontal en mÃ³vil
 
-### **Verificación Funcional**
+### **VerificaciÃ³n Funcional**
 
 ```javascript
 // En consola del navegador
@@ -431,23 +431,24 @@ renderFoodBlocksTable();
 
 ---
 
-## **🎯 Resultado Final**
+## **ðŸŽ¯ Resultado Final**
 
-Los usuarios ahora tienen una **guía visual completa** de bloques por alimento directamente en el Plan Simplificado, permitiéndoles:
+Los usuarios ahora tienen una **guÃ­a visual completa** de bloques por alimento directamente en el Plan Simplificado, permitiÃ©ndoles:
 
-- ✅ Aprender equivalencias de bloques
-- ✅ Planificar comidas mentalmente
-- ✅ Consultar rápidamente sin salir de la app
-- ✅ Entender qué alimentos comer en cada momento del día
+- âœ… Aprender equivalencias de bloques
+- âœ… Planificar comidas mentalmente
+- âœ… Consultar rÃ¡pidamente sin salir de la app
+- âœ… Entender quÃ© alimentos comer en cada momento del dÃ­a
 
 **Ejemplo de uso real:**
 
-Usuario con objetivo de desayuno **2P · 1G · 1C** consulta la tabla y arma:
-- Huevo (1P·1G) + Leche (1P·0G·1C) = ✅ 2P·1G·1C
+Usuario con objetivo de desayuno **2P Â· 1G Â· 1C** consulta la tabla y arma:
+- Huevo (1PÂ·1G) + Leche (1PÂ·0GÂ·1C) = âœ… 2PÂ·1GÂ·1C
 
 ---
 
 **Archivo**: `TABLA_REFERENCIA_BLOQUES.md`  
 **Fecha**: 2025-10-06  
-**Versión**: 1.0.0  
-**Estado**: ✅ IMPLEMENTACIÓN COMPLETA
+**VersiÃ³n**: 1.0.0  
+**Estado**: âœ… IMPLEMENTACIÃ“N COMPLETA
+
