@@ -457,6 +457,9 @@ def registrar_sesion_completada(user_id, ejercicios, repeticiones_test={}, incre
             resultados[ejercicio_nombre] = f"Error: No se encontró el estado para {ejercicio_nombre}"
             continue
 
+        # Convertir Row a dict para permitir uso de .get y manipulación flexible
+        estado = dict(estado)
+
         nueva_columna = estado['current_columna']
         nueva_sesion = estado['current_sesion']
         nuevo_peso = estado['current_peso']

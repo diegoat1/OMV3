@@ -14,7 +14,11 @@ from wtforms import (
     FileField,
 )
 from wtforms.widgets import ListWidget
-from wtforms.fields import EmailField, DateField, TimeField, DateTimeField
+from wtforms.fields import DateField, TimeField, DateTimeField
+try:
+    from wtforms.fields import EmailField  # WTForms 3.x
+except ImportError:  # WTForms 2.x (PythonAnywhere)
+    from wtforms.fields.html5 import EmailField
 from wtforms.validators import DataRequired, NumberRange
 import sqlite3, functions
 
