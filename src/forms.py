@@ -1,8 +1,26 @@
-from wtforms import (Form, StringField, PasswordField, HiddenField, IntegerField, FloatField, BooleanField, DateField, validators, TimeField, RadioField, FieldList, FormField, SelectField, FileField)
+from wtforms import (
+    Form,
+    StringField,
+    PasswordField,
+    HiddenField,
+    IntegerField,
+    FloatField,
+    BooleanField,
+    validators,
+    RadioField,
+    FieldList,
+    FormField,
+    SelectField,
+    FileField,
+)
 from wtforms.widgets import ListWidget
-from wtforms.fields.html5 import (EmailField, DateField, TimeField, DateTimeField)
+from wtforms.fields import EmailField, DateField, TimeField, DateTimeField
 from wtforms.validators import DataRequired, NumberRange
 import sqlite3, functions
+
+# Compatibilidad con versiones antiguas: alias Required -> DataRequired
+if not hasattr(validators, 'Required'):
+    validators.Required = DataRequired
 
 def length_honeypot(form, field):
     if len(field.data) > 0:

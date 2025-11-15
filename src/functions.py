@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 
 DATABASE_PATH = "src/Basededatos"
+TELEMED_DATABASE_PATH = "src/telemedicina.db"
 
 def decode_json_data(json_string):
     if json_string:
@@ -77,6 +78,13 @@ def get_all_strength_data_admin():
         data.append(decoded_row)
     conn.close()
     return data
+
+def get_telemed_connection(row_factory=None):
+    """Devuelve una conexión a la base de telemedicina"""
+    conn = sqlite3.connect(TELEMED_DATABASE_PATH)
+    if row_factory is not None:
+        conn.row_factory = row_factory
+    return conn
 
 from io import *
 import os
@@ -3584,6 +3592,16 @@ def crear_tablas_medidas_corporales():
                 evaluador TEXT
             )
         """)
+
+        nuevas_columnas_situacion = [
+            ("tipo_consulta", "TEXT"),
+            ("tipo_consulta_personalizada", "TEXT")
+        ]
+        for nombre_columna, tipo_columna in nuevas_columnas_situacion:
+            try:
+                cursor.execute(f"ALTER TABLE TELEMED_SITUACIONES ADD COLUMN {nombre_columna} {tipo_columna}")
+            except sqlite3.OperationalError:
+                pass
         conn.commit()
     except Exception as e:
         print(f"Error al crear tabla MEDIDAS_CORPORALES: {e}")
@@ -3692,8 +3710,9 @@ def crear_tablas_rendimiento_fisico():
 
 def crear_tablas_telemedicina():
     """Crea las tablas para el sistema de telemedicina"""
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = get_telemed_connection()
     cursor = conn.cursor()
+
     try:
         # Tabla para historia médica
         cursor.execute("""
@@ -3836,6 +3855,131 @@ def crear_tablas_telemedicina():
                 notas TEXT
             )
         """)
+
+        # Tabla para fichas de pacientes telemedicina
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS TELEMED_PACIENTES (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                paciente_nombre TEXT NOT NULL,
+                paciente_dni TEXT,
+                documento TEXT,
+                documento_tipo TEXT,
+                nombre TEXT,
+                apellido TEXT,
+                fecha_nacimiento DATE,
+                edad INTEGER,
+                altura_cm REAL,
+                peso_kg REAL,
+                alergias TEXT,
+                patologias_previas TEXT,
+                antecedentes TEXT,
+                telefono TEXT,
+                es_fumador INTEGER DEFAULT 0,
+                activo_sexualmente INTEGER DEFAULT 0,
+                embarazo INTEGER DEFAULT 0,
+                notas TEXT
+            )
+        """)
+
+        # Añadir columnas nuevas si la tabla ya existía sin ellas
+        nuevas_columnas = [
+            ("nombre", "TEXT"),
+            ("apellido", "TEXT"),
+            ("fecha_nacimiento", "DATE"),
+            ("documento_tipo", "TEXT")
+        ]
+        for nombre_columna, tipo_columna in nuevas_columnas:
+            try:
+                cursor.execute(f"ALTER TABLE TELEMED_PACIENTES ADD COLUMN {nombre_columna} {tipo_columna}")
+            except sqlite3.OperationalError:
+                # La columna ya existe
+                pass
+
+        # Tabla para registros de situación clínica
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS TELEMED_SITUACIONES (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                paciente_nombre TEXT NOT NULL,
+                paciente_dni TEXT,
+                tipo_consulta TEXT,
+                tipo_consulta_personalizada TEXT,
+                motivo_consulta TEXT,
+                historia_enfermedad_actual TEXT,
+                antecedentes_personales TEXT,
+                situacion_actual TEXT,
+                laboratorios TEXT,
+                estudios_complementarios TEXT,
+                interconsultas TEXT,
+                tratamiento_farmacologico TEXT,
+                medidas_estilo_vida TEXT,
+                signos_alarma TEXT,
+                proximos_controles TEXT,
+                diagnostico_cie10 TEXT,
+                informe_dimision TEXT,
+                indicaciones TEXT,
+                resumen_clinico TEXT,
+                etiquetas TEXT
+            )
+        """)
+
+        nuevas_columnas_situaciones = [
+            ("historia_enfermedad_actual", "TEXT"),
+            ("antecedentes_personales", "TEXT"),
+            ("laboratorios", "TEXT"),
+            ("estudios_complementarios", "TEXT"),
+            ("interconsultas", "TEXT"),
+            ("tratamiento_farmacologico", "TEXT"),
+            ("medidas_estilo_vida", "TEXT"),
+            ("signos_alarma", "TEXT"),
+            ("proximos_controles", "TEXT"),
+            ("resumen_clinico", "TEXT"),
+            ("tipo_consulta", "TEXT"),
+            ("tipo_consulta_personalizada", "TEXT")
+        ]
+        for nombre_columna, tipo_columna in nuevas_columnas_situaciones:
+            try:
+                cursor.execute(f"ALTER TABLE TELEMED_SITUACIONES ADD COLUMN {nombre_columna} {tipo_columna}")
+            except sqlite3.OperationalError:
+                pass
+
+        # Tabla para documentos alojados externamente (Drive)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS TELEMED_DOCUMENTOS (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                paciente_nombre TEXT NOT NULL,
+                paciente_dni TEXT,
+                tipo_documento TEXT NOT NULL,
+                descripcion TEXT,
+                fecha_documento DATE,
+                drive_url TEXT,
+                etiquetas TEXT,
+                notas TEXT,
+                drive_file_id TEXT,
+                nombre_archivo TEXT,
+                mime_type TEXT,
+                tamano_archivo INTEGER,
+                carpeta_id TEXT
+            )
+        """)
+
+        nuevas_columnas_documentos = [
+            ("drive_file_id", "TEXT"),
+            ("nombre_archivo", "TEXT"),
+            ("mime_type", "TEXT"),
+            ("tamano_archivo", "INTEGER"),
+            ("carpeta_id", "TEXT")
+        ]
+        for nombre_columna, tipo_columna in nuevas_columnas_documentos:
+            try:
+                cursor.execute(f"ALTER TABLE TELEMED_DOCUMENTOS ADD COLUMN {nombre_columna} {tipo_columna}")
+            except sqlite3.OperationalError:
+                pass
 
         conn.commit()
     except Exception as e:

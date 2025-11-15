@@ -5,9 +5,12 @@ import math
 from datetime import datetime, timedelta
 import statistics
 import json
+import os
 import forms
 import functions
 from functions import decode_json_data
+from werkzeug.utils import secure_filename
+from google_drive import upload_file_to_drive, slugify
 from training import (crear_tablas, inicializar_matriz_entrenamiento,
                       obtener_entrenamiento_del_dia, registrar_sesion_completada,
                       avanzar_dia_plan, guardar_plan_optimizado, obtener_conexion_db)
@@ -2664,6 +2667,7 @@ def login():
         
         conn = sqlite3.connect('src/Basededatos')
         cursor = conn.cursor()
+
         # La contraseña es el DNI del usuario.
         cursor.execute("SELECT DNI, NOMBRE_APELLIDO FROM PERFILESTATICO WHERE EMAIL = ?", (email,))
         user_data = cursor.fetchone()
@@ -3289,9 +3293,26 @@ def plan_alimentario():
         return redirect(url_for('login'))
     
     username = session['username']
+    # Soporte modo admin (ver otros pacientes)
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+    paciente_seleccionado = None
+    lista_pacientes = []
+    
+    if is_admin:
+        basededatos = functions.get_telemed_connection()
+        cursor = basededatos.cursor()
+        cursor.execute("SELECT DISTINCT paciente_nombre FROM TELEMED_PACIENTES ORDER BY paciente_nombre")
+        lista_pacientes = [row[0] for row in cursor.fetchall()]
+        basededatos.close()
+        # Permitir selección por query param
+        paciente_seleccionado = request.args.get('paciente', username)
+    
     return render_template('plan_alimentario.html', 
                          title='Plan Alimentario',
-                         username=username)
+                         username=username,
+                         is_admin=is_admin,
+                         lista_pacientes=lista_pacientes,
+                         paciente_seleccionado=paciente_seleccionado)
 
 # APIs para el Plan Alimentario
 @app.route('/api/plan-alimentario/info')
@@ -3300,7 +3321,16 @@ def api_plan_alimentario_info():
     if 'DNI' not in session:
         return jsonify({'error': 'No autorizado'}), 401
     
-    username = session['username']
+    # Soporte admin: permitir ?paciente= para leer datos de otro usuario
+    current_user = session.get('username')
+    is_admin = (current_user == 'Toffaletti, Diego Alejandro')
+    paciente_objetivo = request.args.get('paciente')
+    if paciente_objetivo:
+        if not is_admin:
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+        username = paciente_objetivo
+    else:
+        username = current_user
     
     # Definición de bloques nutricionales estándar
     BLOQUE_PROTEINA = 20  # gramos
@@ -3824,12 +3854,28 @@ def api_plan_alimentario_plan_guardado():
     if 'DNI' not in session:
         return jsonify({'error': 'No autorizado'}), 401
     
-    user_dni = session['DNI']
-    username = session['username']
-    
     try:
+        # Soporte admin: permitir ?paciente= para leer datos de otro usuario
+        current_user = session.get('username')
+        is_admin = (current_user == 'Toffaletti, Diego Alejandro')
+        paciente_objetivo = request.args.get('paciente')
+        
         basededatos = sqlite3.connect('src/Basededatos')
         cursor = basededatos.cursor()
+        
+        # Resolver username y DNI objetivo
+        if paciente_objetivo and is_admin:
+            cursor.execute("SELECT DNI FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [paciente_objetivo])
+            row = cursor.fetchone()
+            if row:
+                user_dni = row[0]
+                username = paciente_objetivo
+            else:
+                user_dni = session['DNI']
+                username = current_user
+        else:
+            user_dni = session['DNI']
+            username = current_user
         
         # Verificar columnas disponibles para compatibilidad
         cursor.execute("PRAGMA table_info(PLANES_ALIMENTARIOS)")
@@ -5237,10 +5283,12 @@ def api_rendimiento_resistencia():
         return jsonify({'error': 'No autorizado'}), 401
     
     user_dni = session['DNI']
+    username = session.get('username', '')
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
     
     if request.method == 'GET':
         try:
-            conn = sqlite3.connect('src/Basededatos')
+            conn = functions.get_telemed_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM RENDIMIENTO_RESISTENCIA 
@@ -5257,7 +5305,7 @@ def api_rendimiento_resistencia():
     elif request.method == 'POST':
         data = request.get_json()
         try:
-            conn = sqlite3.connect('src/Basededatos')
+            conn = functions.get_telemed_connection()
             cursor = conn.cursor()
             
             campos = ['user_id']
@@ -5285,13 +5333,174 @@ def api_rendimiento_resistencia():
 
 ### TELEMEDICINA ###
 
-@app.route('/telemedicina')
-def telemedicina():
-    """Página principal de telemedicina - EN DESARROLLO"""
+def _render_telemedicina_section(active_section):
+    """Renderiza la pantalla de telemedicina para la sección solicitada"""
     if 'DNI' not in session:
         return redirect(url_for('login'))
-    
-    return render_template('mantenimiento.html')
+
+    username = session['username']
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+    paciente_preseleccionado = request.args.get('paciente')
+
+    lista_pacientes = []
+    if is_admin:
+        basededatos = functions.get_telemed_connection()
+        cursor = basededatos.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT
+                CASE
+                    WHEN TRIM(COALESCE(paciente_nombre, '')) <> '' THEN paciente_nombre
+                    ELSE TRIM(COALESCE(nombre, '') || ' ' || COALESCE(apellido, ''))
+                END AS nombre_completo
+            FROM TELEMED_PACIENTES
+            WHERE nombre_completo IS NOT NULL AND TRIM(nombre_completo) <> ''
+            ORDER BY nombre_completo
+            """
+        )
+        lista_pacientes = [row[0] for row in cursor.fetchall()]
+        basededatos.close()
+
+        if not lista_pacientes:
+            fallback_conn = sqlite3.connect('src/Basededatos')
+            fallback_cursor = fallback_conn.cursor()
+            fallback_cursor.execute("SELECT DISTINCT NOMBRE_APELLIDO FROM PERFILESTATICO ORDER BY NOMBRE_APELLIDO")
+            lista_pacientes = [row[0] for row in fallback_cursor.fetchall()]
+            fallback_conn.close()
+    else:
+        lista_pacientes = [username]
+
+    drive_credentials_path = (
+        os.getenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON')
+        or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        or os.path.join('config', 'google-service-account.json')
+    )
+    drive_configured = bool(
+        os.getenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_INFO')
+        or (drive_credentials_path and os.path.exists(drive_credentials_path))
+    )
+
+    enlaces_rapidos = [
+        {
+            "nombre": "Agenda virtual",
+            "descripcion": "Videoconsultas y turnos",
+            "icono": "fa-calendar-check",
+            "url": "https://calendly.com/omegamedicina"
+        },
+        {
+            "nombre": "Registro de pacientes",
+            "descripcion": "Alta online de pacientes",
+            "icono": "fa-user-plus",
+            "url": "https://app.rcta.me/patients/3d364124164b763a2c716f0b511a3521df094182"
+        },
+        {
+            "nombre": "Solicitar recetas",
+            "descripcion": "Pedidos y renovaciones",
+            "icono": "fa-prescription-bottle-alt",
+            "url": "https://app.rcta.me/p/diego-alejandro-toffaletti-20"
+        },
+        {
+            "nombre": "Obra social INSSSEP",
+            "descripcion": "Autorizaciones y seguimiento",
+            "icono": "fa-hospital-symbol",
+            "url": "https://online.insssep.gob.ar/INSSSEP/"
+        },
+        {
+            "nombre": "Certificados médicos",
+            "descripcion": "Generador asistido",
+            "icono": "fa-file-medical",
+            "url": "https://chatgpt.com/share/69049bbd-3294-800e-88f2-6e45fdbfe7ab"
+        },
+        {
+            "nombre": "Guía USPSTF",
+            "descripcion": "Qué estudiar según prevención",
+            "icono": "fa-clipboard-list",
+            "url": "https://www.uspreventiveservicestaskforce.org/webview/#!/"
+        },
+        {
+            "nombre": "HeartScore ESC",
+            "descripcion": "Calculadora de riesgo CV",
+            "icono": "fa-heartbeat",
+            "url": "https://heartscore.escardio.org/Calculate/quickcalculator.aspx?model=high"
+        }
+    ]
+
+    filtro_fecha_desde = request.args.get('fecha_desde', '')
+    filtro_fecha_hasta = request.args.get('fecha_hasta', '')
+    filtro_cie10 = request.args.get('cie10') or request.args.get('diagnostico') or ''
+    filtro_doc_tipo = request.args.get('tipo', '')
+    filtro_doc_search = request.args.get('q') or request.args.get('buscar') or ''
+
+    filtros_iniciales = {
+        'situacion': {
+            'paciente': paciente_preseleccionado or '',
+            'desde': filtro_fecha_desde if active_section == 'situacion' else '',
+            'hasta': filtro_fecha_hasta if active_section == 'situacion' else '',
+            'cie10': filtro_cie10 if active_section == 'situacion' else ''
+        },
+        'documentos': {
+            'paciente': paciente_preseleccionado or '',
+            'desde': filtro_fecha_desde if active_section == 'documentos' else '',
+            'hasta': filtro_fecha_hasta if active_section == 'documentos' else '',
+            'tipo': filtro_doc_tipo if active_section == 'documentos' else '',
+            'search': filtro_doc_search if active_section == 'documentos' else ''
+        }
+    }
+
+    secciones_menu = [
+        {
+            "id": "pacientes",
+            "titulo": "Lista de pacientes",
+            "icono": "fa-id-card-alt",
+            "endpoint": 'telemedicina_pacientes'
+        },
+        {
+            "id": "situacion",
+            "titulo": "Situación actual",
+            "icono": "fa-stethoscope",
+            "endpoint": 'telemedicina_situacion'
+        },
+        {
+            "id": "documentos",
+            "titulo": "Documentos clínicos",
+            "icono": "fa-folder-plus",
+            "endpoint": 'telemedicina_documentos'
+        }
+    ]
+
+    return render_template(
+        'telemedicina.html',
+        title='Telemedicina',
+        username=username,
+        is_admin=is_admin,
+        lista_pacientes=lista_pacientes,
+        enlaces_rapidos=enlaces_rapidos,
+        secciones_menu=secciones_menu,
+        active_section=active_section,
+        paciente_preseleccionado=paciente_preseleccionado,
+        drive_ready=drive_configured,
+        filtros_iniciales=filtros_iniciales
+    )
+
+
+@app.route('/telemedicina')
+def telemedicina():
+    return redirect(url_for('telemedicina_pacientes'))
+
+
+@app.route('/telemedicina/pacientes')
+def telemedicina_pacientes():
+    return _render_telemedicina_section('pacientes')
+
+
+@app.route('/telemedicina/situacion')
+def telemedicina_situacion():
+    return _render_telemedicina_section('situacion')
+
+
+@app.route('/telemedicina/documentos')
+def telemedicina_documentos():
+    return _render_telemedicina_section('documentos')
 
 @app.route('/historia-medica')
 def historia_medica():
@@ -5364,56 +5573,21 @@ def citas_medicas():
 
 @app.route('/api/citas-medicas', methods=['GET', 'POST'])
 def api_citas_medicas():
-    """API para citas médicas"""
+    """API placeholder para citas médicas (en desarrollo)"""
     if 'DNI' not in session:
         return jsonify({'error': 'No autorizado'}), 401
-    
-    user_dni = session['DNI']
-    
+
     if request.method == 'GET':
-        try:
-            conn = sqlite3.connect('src/Basededatos')
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM CITAS_MEDICAS 
-                WHERE user_id = ? 
-                ORDER BY fecha_cita DESC
-            """, (user_dni,))
-            citas = cursor.fetchall()
-            conn.close()
-            
-            return jsonify({'success': True, 'citas': citas})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    elif request.method == 'POST':
-        data = request.get_json()
-        try:
-            conn = sqlite3.connect('src/Basededatos')
-            cursor = conn.cursor()
-            
-            campos = ['user_id']
-            valores = [user_dni]
-            placeholders = ['?']
-            
-            for campo, valor in data.items():
-                if valor is not None and valor != '':
-                    campos.append(campo)
-                    valores.append(valor)
-                    placeholders.append('?')
-            
-            query = f"""
-                INSERT INTO CITAS_MEDICAS ({', '.join(campos)})
-                VALUES ({', '.join(placeholders)})
-            """
-            
-            cursor.execute(query, valores)
-            conn.commit()
-            conn.close()
-            
-            return jsonify({'success': True, 'message': 'Cita médica programada'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+        # Sin implementación aún: devolver lista vacía para mantener interfaz
+        return jsonify({'success': True, 'citas': []})
+
+    # POST – pendiente de implementación real
+    data = request.get_json() or {}
+    return jsonify({
+        'success': False,
+        'error': 'Registro de citas médicas en desarrollo',
+        'payload': data
+    }), 501
 
 @app.route('/signos-vitales')
 def signos_vitales():
@@ -5431,8 +5605,8 @@ def api_signos_vitales():
     
     user_dni = session['DNI']
     
-    if request.method == 'GET':
-        try:
+    try:
+        if request.method == 'GET':
             conn = sqlite3.connect('src/Basededatos')
             cursor = conn.cursor()
             cursor.execute("""
@@ -5444,12 +5618,9 @@ def api_signos_vitales():
             conn.close()
             
             return jsonify({'success': True, 'signos': signos})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    elif request.method == 'POST':
-        data = request.get_json()
-        try:
+        elif request.method == 'POST':
+            data = request.get_json() or {}
+            
             conn = sqlite3.connect('src/Basededatos')
             cursor = conn.cursor()
             
@@ -5473,8 +5644,709 @@ def api_signos_vitales():
             conn.close()
             
             return jsonify({'success': True, 'message': 'Signos vitales registrados'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/telemed/pacientes', methods=['GET', 'POST'])
+@csrf.exempt
+def api_telemed_pacientes():
+    """Gestiona la ficha simplificada de pacientes para telemedicina"""
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+
+    user_dni = session['DNI']
+    username = session.get('username', '')
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+
+    conn = functions.get_telemed_connection(sqlite3.Row)
+    cursor = conn.cursor()
+
+    def to_int(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def to_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def to_bool(value):
+        if isinstance(value, bool):
+            return 1 if value else 0
+        if isinstance(value, str):
+            return 1 if value.strip().lower() in ['true', '1', 'si', 'sí', 'on'] else 0
+        if value in (0, 1):
+            return value
+        return 1 if value else 0
+
+    def calculate_age(date_str):
+        if not date_str:
+            return None
+        try:
+            nacimiento = datetime.strptime(date_str, '%Y-%m-%d').date()
+            hoy = datetime.now().date()
+            return hoy.year - nacimiento.year - ((hoy.month, hoy.day) < (nacimiento.month, nacimiento.day))
+        except ValueError:
+            return None
+
+    try:
+        if request.method == 'GET':
+            paciente = request.args.get('paciente')
+            query = """
+                SELECT id, user_id, paciente_nombre, paciente_dni, documento, documento_tipo,
+                       nombre, apellido, fecha_nacimiento, edad, altura_cm, peso_kg,
+                       alergias, patologias_previas, antecedentes, telefono, es_fumador,
+                       activo_sexualmente, embarazo, notas, fecha_registro
+                FROM TELEMED_PACIENTES
+                WHERE 1=1
+            """
+            params = []
+            if not is_admin:
+                query += " AND user_id = ?"
+                params.append(user_dni)
+            if paciente:
+                query += " AND paciente_nombre = ?"
+                params.append(paciente)
+            query += " ORDER BY fecha_registro DESC"
+            cursor.execute(query, params)
+            registros = []
+            for row in cursor.fetchall():
+                registro = dict(row)
+                if not registro.get('paciente_nombre'):
+                    nombre = (registro.get('nombre') or '').strip()
+                    apellido = (registro.get('apellido') or '').strip()
+                    registro['paciente_nombre'] = ' '.join([part for part in [nombre, apellido] if part]).strip()
+                registro['es_fumador'] = bool(registro.get('es_fumador'))
+                registro['activo_sexualmente'] = bool(registro.get('activo_sexualmente'))
+                registro['embarazo'] = bool(registro.get('embarazo'))
+                registro['edad_calculada'] = calculate_age(registro.get('fecha_nacimiento'))
+                if registro['edad_calculada'] is None:
+                    registro['edad_calculada'] = registro.get('edad')
+                registros.append(registro)
+            return jsonify({'success': True, 'pacientes': registros})
+
+        data = request.get_json() or {}
+        record_id = data.get('id')
+        nombre = (data.get('nombre') or '').strip()
+        apellido = (data.get('apellido') or '').strip()
+        paciente_nombre = (data.get('paciente_nombre') or '').strip()
+        if not paciente_nombre:
+            paciente_nombre = ' '.join(part for part in [nombre, apellido] if part).strip()
+        if not paciente_nombre:
+            return jsonify({'success': False, 'error': 'El nombre del paciente es obligatorio'}), 400
+
+        if not nombre and not apellido:
+            partes = paciente_nombre.split()
+            if partes:
+                nombre = partes[0]
+                apellido = ' '.join(partes[1:]) if len(partes) > 1 else ''
+
+        fecha_nacimiento = (data.get('fecha_nacimiento') or '').strip() or None
+        edad_calculada = calculate_age(fecha_nacimiento)
+        edad_valor = edad_calculada if edad_calculada is not None else to_int(data.get('edad'))
+
+        common_values = {
+            'paciente_nombre': paciente_nombre,
+            'nombre': nombre or None,
+            'apellido': apellido or None,
+            'paciente_dni': (data.get('paciente_dni') or data.get('documento') or '').strip() or None,
+            'documento': (data.get('documento') or '').strip() or None,
+            'documento_tipo': (data.get('documento_tipo') or '').strip() or None,
+            'fecha_nacimiento': fecha_nacimiento,
+            'edad': edad_valor,
+            'altura_cm': to_float(data.get('altura_cm') or data.get('altura')),
+            'peso_kg': to_float(data.get('peso_kg') or data.get('peso')),
+            'alergias': (data.get('alergias') or '').strip() or None,
+            'patologias_previas': (data.get('patologias_previas') or '').strip() or None,
+            'antecedentes': (data.get('antecedentes') or '').strip() or None,
+            'telefono': (data.get('telefono') or '').strip() or None,
+            'es_fumador': to_bool(data.get('es_fumador')),
+            'activo_sexualmente': to_bool(data.get('activo_sexualmente')),
+            'embarazo': to_bool(data.get('embarazo')),
+            'notas': (data.get('notas') or '').strip() or None
+        }
+
+        if record_id:
+            campos_update = []
+            valores_update = []
+            for campo, valor in common_values.items():
+                campos_update.append(f"{campo} = ?")
+                valores_update.append(valor)
+
+            condicion = "WHERE id = ?"
+            valores_update.append(record_id)
+            if not is_admin:
+                condicion += " AND user_id = ?"
+                valores_update.append(user_dni)
+
+            cursor.execute(f"""
+                UPDATE TELEMED_PACIENTES
+                SET {', '.join(campos_update)}, fecha_registro = CURRENT_TIMESTAMP
+                {condicion}
+            """, valores_update)
+
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'No se pudo actualizar el registro solicitado'}), 404
+
+            conn.commit()
+            cursor.execute("""
+                SELECT id, user_id, paciente_nombre, paciente_dni, documento, documento_tipo,
+                       nombre, apellido, fecha_nacimiento, edad, altura_cm, peso_kg,
+                       alergias, patologias_previas, antecedentes, telefono, es_fumador,
+                       activo_sexualmente, embarazo, notas, fecha_registro
+                FROM TELEMED_PACIENTES
+                WHERE id = ?
+            """, (record_id,))
+            actualizado = cursor.fetchone()
+            if not actualizado:
+                return jsonify({'success': False, 'error': 'Registro no encontrado tras la actualización'}), 404
+            actualizado = dict(actualizado)
+            actualizado['es_fumador'] = bool(actualizado.get('es_fumador'))
+            actualizado['activo_sexualmente'] = bool(actualizado.get('activo_sexualmente'))
+            actualizado['embarazo'] = bool(actualizado.get('embarazo'))
+            actualizado['edad_calculada'] = calculate_age(actualizado.get('fecha_nacimiento'))
+            if actualizado['edad_calculada'] is None:
+                actualizado['edad_calculada'] = actualizado.get('edad')
+            return jsonify({'success': True, 'paciente': actualizado, 'updated': True})
+
+        cursor.execute("""
+            INSERT INTO TELEMED_PACIENTES (
+                user_id, paciente_nombre, nombre, apellido, paciente_dni, documento, documento_tipo,
+                fecha_nacimiento, edad, altura_cm, peso_kg,
+                alergias, patologias_previas, antecedentes, telefono,
+                es_fumador, activo_sexualmente, embarazo, notas
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_dni,
+            common_values['paciente_nombre'],
+            common_values['nombre'],
+            common_values['apellido'],
+            common_values['paciente_dni'],
+            common_values['documento'],
+            common_values['documento_tipo'],
+            common_values['fecha_nacimiento'],
+            common_values['edad'],
+            common_values['altura_cm'],
+            common_values['peso_kg'],
+            common_values['alergias'],
+            common_values['patologias_previas'],
+            common_values['antecedentes'],
+            common_values['telefono'],
+            common_values['es_fumador'],
+            common_values['activo_sexualmente'],
+            common_values['embarazo'],
+            common_values['notas']
+        ))
+        conn.commit()
+        nuevo_id = cursor.lastrowid
+        cursor.execute("""
+            SELECT id, user_id, paciente_nombre, paciente_dni, documento, documento_tipo,
+                   nombre, apellido, fecha_nacimiento, edad, altura_cm, peso_kg,
+                   alergias, patologias_previas, antecedentes, telefono, es_fumador,
+                   activo_sexualmente, embarazo, notas, fecha_registro
+            FROM TELEMED_PACIENTES WHERE id = ?
+        """, (nuevo_id,))
+        creado = dict(cursor.fetchone())
+        creado['es_fumador'] = bool(creado.get('es_fumador'))
+        creado['activo_sexualmente'] = bool(creado.get('activo_sexualmente'))
+        creado['embarazo'] = bool(creado.get('embarazo'))
+        creado['edad_calculada'] = calculate_age(creado.get('fecha_nacimiento'))
+        if creado['edad_calculada'] is None:
+            creado['edad_calculada'] = creado.get('edad')
+        return jsonify({'success': True, 'paciente': creado, 'created': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/telemed/situacion', methods=['GET', 'POST', 'DELETE'])
+@csrf.exempt
+def api_telemed_situacion():
+    """Registra o lista la situación clínica actual del paciente"""
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+
+    user_dni = session['DNI']
+    username = session['username']
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+
+    conn = functions.get_telemed_connection(sqlite3.Row)
+    cursor = conn.cursor()
+
+    def serialize_tags(raw_value):
+        if not raw_value:
+            return []
+        if isinstance(raw_value, list):
+            return raw_value
+        if isinstance(raw_value, str):
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+            return [tag.strip() for tag in raw_value.split(',') if tag.strip()]
+        return []
+
+    def serialize_diagnosticos(raw_value):
+        if not raw_value:
+            return []
+        def normalize_entry(entry):
+            code = str(entry.get('code') or entry.get('c') or '').strip()
+            name = str(entry.get('name') or entry.get('d') or '').strip()
+            principal = bool(entry.get('principal') or entry.get('main'))
+            if not code and not name:
+                return None
+            return {
+                'code': code or 'SN/CIE10',
+                'name': name or code,
+                'principal': principal
+            }
+
+        if isinstance(raw_value, list):
+            return [item for item in (normalize_entry(entry) for entry in raw_value) if item]
+
+        if isinstance(raw_value, str):
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return [item for item in (normalize_entry(entry) for entry in parsed) if item]
+            except json.JSONDecodeError:
+                pass
+            diagnosticos = []
+            for fragmento in raw_value.split(';'):
+                texto = fragmento.strip()
+                if not texto:
+                    continue
+                partes = texto.split(' ')
+                code = (partes[0] if partes else '').strip()
+                name = ' '.join(partes[1:]).strip()
+                diagnosticos.append({
+                    'code': code or 'SN/CIE10',
+                    'name': name or texto,
+                    'principal': False
+                })
+            return diagnosticos
+        return []
+
+    def limpiar_diagnosticos(payload):
+        if not payload:
+            return []
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError:
+                payload = serialize_diagnosticos(payload)
+        if not isinstance(payload, list):
+            return []
+        diagnosticos = []
+        for entry in payload:
+            if not isinstance(entry, dict):
+                continue
+            code = str(entry.get('code') or entry.get('c') or '').strip().upper()
+            name = str(entry.get('name') or entry.get('d') or '').strip()
+            principal = bool(entry.get('principal') or entry.get('main'))
+            if not code and not name:
+                continue
+            diagnosticos.append({
+                'code': code or 'SN/CIE10',
+                'name': name or code,
+                'principal': principal
+            })
+        if diagnosticos and not any(d.get('principal') for d in diagnosticos):
+            diagnosticos[0]['principal'] = True
+        return diagnosticos
+
+    def clean_text(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    try:
+        if request.method == 'GET':
+            paciente = request.args.get('paciente')
+            fecha_desde = (request.args.get('fecha_desde') or '').strip() or None
+            fecha_hasta = (request.args.get('fecha_hasta') or '').strip() or None
+            diagnostico = (request.args.get('cie10') or request.args.get('diagnostico') or '').strip() or None
+            query = """
+                SELECT id, paciente_nombre, paciente_dni, tipo_consulta, tipo_consulta_personalizada,
+                       motivo_consulta, historia_enfermedad_actual, antecedentes_personales,
+                       laboratorios, estudios_complementarios, interconsultas,
+                       situacion_actual, tratamiento_farmacologico,
+                       medidas_estilo_vida, signos_alarma, proximos_controles,
+                       diagnostico_cie10, informe_dimision, indicaciones, resumen_clinico,
+                       etiquetas, fecha_registro
+                FROM TELEMED_SITUACIONES
+                WHERE 1=1
+            """
+            params = []
+            if not is_admin:
+                query += " AND user_id = ?"
+                params.append(user_dni)
+            if paciente:
+                query += " AND paciente_nombre = ?"
+                params.append(paciente)
+            if fecha_desde:
+                query += " AND DATE(fecha_registro) >= DATE(?)"
+                params.append(fecha_desde)
+            if fecha_hasta:
+                query += " AND DATE(fecha_registro) <= DATE(?)"
+                params.append(fecha_hasta)
+            if diagnostico:
+                query += " AND LOWER(COALESCE(diagnostico_cie10, '')) LIKE ?"
+                params.append(f"%{diagnostico.lower()}%")
+            query += " ORDER BY fecha_registro DESC"
+            cursor.execute(query, params)
+            registros = []
+            for row in cursor.fetchall():
+                registro = dict(row)
+                registro['etiquetas'] = serialize_tags(registro.get('etiquetas'))
+                registro['diagnostico_cie10'] = serialize_diagnosticos(registro.get('diagnostico_cie10'))
+                registros.append(registro)
+            return jsonify({'success': True, 'situaciones': registros})
+
+        if request.method == 'DELETE':
+            data = request.get_json(silent=True) or {}
+            situacion_id = data.get('id') or request.args.get('id')
+            if not situacion_id:
+                return jsonify({'success': False, 'error': 'ID de situación requerido'}), 400
+            try:
+                situacion_id = int(situacion_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'ID de situación inválido'}), 400
+
+            condicion = "WHERE id = ?"
+            params = [situacion_id]
+            if not is_admin:
+                condicion += " AND user_id = ?"
+                params.append(user_dni)
+
+            cursor.execute(f"DELETE FROM TELEMED_SITUACIONES {condicion}", params)
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Registro no encontrado'}), 404
+            conn.commit()
+            return jsonify({'success': True, 'deleted': True})
+
+        data = request.get_json() or {}
+        paciente_nombre = data.get('paciente_nombre')
+        if not paciente_nombre:
+            return jsonify({'success': False, 'error': 'Seleccione un paciente'}), 400
+        paciente_nombre = paciente_nombre.strip()
+        if not paciente_nombre:
+            return jsonify({'success': False, 'error': 'El nombre del paciente es obligatorio'}), 400
+
+        etiquetas = data.get('etiquetas') or []
+        if isinstance(etiquetas, str):
+            etiquetas = [tag.strip() for tag in etiquetas.split(',') if tag.strip()]
+
+        diagnosticos = limpiar_diagnosticos(data.get('diagnosticos') or data.get('diagnostico_cie10'))
+
+        campos_comunes = {
+            'paciente_nombre': paciente_nombre,
+            'paciente_dni': clean_text(data.get('paciente_dni')),
+            'tipo_consulta': clean_text(data.get('tipo_consulta')),
+            'tipo_consulta_personalizada': clean_text(data.get('tipo_consulta_personalizada')),
+            'motivo_consulta': clean_text(data.get('motivo_consulta')),
+            'historia_enfermedad_actual': clean_text(data.get('historia_enfermedad_actual')),
+            'antecedentes_personales': clean_text(data.get('antecedentes_personales')),
+            'laboratorios': clean_text(data.get('laboratorios')),
+            'estudios_complementarios': clean_text(data.get('estudios_complementarios')),
+            'interconsultas': clean_text(data.get('interconsultas')),
+            'situacion_actual': clean_text(data.get('situacion_actual')),
+            'tratamiento_farmacologico': clean_text(data.get('tratamiento_farmacologico')),
+            'medidas_estilo_vida': clean_text(data.get('medidas_estilo_vida')),
+            'signos_alarma': clean_text(data.get('signos_alarma')),
+            'proximos_controles': clean_text(data.get('proximos_controles')),
+            'diagnostico_cie10': json.dumps(diagnosticos) if diagnosticos else None,
+            'informe_dimision': clean_text(data.get('informe_dimision')),
+            'indicaciones': clean_text(data.get('indicaciones')),
+            'resumen_clinico': clean_text(data.get('resumen_clinico')),
+            'etiquetas': json.dumps(etiquetas) if etiquetas else None
+        }
+
+        situacion_id = data.get('id')
+        if situacion_id:
+            try:
+                situacion_id = int(situacion_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'ID de situación inválido'}), 400
+
+            set_clause = ", ".join(f"{campo} = ?" for campo in campos_comunes.keys())
+            params = list(campos_comunes.values())
+            params.append(situacion_id)
+            condicion = "WHERE id = ?"
+            if not is_admin:
+                condicion += " AND user_id = ?"
+                params.append(user_dni)
+            cursor.execute(f"""
+                UPDATE TELEMED_SITUACIONES
+                SET {set_clause}, fecha_registro = CURRENT_TIMESTAMP
+                {condicion}
+            """, params)
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Registro no encontrado'}), 404
+            conn.commit()
+            return jsonify({'success': True, 'updated': True})
+
+        campos_insert = ['user_id'] + list(campos_comunes.keys())
+        valores_insert = [user_dni] + list(campos_comunes.values())
+        placeholders = ", ".join(['?'] * len(campos_insert))
+        cursor.execute(f"""
+            INSERT INTO TELEMED_SITUACIONES ({', '.join(campos_insert)})
+            VALUES ({placeholders})
+        """, valores_insert)
+        conn.commit()
+        return jsonify({'success': True, 'created': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/telemed/documentos', methods=['GET', 'POST'])
+@csrf.exempt
+def api_telemed_documentos():
+    """Persistencia ligera de documentos alojados en Google Drive u otros repositorios"""
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+
+    user_dni = session['DNI']
+    username = session['username']
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+
+    conn = functions.get_telemed_connection(sqlite3.Row)
+    cursor = conn.cursor()
+
+    def parse_tags(raw_value):
+        if not raw_value:
+            return []
+        if isinstance(raw_value, list):
+            return raw_value
+        if isinstance(raw_value, str):
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+            return [tag.strip() for tag in raw_value.split(',') if tag.strip()]
+        return []
+
+    def serialize_document(row):
+        registro = dict(row)
+        registro['etiquetas'] = parse_tags(registro.get('etiquetas'))
+        if registro.get('tamano_archivo') is not None:
+            try:
+                registro['tamano_archivo'] = int(registro['tamano_archivo'])
+            except (TypeError, ValueError):
+                registro['tamano_archivo'] = None
+        return registro
+
+    try:
+        if request.method == 'GET':
+            paciente = request.args.get('paciente')
+            tipo = request.args.get('tipo')
+            fecha_desde = (request.args.get('fecha_desde') or '').strip() or None
+            fecha_hasta = (request.args.get('fecha_hasta') or '').strip() or None
+            search_term = (request.args.get('q') or request.args.get('search') or request.args.get('buscar') or '').strip()
+            query = """
+                SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+                       descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
+                       nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                FROM TELEMED_DOCUMENTOS
+                WHERE 1=1
+            """
+            params = []
+            if not is_admin:
+                query += " AND user_id = ?"
+                params.append(user_dni)
+            if paciente:
+                query += " AND paciente_nombre = ?"
+                params.append(paciente)
+            if tipo:
+                query += " AND tipo_documento = ?"
+                params.append(tipo)
+            if fecha_desde:
+                query += " AND DATE(COALESCE(fecha_documento, fecha_registro)) >= DATE(?)"
+                params.append(fecha_desde)
+            if fecha_hasta:
+                query += " AND DATE(COALESCE(fecha_documento, fecha_registro)) <= DATE(?)"
+                params.append(fecha_hasta)
+            if search_term:
+                like_value = f"%{search_term.lower()}%"
+                query += " AND (LOWER(COALESCE(descripcion, '')) LIKE ? OR LOWER(COALESCE(etiquetas, '')) LIKE ? OR LOWER(COALESCE(paciente_nombre, '')) LIKE ?)"
+                params.extend([like_value, like_value, like_value])
+            query += " ORDER BY fecha_documento DESC, fecha_registro DESC"
+            cursor.execute(query, params)
+            registros = [serialize_document(row) for row in cursor.fetchall()]
+            return jsonify({'success': True, 'documentos': registros})
+
+        data = request.get_json() or {}
+        paciente_nombre = (data.get('paciente_nombre') or '').strip()
+        tipo_documento = (data.get('tipo_documento') or '').strip()
+        drive_url = (data.get('drive_url') or '').strip()
+
+        if not paciente_nombre or not tipo_documento or not drive_url:
+            return jsonify({
+                'success': False,
+                'error': 'Paciente, tipo de documento y enlace de Drive son obligatorios'
+            }), 400
+
+        etiquetas = data.get('etiquetas') or []
+        if isinstance(etiquetas, str):
+            etiquetas = [tag.strip() for tag in etiquetas.split(',') if tag.strip()]
+
+        nombre_archivo = (data.get('nombre_archivo') or '').strip() or None
+        mime_type = (data.get('mime_type') or '').strip() or None
+        tamano_archivo = data.get('tamano_archivo')
+        try:
+            tamano_archivo = int(tamano_archivo) if tamano_archivo is not None else None
+        except (TypeError, ValueError):
+            tamano_archivo = None
+
+        cursor.execute("""
+            INSERT INTO TELEMED_DOCUMENTOS (
+                user_id, paciente_nombre, paciente_dni, tipo_documento,
+                descripcion, fecha_documento, drive_url, etiquetas, notas,
+                drive_file_id, nombre_archivo, mime_type, tamano_archivo, carpeta_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_dni,
+            paciente_nombre,
+            data.get('paciente_dni'),
+            tipo_documento,
+            (data.get('descripcion') or '').strip() or None,
+            data.get('fecha_documento'),
+            drive_url,
+            json.dumps(etiquetas) if etiquetas else None,
+            (data.get('notas') or '').strip() or None,
+            (data.get('drive_file_id') or '').strip() or None,
+            nombre_archivo,
+            mime_type,
+            tamano_archivo,
+            (data.get('carpeta_id') or '').strip() or None
+        ))
+        conn.commit()
+        cursor.execute("""
+            SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+                   descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
+                   nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+            FROM TELEMED_DOCUMENTOS WHERE id = ?
+        """, (cursor.lastrowid,))
+        registro = cursor.fetchone()
+        return jsonify({'success': True, 'documento': serialize_document(registro)})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/telemed/documentos/upload', methods=['POST'])
+@csrf.exempt
+def api_telemed_documentos_upload():
+    """Recibe archivos, los sube a Google Drive y agrega el registro en la base."""
+    if 'DNI' not in session:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+
+    user_dni = session['DNI']
+    username = session['username']
+    is_admin = (username == 'Toffaletti, Diego Alejandro')
+
+    paciente_nombre = (request.form.get('paciente_nombre') or '').strip()
+    if not paciente_nombre:
+        return jsonify({'success': False, 'error': 'Selecciona un paciente antes de subir archivos.'}), 400
+
+    tipo_documento = (request.form.get('tipo_documento') or 'otros').strip() or 'otros'
+    fecha_documento = request.form.get('fecha_documento') or None
+    descripcion = (request.form.get('descripcion') or '').strip()
+    notas = (request.form.get('notas') or '').strip() or None
+    etiquetas_raw = request.form.get('etiquetas') or ''
+    etiquetas = [tag.strip() for tag in etiquetas_raw.replace(';', ',').split(',') if tag.strip()]
+    folder_id = request.form.get('folder_id') or os.getenv('GOOGLE_DRIVE_TELEMED_FOLDER_ID') or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+
+    file_storage = request.files.get('archivo') or request.files.get('file')
+    if not file_storage:
+        return jsonify({'success': False, 'error': 'No se recibió ningún archivo.'}), 400
+
+    original_name = secure_filename(file_storage.filename or 'documento') or 'documento'
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    final_name = f"{slugify(paciente_nombre)}-{timestamp}-{original_name}"
+
+    file_storage.stream.seek(0)
+    try:
+        upload_result = upload_file_to_drive(
+            file_storage.stream,
+            final_name,
+            file_storage.mimetype,
+            folder_id=folder_id,
+            description=f'Documento telemedicina para {paciente_nombre}'
+        )
+    except Exception as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+    drive_url = upload_result.get('webViewLink')
+    drive_file_id = upload_result.get('id')
+    mime_type = upload_result.get('mimeType')
+    tamano_archivo = upload_result.get('size')
+    try:
+        tamano_archivo = int(tamano_archivo) if tamano_archivo is not None else None
+    except (TypeError, ValueError):
+        tamano_archivo = None
+
+    descripcion_final = descripcion or file_storage.filename or f'Documento {tipo_documento}'
+
+    conn = functions.get_telemed_connection(sqlite3.Row)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO TELEMED_DOCUMENTOS (
+                user_id, paciente_nombre, paciente_dni, tipo_documento,
+                descripcion, fecha_documento, drive_url, etiquetas, notas,
+                drive_file_id, nombre_archivo, mime_type, tamano_archivo, carpeta_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_dni,
+            paciente_nombre,
+            request.form.get('paciente_dni'),
+            tipo_documento,
+            descripcion_final,
+            fecha_documento,
+            drive_url,
+            json.dumps(etiquetas) if etiquetas else None,
+            notas,
+            drive_file_id,
+            upload_result.get('name') or final_name,
+            mime_type,
+            tamano_archivo,
+            folder_id
+        ))
+        conn.commit()
+        cursor.execute("""
+            SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+                   descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
+                   nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+            FROM TELEMED_DOCUMENTOS WHERE id = ?
+        """, (cursor.lastrowid,))
+        registro = cursor.fetchone()
+        documento = dict(registro)
+        documento['etiquetas'] = etiquetas
+        if documento.get('tamano_archivo') is not None:
+            try:
+                documento['tamano_archivo'] = int(documento['tamano_archivo'])
+            except (TypeError, ValueError):
+                documento['tamano_archivo'] = None
+        return jsonify({'success': True, 'documento': documento})
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(exc)}), 500
+    finally:
+        conn.close()
 
 @app.route('/programas-prevencion')
 def programas_prevencion():
@@ -5542,6 +6414,7 @@ def api_programas_prevencion():
 # Inicializar tablas de bloques al startup
 functions.crear_tablas_bloques_sugerencias()
 functions.insertar_presets_globales_bloques()
+functions.crear_tablas_telemedicina()
 
 if __name__ == '__main__':
     app.config['TEMPLATES AUTO_RELOAD'] = True
