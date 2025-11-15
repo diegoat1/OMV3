@@ -43,6 +43,7 @@ Basededatos/
 *.db
 *.sqlite3
 *.sqlite
+!src/telemedicina.db
 
 # Logs
 *.log
