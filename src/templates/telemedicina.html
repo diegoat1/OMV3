@@ -568,63 +568,79 @@
     <div id="documentos-form-wrapper" class="block block-rounded mb-5 d-none">
         <div class="block-header block-header-default d-flex justify-content-between align-items-center">
             <h3 class="block-title mb-0">
-                <i class="fa fa-cloud-upload-alt mr-2 text-info"></i>Nueva carga de documentos
+                <i class="fa fa-cloud-upload-alt mr-2 text-info"></i>Gestión de documentos
             </h3>
             <button type="button" class="btn btn-sm btn-light" id="btn-close-documento-form">
                 <i class="fa fa-times mr-1"></i>Ocultar formulario
             </button>
         </div>
         <div class="block-content">
-            <div class="row">
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="font-w600">Paciente *</label>
-                        <select name="paciente_nombre" id="documento-paciente" class="form-control" required>
-                            <option value="" selected disabled>Selecciona un paciente registrado</option>
-                        </select>
-                        <small class="form-text text-muted">Necesitamos saber a quién pertenece el documento.</small>
+            <form id="documentos-meta-form">
+                <input type="hidden" id="documento-id">
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="form-group">
+                            <label class="font-w600">Paciente *</label>
+                            <select name="paciente_nombre" id="documento-paciente" class="form-control" required>
+                                <option value="" selected disabled>Selecciona un paciente registrado</option>
+                            </select>
+                            <small class="form-text text-muted">Necesitamos saber a quién pertenece el documento.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-w600">Tipo *</label>
+                            <select name="tipo_documento" id="documento-tipo" class="form-control" required>
+                                <option value="laboratorio">Laboratorio</option>
+                                <option value="imagen">Estudio de imágenes</option>
+                                <option value="informe">Informe extra</option>
+                                <option value="receta">Receta / Prescripción</option>
+                                <option value="otros">Otros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-w600">Fecha del estudio</label>
+                            <input type="date" name="fecha_documento" id="documento-fecha" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="font-w600">Descripción breve</label>
+                            <input type="text" name="descripcion" id="documento-descripcion" class="form-control" placeholder="Perfil lipídico, RX tórax...">
+                        </div>
+                        <div class="form-group">
+                            <label class="font-w600">Etiquetas</label>
+                            <input type="text" name="etiquetas" id="documento-etiquetas" class="form-control" placeholder="Ej. control, RX, cardio">
+                            <small class="form-text text-muted">Separalas con coma para agrupar rápido.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-w600">Notas internas</label>
+                            <textarea id="documento-notas" class="form-control auto-grow" rows="2" placeholder="Indicaciones, recordatorios, etc."></textarea>
+                        </div>
+                        <div class="d-flex flex-wrap">
+                            <button type="button" class="btn btn-outline-secondary mr-2 mb-2" id="documento-cancelar-edicion" disabled>
+                                <i class="fa fa-times mr-1"></i>Cancelar edición
+                            </button>
+                            <button type="submit" class="btn btn-primary mb-2" id="documento-guardar-btn">
+                                <i class="fa fa-save mr-1"></i>Guardar metadatos
+                            </button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="font-w600">Tipo *</label>
-                        <select name="tipo_documento" id="documento-tipo" class="form-control" required>
-                            <option value="laboratorio">Laboratorio</option>
-                            <option value="imagen">Estudio de imágenes</option>
-                            <option value="informe">Informe extra</option>
-                            <option value="receta">Receta / Prescripción</option>
-                            <option value="otros">Otros</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="font-w600">Fecha del estudio</label>
-                        <input type="date" name="fecha_documento" id="documento-fecha" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label class="font-w600">Descripción breve</label>
-                        <input type="text" name="descripcion" id="documento-descripcion" class="form-control" placeholder="Perfil lipídico, RX tórax...">
-                    </div>
-                    <div class="form-group">
-                        <label class="font-w600">Etiquetas</label>
-                        <input type="text" name="etiquetas" id="documento-etiquetas" class="form-control" placeholder="Ej. control, RX, cardio">
-                        <small class="form-text text-muted">Separalas con coma para agrupar rápido.</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="font-w600">Notas internas</label>
-                        <textarea id="documento-notas" class="form-control auto-grow" rows="2" placeholder="Indicaciones, recordatorios, etc."></textarea>
+                    <div class="col-lg-8">
+                        <div id="documentos-dropzone" class="telemed-dropzone{% if not drive_ready %} disabled{% endif %}" data-drive-ready="{{ 'true' if drive_ready else 'false' }}">
+                            <i class="fa fa-cloud-upload-alt fa-2x text-info mb-2"></i>
+                            <p class="font-w600 mb-1">Arrastrá y soltá los archivos aquí</p>
+                            <p class="text-muted mb-3">Aceptamos PDF, imágenes y otros formatos habituales.</p>
+                            <div class="d-flex flex-wrap justify-content-center">
+                                <button type="button" class="btn btn-outline-info btn-sm mr-2 mb-2" id="documentos-browse-btn">
+                                    <i class="fa fa-folder-open mr-1"></i>Seleccionar archivos
+                                </button>
+                                <button type="button" class="btn btn-info btn-sm mb-2" id="documentos-upload-btn">
+                                    <i class="fa fa-cloud-upload-alt mr-1"></i>Subir a Drive
+                                </button>
+                            </div>
+                            <input type="file" id="documentos-file-input" multiple class="d-none" accept="*/*">
+                        </div>
+                        <div id="documentos-upload-list" class="mt-3"></div>
                     </div>
                 </div>
-                <div class="col-lg-8">
-                    <div id="documentos-dropzone" class="telemed-dropzone{% if not drive_ready %} disabled{% endif %}" data-drive-ready="{{ 'true' if drive_ready else 'false' }}">
-                        <i class="fa fa-cloud-upload-alt fa-2x text-info mb-2"></i>
-                        <p class="font-w600 mb-1">Arrastrá y soltá los archivos aquí</p>
-                        <p class="text-muted mb-3">Aceptamos PDF, imágenes y otros formatos habituales. También podés hacer clic para buscarlos manualmente.</p>
-                        <button type="button" class="btn btn-outline-info btn-sm" id="documentos-browse-btn">
-                            <i class="fa fa-folder-open mr-1"></i>Seleccionar archivos
-                        </button>
-                        <input type="file" id="documentos-file-input" multiple class="d-none" accept="*/*">
-                    </div>
-                    <div id="documentos-upload-list" class="mt-3"></div>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -682,6 +698,10 @@ const documentoFechaInput = document.getElementById('documento-fecha');
 const documentoDescripcionInput = document.getElementById('documento-descripcion');
 const documentoEtiquetasInput = document.getElementById('documento-etiquetas');
 const documentoNotasInput = document.getElementById('documento-notas');
+const documentoIdInput = document.getElementById('documento-id');
+const documentoCancelarEdicionBtn = document.getElementById('documento-cancelar-edicion');
+const documentoGuardarBtn = document.getElementById('documento-guardar-btn');
+const documentosMetaForm = document.getElementById('documentos-meta-form');
 const pacienteFormContainer = document.getElementById('paciente-form-container');
 const btnTogglePacienteForm = document.getElementById('btn-toggle-paciente-form');
 const btnClosePacienteForm = document.getElementById('btn-close-paciente-form');
@@ -698,6 +718,7 @@ const situacionFiltroCie10 = document.getElementById('situacion-filtro-cie10');
 const documentosDropzone = document.getElementById('documentos-dropzone');
 const documentosFileInput = document.getElementById('documentos-file-input');
 const documentosBrowseBtn = document.getElementById('documentos-browse-btn');
+const documentosUploadBtn = document.getElementById('documentos-upload-btn');
 const documentosUploadList = document.getElementById('documentos-upload-list');
 const documentosRefreshBtn = document.getElementById('documentos-refresh-btn');
 const documentosFormWrapper = document.getElementById('documentos-form-wrapper');
@@ -748,6 +769,7 @@ const DOCUMENTOS_FILTROS = {
     search: DOCUMENTOS_FILTROS_INICIALES.search || ''
 };
 const DOCUMENT_UPLOAD_ITEMS = new Map();
+let DOCUMENTO_EDITANDO_ID = null;
 
 let cie10SearchTimeout = null;
 
@@ -928,6 +950,52 @@ function syncDocumentosFilterInputs() {
     if (documentosFiltroDesde) documentosFiltroDesde.value = DOCUMENTOS_FILTROS.desde || '';
     if (documentosFiltroHasta) documentosFiltroHasta.value = DOCUMENTOS_FILTROS.hasta || '';
     if (documentosFiltroSearch) documentosFiltroSearch.value = DOCUMENTOS_FILTROS.search || '';
+}
+
+function resetDocumentoForm(options = {}) {
+    if (!documentosMetaForm) return;
+    const pacienteValor = documentoPacienteSelect ? (documentoPacienteSelect.value || '') : '';
+    const tipoValor = documentoTipoSelect ? (documentoTipoSelect.value || 'laboratorio') : 'laboratorio';
+    documentosMetaForm.reset();
+    DOCUMENTO_EDITANDO_ID = null;
+    if (documentoIdInput) documentoIdInput.value = '';
+    if (documentoCancelarEdicionBtn) documentoCancelarEdicionBtn.disabled = true;
+    if (documentoGuardarBtn) documentoGuardarBtn.innerHTML = '<i class="fa fa-save mr-1"></i>Guardar metadatos';
+    if (options.keepPaciente && documentoPacienteSelect) {
+        const preferido = pacienteValor || DOCUMENTOS_FILTROS.paciente || TELEMED_STATE.pacienteActivo || '';
+        if (preferido) documentoPacienteSelect.value = preferido;
+    }
+    if (options.keepTipo && documentoTipoSelect) {
+        documentoTipoSelect.value = tipoValor;
+    }
+    refreshAutoGrow();
+}
+
+function startDocumentoEditing(doc) {
+    if (!documentosMetaForm || !doc) return;
+    setDocumentoFormVisible(true);
+    DOCUMENTO_EDITANDO_ID = doc.id;
+    DOCUMENTOS_FILTROS.paciente = doc.paciente_nombre || DOCUMENTOS_FILTROS.paciente;
+    syncDocumentosFilterInputs();
+    if (documentoIdInput) documentoIdInput.value = doc.id;
+    if (documentoPacienteSelect) {
+        let option = Array.from(documentoPacienteSelect.options).find(opt => opt.value === doc.paciente_nombre);
+        if (!option && doc.paciente_nombre) {
+            option = document.createElement('option');
+            option.value = doc.paciente_nombre;
+            option.textContent = doc.paciente_nombre;
+            documentoPacienteSelect.appendChild(option);
+        }
+        documentoPacienteSelect.value = doc.paciente_nombre || '';
+    }
+    if (documentoTipoSelect) documentoTipoSelect.value = doc.tipo_documento || 'laboratorio';
+    if (documentoFechaInput) documentoFechaInput.value = doc.fecha_documento || '';
+    if (documentoDescripcionInput) documentoDescripcionInput.value = doc.descripcion || '';
+    if (documentoEtiquetasInput) documentoEtiquetasInput.value = (Array.isArray(doc.etiquetas) ? doc.etiquetas.join(', ') : (doc.etiquetas || ''));
+    if (documentoNotasInput) documentoNotasInput.value = doc.notas || '';
+    if (documentoCancelarEdicionBtn) documentoCancelarEdicionBtn.disabled = false;
+    if (documentoGuardarBtn) documentoGuardarBtn.innerHTML = '<i class="fa fa-save mr-1"></i>Actualizar metadatos';
+    showTelemedAlert('info', 'Editando documento seleccionado.');
 }
 
 function resolveEdad(paciente) {
@@ -1296,9 +1364,16 @@ function renderPacienteDetalleRegistros(nombre, options = {}) {
         pacienteDetalleSituaciones.innerHTML = '<span class="text-muted">Sin situaciones registradas.</span>';
     } else {
         pacienteDetalleSituaciones.innerHTML = situaciones.slice(0, 2).map(item => {
-            const resumen = (item.situacion_actual || item.motivo_consulta || 'Sin detalle').trim();
-            const texto = resumen.length > 80 ? `${resumen.slice(0, 77)}…` : resumen;
-            return `<div class="small mb-1"><span class="font-w600 mr-1">${formatDateTime(item.fecha_registro)}</span>${texto}</div>`;
+            const diagnosticos = normalizarDiagnosticosLista(item.diagnostico_cie10);
+            const principal = diagnosticos.find(diag => diag.principal) || diagnosticos[0];
+            const textoDiagnostico = principal
+                ? `<div class="font-w600 text-dark">${principal.code || 'SN/CIE10'} • ${principal.name || ''}</div>`
+                : '<span class="text-muted">Sin diagnósticos cargados.</span>';
+            return `
+                <div class="small mb-2">
+                    <div class="text-muted mb-1">${formatDateTime(item.fecha_registro)}</div>
+                    ${textoDiagnostico}
+                </div>`;
         }).join('');
     }
 }
@@ -1518,13 +1593,29 @@ function renderDocumentos() {
                 <p class="font-w600 mb-1">${descripcion}</p>
                 <p class="small text-muted mb-2">${archivoInfo}</p>
                 <div class="mb-3">${etiquetasHtml}</div>
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <small class="text-muted">${doc.paciente_nombre || ''}</small>
                     <a href="${doc.drive_url}" class="btn btn-sm btn-outline-info" target="_blank" rel="noopener">
                         <i class="fa fa-external-link-alt mr-1"></i>Ver en Drive
                     </a>
                 </div>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary mr-2 documento-edit" data-id="${doc.id}">
+                        <i class="fa fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger documento-delete" data-id="${doc.id}">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
             </div>`;
+        const editBtn = col.querySelector('.documento-edit');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => startDocumentoEditing(doc));
+        }
+        const deleteBtn = col.querySelector('.documento-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => handleDocumentoDelete(doc.id));
+        }
         container.appendChild(col);
     });
 }
@@ -1565,6 +1656,67 @@ function limpiarFiltrosDocumentos() {
     DOCUMENTOS_FILTROS.search = '';
     syncDocumentosFilterInputs();
     cargarDocumentos();
+}
+
+function handleDocumentoMetaSubmit(event) {
+    event.preventDefault();
+    if (!DOCUMENTO_EDITANDO_ID) {
+        showTelemedAlert('warning', 'Seleccioná un documento de la lista para editar.');
+        return;
+    }
+    if (!documentoPacienteSelect || !documentoPacienteSelect.value) {
+        showTelemedAlert('warning', 'Indicá a qué paciente corresponde el documento.');
+        return;
+    }
+    const etiquetas = documentoEtiquetasInput && documentoEtiquetasInput.value
+        ? documentoEtiquetasInput.value.split(',').map(tag => tag.trim()).filter(Boolean)
+        : [];
+    const payload = {
+        id: DOCUMENTO_EDITANDO_ID,
+        paciente_nombre: documentoPacienteSelect.value,
+        tipo_documento: documentoTipoSelect ? documentoTipoSelect.value : 'laboratorio',
+        fecha_documento: documentoFechaInput ? documentoFechaInput.value : '',
+        descripcion: documentoDescripcionInput ? documentoDescripcionInput.value.trim() : '',
+        etiquetas,
+        notas: documentoNotasInput ? documentoNotasInput.value.trim() : ''
+    };
+    fetch('/api/telemed/documentos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+        .then(res => res.json())
+        .then(async data => {
+            if (!data.success) throw new Error(data.error || 'No se pudo actualizar el documento');
+            showTelemedAlert('success', 'Documento actualizado correctamente.');
+            DOCUMENTOS_FILTROS.paciente = payload.paciente_nombre;
+            syncDocumentosFilterInputs();
+            resetDocumentoForm({ keepPaciente: true, keepTipo: true });
+            await cargarDocumentos(payload.paciente_nombre);
+        })
+        .catch(error => showTelemedAlert('danger', error.message));
+}
+
+function handleDocumentoDelete(id) {
+    if (!id) return;
+    if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) {
+        return;
+    }
+    fetch('/api/telemed/documentos', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })
+        .then(res => res.json())
+        .then(async data => {
+            if (!data.success) throw new Error(data.error || 'No se pudo eliminar el documento');
+            showTelemedAlert('success', 'Documento eliminado.');
+            if (DOCUMENTO_EDITANDO_ID === id) {
+                resetDocumentoForm({ keepPaciente: true, keepTipo: true });
+            }
+            await cargarDocumentos();
+        })
+        .catch(error => showTelemedAlert('danger', error.message));
 }
 
 function renderCIE10Tags() {
@@ -1725,6 +1877,7 @@ async function uploadDocumentoArchivo(uploadId) {
         renderPacientesTable();
         await cargarDocumentos(meta.paciente);
         renderPacienteDetalle(meta.paciente);
+        resetDocumentoForm({ keepPaciente: true, keepTipo: true });
         setTimeout(() => removeUploadItem(uploadId), 3500);
     } catch (error) {
         setUploadItemStatus(uploadId, 'error', 'Error');
@@ -1805,6 +1958,16 @@ function initDocumentUploadUI() {
         documentosFileInput.addEventListener('change', event => {
             handleDocumentFiles(event.target.files);
             documentosFileInput.value = '';
+        });
+    }
+
+    if (documentosUploadBtn && documentosFileInput) {
+        documentosUploadBtn.addEventListener('click', () => {
+            if (!DRIVE_READY) {
+                showTelemedAlert('warning', 'Configura Google Drive antes de subir archivos.');
+                return;
+            }
+            documentosFileInput.click();
         });
     }
 
@@ -2261,6 +2424,9 @@ function initListeners() {
     updateSituacionSubmitButton();
     syncSituacionFilterInputs();
     syncDocumentosFilterInputs();
+    if (documentosMetaForm) {
+        resetDocumentoForm({ keepPaciente: true, keepTipo: true });
+    }
 
     if (fichaForm) {
         fichaForm.addEventListener('submit', handlePacienteSubmit);
@@ -2355,6 +2521,16 @@ function initListeners() {
             }
         });
         renderCIE10Tags();
+    }
+
+    if (documentosMetaForm) {
+        documentosMetaForm.addEventListener('submit', handleDocumentoMetaSubmit);
+    }
+    if (documentoCancelarEdicionBtn) {
+        documentoCancelarEdicionBtn.addEventListener('click', () => {
+            resetDocumentoForm({ keepPaciente: true, keepTipo: true });
+            showTelemedAlert('info', 'Edición cancelada.');
+        });
     }
 
     if (btnTogglePacienteForm) {

@@ -1,4 +1,4 @@
-"""Utilidades para subir archivos a Google Drive con cuentas de servicio."""
+"""Utilidades para subir archivos a Google Drive (OAuth o cuentas de servicio)."""
 
 from __future__ import annotations
 
@@ -8,23 +8,53 @@ import os
 import unicodedata
 from typing import Dict, Optional
 
+from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
 
 DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.file']
+SERVICE_ACCOUNT_FILE_ENV = 'GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'
+SERVICE_ACCOUNT_INFO_ENV = 'GOOGLE_DRIVE_SERVICE_ACCOUNT_INFO'
+GOOGLE_APPLICATION_CREDENTIALS_ENV = 'GOOGLE_APPLICATION_CREDENTIALS'
+OAUTH_CLIENT_ENV = 'GOOGLE_DRIVE_OAUTH_CLIENT_JSON'
+OAUTH_TOKEN_ENV = 'GOOGLE_DRIVE_OAUTH_TOKEN_JSON'
+DEFAULT_SERVICE_ACCOUNT_PATH = os.path.join('config', 'google-service-account.json')
+DEFAULT_OAUTH_CLIENT_PATH = os.path.join('config', 'google-oauth-client.json')
+DEFAULT_OAUTH_TOKEN_PATH = os.path.join('config', 'google-drive-token.json')
 _drive_service = None
 
 
 def _load_credentials():
-    """Carga las credenciales de Google Drive desde JSON o ruta de archivo."""
-    raw_json = os.getenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_INFO')
+    """Carga credenciales preferentemente desde OAuth; usa service account si está configurada."""
+    if _has_service_account_config():
+        return _load_service_account_credentials()
+    return _load_oauth_credentials()
+
+
+def _has_service_account_config() -> bool:
+    """Determina si hay configuración de cuenta de servicio disponible."""
+    if os.getenv(SERVICE_ACCOUNT_INFO_ENV):
+        return True
+
     credentials_path = (
-        os.getenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON')
-        or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        or os.path.join('config', 'google-service-account.json')
+        os.getenv(SERVICE_ACCOUNT_FILE_ENV)
+        or os.getenv(GOOGLE_APPLICATION_CREDENTIALS_ENV)
+        or DEFAULT_SERVICE_ACCOUNT_PATH
+    )
+    return os.path.exists(credentials_path)
+
+
+def _load_service_account_credentials():
+    """Carga credenciales desde una cuenta de servicio (legacy)."""
+    raw_json = os.getenv(SERVICE_ACCOUNT_INFO_ENV)
+    credentials_path = (
+        os.getenv(SERVICE_ACCOUNT_FILE_ENV)
+        or os.getenv(GOOGLE_APPLICATION_CREDENTIALS_ENV)
+        or DEFAULT_SERVICE_ACCOUNT_PATH
     )
 
     if raw_json:
@@ -35,12 +65,38 @@ def _load_credentials():
             raise RuntimeError('GOOGLE_DRIVE_SERVICE_ACCOUNT_INFO no contiene JSON válido') from exc
 
     if not os.path.exists(credentials_path):
-        raise FileNotFoundError(
-            'No se encontró el archivo de credenciales de Google Drive. '
-            'Define GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON o GOOGLE_APPLICATION_CREDENTIALS.'
-        )
+        raise FileNotFoundError('No se encontró el archivo de la cuenta de servicio configurada.')
 
     return service_account.Credentials.from_service_account_file(credentials_path, scopes=DRIVE_SCOPES)
+
+
+def _load_oauth_credentials():
+    """Carga credenciales OAuth almacenadas en disco (token refrescable)."""
+    client_path = os.getenv(OAUTH_CLIENT_ENV) or DEFAULT_OAUTH_CLIENT_PATH
+    token_path = os.getenv(OAUTH_TOKEN_ENV) or DEFAULT_OAUTH_TOKEN_PATH
+
+    if not os.path.exists(client_path):
+        raise FileNotFoundError(
+            'No se encontró el archivo de cliente OAuth. Guarda credentials.json en '
+            f"{client_path} o define {OAUTH_CLIENT_ENV}."
+        )
+
+    if not os.path.exists(token_path):
+        raise RuntimeError(
+            'No se encontró el token OAuth. Ejecuta `python scripts/google_drive_auth.py` '
+            'para completar el flujo de autorización.'
+        )
+
+    credentials = Credentials.from_authorized_user_file(token_path, scopes=DRIVE_SCOPES)
+    if credentials.expired and credentials.refresh_token:
+        credentials.refresh(Request())
+        with open(token_path, 'w', encoding='utf-8') as token_file:
+            token_file.write(credentials.to_json())
+
+    if not credentials.valid:
+        raise RuntimeError('Las credenciales OAuth no son válidas. Ejecuta nuevamente el script de autorización.')
+
+    return credentials
 
 
 def get_drive_service(force_refresh: bool = False):

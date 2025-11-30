@@ -5375,9 +5375,13 @@ def _render_telemedicina_section(active_section):
         or os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         or os.path.join('config', 'google-service-account.json')
     )
+    oauth_client_path = os.getenv('GOOGLE_DRIVE_OAUTH_CLIENT_JSON') or os.path.join('config', 'google-oauth-client.json')
+    oauth_token_path = os.getenv('GOOGLE_DRIVE_OAUTH_TOKEN_JSON') or os.path.join('config', 'google-drive-token.json')
+
     drive_configured = bool(
         os.getenv('GOOGLE_DRIVE_SERVICE_ACCOUNT_INFO')
         or (drive_credentials_path and os.path.exists(drive_credentials_path))
+        or (os.path.exists(oauth_client_path) and os.path.exists(oauth_token_path))
     )
 
     enlaces_rapidos = [
@@ -6108,7 +6112,7 @@ def api_telemed_situacion():
     finally:
         conn.close()
 
-@app.route('/api/telemed/documentos', methods=['GET', 'POST'])
+@app.route('/api/telemed/documentos', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @csrf.exempt
 def api_telemed_documentos():
     """Persistencia ligera de documentos alojados en Google Drive u otros repositorios"""
@@ -6157,7 +6161,7 @@ def api_telemed_documentos():
             query = """
                 SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
                        descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
-                       nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                       notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
                 FROM TELEMED_DOCUMENTOS
                 WHERE 1=1
             """
@@ -6186,60 +6190,135 @@ def api_telemed_documentos():
             registros = [serialize_document(row) for row in cursor.fetchall()]
             return jsonify({'success': True, 'documentos': registros})
 
-        data = request.get_json() or {}
-        paciente_nombre = (data.get('paciente_nombre') or '').strip()
-        tipo_documento = (data.get('tipo_documento') or '').strip()
-        drive_url = (data.get('drive_url') or '').strip()
+        elif request.method == 'PUT':
+            data = request.get_json() or {}
+            documento_id = data.get('id') or data.get('documento_id')
+            if not documento_id:
+                return jsonify({'success': False, 'error': 'ID de documento requerido'}), 400
+            try:
+                documento_id = int(documento_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'ID inválido'}), 400
 
-        if not paciente_nombre or not tipo_documento or not drive_url:
-            return jsonify({
-                'success': False,
-                'error': 'Paciente, tipo de documento y enlace de Drive son obligatorios'
-            }), 400
+            campos = {}
+            for clave in ('paciente_nombre', 'tipo_documento', 'descripcion', 'fecha_documento', 'drive_url', 'paciente_dni', 'carpeta_id', 'notas'):
+                if clave in data:
+                    valor = data.get(clave)
+                    if isinstance(valor, str):
+                        valor = valor.strip()
+                    campos[clave] = valor or None
 
-        etiquetas = data.get('etiquetas') or []
-        if isinstance(etiquetas, str):
-            etiquetas = [tag.strip() for tag in etiquetas.split(',') if tag.strip()]
+            if 'etiquetas' in data:
+                etiquetas = data.get('etiquetas') or []
+                if isinstance(etiquetas, str):
+                    etiquetas = [tag.strip() for tag in etiquetas.split(',') if tag.strip()]
+                campos['etiquetas'] = json.dumps(etiquetas) if etiquetas else None
 
-        nombre_archivo = (data.get('nombre_archivo') or '').strip() or None
-        mime_type = (data.get('mime_type') or '').strip() or None
-        tamano_archivo = data.get('tamano_archivo')
-        try:
-            tamano_archivo = int(tamano_archivo) if tamano_archivo is not None else None
-        except (TypeError, ValueError):
-            tamano_archivo = None
+            if not campos:
+                return jsonify({'success': False, 'error': 'No hay cambios para aplicar'}), 400
 
-        cursor.execute("""
-            INSERT INTO TELEMED_DOCUMENTOS (
-                user_id, paciente_nombre, paciente_dni, tipo_documento,
-                descripcion, fecha_documento, drive_url, etiquetas, notas,
-                drive_file_id, nombre_archivo, mime_type, tamano_archivo, carpeta_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            user_dni,
-            paciente_nombre,
-            data.get('paciente_dni'),
-            tipo_documento,
-            (data.get('descripcion') or '').strip() or None,
-            data.get('fecha_documento'),
-            drive_url,
-            json.dumps(etiquetas) if etiquetas else None,
-            (data.get('notas') or '').strip() or None,
-            (data.get('drive_file_id') or '').strip() or None,
-            nombre_archivo,
-            mime_type,
-            tamano_archivo,
-            (data.get('carpeta_id') or '').strip() or None
-        ))
-        conn.commit()
-        cursor.execute("""
-            SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
-                   descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
-                   nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
-            FROM TELEMED_DOCUMENTOS WHERE id = ?
-        """, (cursor.lastrowid,))
-        registro = cursor.fetchone()
-        return jsonify({'success': True, 'documento': serialize_document(registro)})
+            set_clause = ", ".join(f"{clave} = ?" for clave in campos.keys())
+            params = list(campos.values())
+            params.append(documento_id)
+            condicion = "WHERE id = ?"
+            if not is_admin:
+                condicion += " AND user_id = ?"
+                params.append(user_dni)
+
+            cursor.execute(f"""
+                UPDATE TELEMED_DOCUMENTOS
+                SET {set_clause}, fecha_registro = CURRENT_TIMESTAMP
+                {condicion}
+            """, params)
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Documento no encontrado'}), 404
+            conn.commit()
+            cursor.execute("""
+                SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+                       descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
+                       notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                FROM TELEMED_DOCUMENTOS WHERE id = ?
+            """, (documento_id,))
+            registro = cursor.fetchone()
+            return jsonify({'success': True, 'documento': serialize_document(registro)})
+
+        elif request.method == 'DELETE':
+            data = request.get_json(silent=True) or {}
+            documento_id = data.get('id') or request.args.get('id')
+            if not documento_id:
+                return jsonify({'success': False, 'error': 'ID de documento requerido'}), 400
+            try:
+                documento_id = int(documento_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'ID inválido'}), 400
+
+            params = [documento_id]
+            condicion = "WHERE id = ?"
+            if not is_admin:
+                condicion += " AND user_id = ?"
+                params.append(user_dni)
+
+            cursor.execute(f"DELETE FROM TELEMED_DOCUMENTOS {condicion}", params)
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Documento no encontrado'}), 404
+            conn.commit()
+            return jsonify({'success': True, 'deleted': True})
+
+        else:
+            data = request.get_json() or {}
+            paciente_nombre = (data.get('paciente_nombre') or '').strip()
+            tipo_documento = (data.get('tipo_documento') or '').strip()
+            drive_url = (data.get('drive_url') or '').strip()
+
+            if not paciente_nombre or not tipo_documento or not drive_url:
+                return jsonify({
+                    'success': False,
+                    'error': 'Paciente, tipo de documento y enlace de Drive son obligatorios'
+                }), 400
+
+            etiquetas = data.get('etiquetas') or []
+            if isinstance(etiquetas, str):
+                etiquetas = [tag.strip() for tag in etiquetas.split(',') if tag.strip()]
+
+            nombre_archivo = (data.get('nombre_archivo') or '').strip() or None
+            mime_type = (data.get('mime_type') or '').strip() or None
+            tamano_archivo = data.get('tamano_archivo')
+            try:
+                tamano_archivo = int(tamano_archivo) if tamano_archivo is not None else None
+            except (TypeError, ValueError):
+                tamano_archivo = None
+
+            cursor.execute("""
+                INSERT INTO TELEMED_DOCUMENTOS (
+                    user_id, paciente_nombre, paciente_dni, tipo_documento,
+                    descripcion, fecha_documento, drive_url, etiquetas, notas,
+                    drive_file_id, nombre_archivo, mime_type, tamano_archivo, carpeta_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_dni,
+                paciente_nombre,
+                data.get('paciente_dni'),
+                tipo_documento,
+                (data.get('descripcion') or '').strip() or None,
+                data.get('fecha_documento'),
+                drive_url,
+                json.dumps(etiquetas) if etiquetas else None,
+                (data.get('notas') or '').strip() or None,
+                (data.get('drive_file_id') or '').strip() or None,
+                nombre_archivo,
+                mime_type,
+                tamano_archivo,
+                (data.get('carpeta_id') or '').strip() or None
+            ))
+            conn.commit()
+            cursor.execute("""
+                SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+                       descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
+                       notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                FROM TELEMED_DOCUMENTOS WHERE id = ?
+            """, (cursor.lastrowid,))
+            registro = cursor.fetchone()
+            return jsonify({'success': True, 'documento': serialize_document(registro)})
     except Exception as e:
         conn.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -6330,7 +6409,7 @@ def api_telemed_documentos_upload():
         cursor.execute("""
             SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
                    descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
-                   nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                   notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
             FROM TELEMED_DOCUMENTOS WHERE id = ?
         """, (cursor.lastrowid,))
         registro = cursor.fetchone()
