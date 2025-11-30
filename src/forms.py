@@ -74,7 +74,7 @@ class CreateForm(Form):
 
 class UpdateForm(Form):
     nameuser=SelectField('Apellido y nombre: ', [validators.Required(message='El apellido y nombre es requerido.')])
-    fdr=DateField('Fecha de registro: ', [validators.Required(message='La fecha de registro es requerida.')])
+    fdr=DateField('Fecha de registro: ', [validators.Required(message='La fecha de registro es requerida.')], render_kw={'type': 'date'}, format='%Y-%m-%d')
     ccin=FloatField('Circ. de la cintura (en cm.): ')
     cabd=FloatField('Circ. del abdomen (en cm.): ')
     ccad=FloatField('Circ. de la cadera (en cm.): ')
