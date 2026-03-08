@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmegaMedicina - Medicina + Nutrición + Entrenamiento</title>
+    <meta name="description" content="Seguimiento médico + nutrición + entrenamiento con métricas simples y decisiones claras.">
+    <link rel="shortcut icon" href="/static/assets/media/favicons/iconw.png">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" id="header">
+        <div class="container">
+            <div class="header-inner">
+                <a href="/" class="logo">
+                    <img src="/static/assets/media/favicons/iconw.png" alt="Omega">
+                    Omega<span>Medicina</span>
+                </a>
+                <nav class="nav">
+                    <ul class="nav-links">
+                        <li><a href="#como-funciona">Cómo funciona</a></li>
+                        <li><a href="#features">Servicios</a></li>
+                        <li><a href="#planes">Planes</a></li>
+                        <li><a href="#resultados">Resultados</a></li>
+                        <li><a href="#faq">FAQs</a></li>
+                    </ul>
+                    <div class="nav-cta">
+                        <a href="/login" class="btn btn-secondary">Iniciar sesión</a>
+                        <a href="#contacto" class="btn btn-primary">Empezar</a>
+                    </div>
+                </nav>
+                <button class="mobile-menu-btn" id="mobile-menu-btn"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Tu salud, tu físico y tu rendimiento <span>en un solo sistema</span></h1>
+                    <p class="hero-subtitle">Seguimiento médico + nutrición + entrenamiento con métricas simples y decisiones claras. Menos improvisación. Más control.</p>
+                    <div class="hero-cta">
+                        <a href="/login" class="btn btn-primary btn-lg"><i class="fas fa-play"></i> Hacer evaluación inicial</a>
+                        <a href="#demo" class="btn btn-secondary btn-lg"><i class="fas fa-eye"></i> Ver demo</a>
+                    </div>
+                    <div class="hero-proof">
+                        <div class="proof-item"><i class="fas fa-check-circle"></i><span>Basado en evidencia</span></div>
+                        <div class="proof-item"><i class="fas fa-check-circle"></i><span>Seguimiento remoto</span></div>
+                        <div class="proof-item"><i class="fas fa-check-circle"></i><span>Informes claros</span></div>
+                    </div>
+                </div>
+                <div class="hero-mockup">
+                    <div class="mockup-card">
+                        <div class="mockup-header">
+                            <div class="mockup-avatar">DT</div>
+                            <div class="mockup-user-info">
+                                <h4>Diego Toffaletti</h4>
+                                <span>Última medición: hace 3 días</span>
+                            </div>
+                        </div>
+                        <div class="mockup-stats">
+                            <div class="stat-card"><div class="value">78.5</div><div class="label">Peso (kg)</div></div>
+                            <div class="stat-card highlight"><div class="value">14.2%</div><div class="label">Grasa Corp.</div></div>
+                            <div class="stat-card"><div class="value">22.1</div><div class="label">FFMI</div></div>
+                        </div>
+                        <div class="mockup-progress">
+                            <div class="progress-header"><span>Progreso hacia objetivo</span><span style="color:#10b981;font-weight:600;">72%</span></div>
+                            <div class="progress-bar"><div class="progress-fill"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problema → Solución -->
+    <section class="problems" id="problemas">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">El problema</span>
+                <h2 class="section-title">¿Por qué no funciona lo que hacés ahora?</h2>
+                <p class="section-subtitle">Tres problemas comunes que resolvemos con un sistema integrado.</p>
+            </div>
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <div class="problem-icon red"><i class="fas fa-file-excel"></i></div>
+                    <p class="problem">"Tengo datos sueltos en 5 apps diferentes"</p>
+                    <p class="solution">→ Dashboard único con todo integrado</p>
+                    <p>Peso, perímetros, fuerza, plan nutricional y objetivos en un solo lugar.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon red"><i class="fas fa-copy"></i></div>
+                    <p class="problem">"Los planes genéricos no me funcionan"</p>
+                    <p class="solution">→ Plan ajustado por tus controles reales</p>
+                    <p>Cada control actualiza tu plan. Macros, recetas y entrenamiento se adaptan.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon red"><i class="fas fa-calendar-times"></i></div>
+                    <p class="problem">"Empiezo bien pero después abandono"</p>
+                    <p class="solution">→ Check-ins simples + objetivos parciales</p>
+                    <p>Metas intermedias alcanzables. Ves tu progreso semana a semana.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cómo funciona -->
+    <section id="como-funciona">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Proceso</span>
+                <h2 class="section-title">Cómo funciona</h2>
+                <p class="section-subtitle">Tres pasos para empezar a trabajar con precisión.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card"><div class="step-number">1</div><h3>Evaluación inicial</h3><p>Historia clínica, objetivos y mediciones base. Todo en 5 minutos.</p></div>
+                <div class="step-card"><div class="step-number">2</div><h3>Plan personalizado</h3><p>Nutrición, entrenamiento y seguimiento adaptado a tus datos.</p></div>
+                <div class="step-card"><div class="step-number">3</div><h3>Controles y ajustes</h3><p>Cada control actualiza tu plan. Métricas claras y decisiones basadas en datos.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Servicios</span>
+                <h2 class="section-title">Todo lo que necesitás en un solo lugar</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-chart-line"></i></div><div class="feature-content"><h3>Dashboard de progreso</h3><p>Peso, perímetros, %grasa, FFMI, fuerza y cardio en gráficos claros.</p></div></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-file-medical"></i></div><div class="feature-content"><h3>Historia clínica simple</h3><p>Situación, diagnósticos, indicaciones y seguimiento sin burocracia.</p></div></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-utensils"></i></div><div class="feature-content"><h3>Planes de nutrición</h3><p>Plan estricto con recetas, simplificado por grupos o ayuno intermitente.</p></div></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-dumbbell"></i></div><div class="feature-content"><h3>Entrenamiento</h3><p>Programas de fuerza con progresión automática y análisis de debilidades.</p></div></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-bell"></i></div><div class="feature-content"><h3>Screening por edad</h3><p>Recordatorios inteligentes de estudios según tu edad y factores de riesgo.</p></div></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-file-pdf"></i></div><div class="feature-content"><h3>Informes PDF</h3><p>Resumen para vos y para tu médico. Datos claros para decisiones.</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Para quién -->
+    <section id="para-quien">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Perfiles</span>
+                <h2 class="section-title">¿Para quién es esto?</h2>
+            </div>
+            <div class="audience-grid">
+                <div class="audience-card"><div class="audience-icon"><i class="fas fa-heart"></i></div><h3>Adultos sanos</h3><p>Control preventivo + hábitos sostenibles. Métricas de salud sin obsesionarte.</p></div>
+                <div class="audience-card"><div class="audience-icon"><i class="fas fa-weight"></i></div><h3>Composición corporal</h3><p>Ganar músculo, perder grasa o ambos. Objetivos claros con plazos realistas.</p></div>
+                <div class="audience-card"><div class="audience-icon"><i class="fas fa-running"></i></div><h3>Deporte y rendimiento</h3><p>Fuerza, prevención de lesiones y performance. Datos para competir mejor.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resultados -->
+    <section class="results" id="resultados">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Casos reales</span>
+                <h2 class="section-title">Resultados medibles</h2>
+                <p class="section-subtitle">Sin promesas mágicas. Solo datos y consistencia.</p>
+            </div>
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-metrics"><div class="metric"><div class="value">-8 cm</div><div class="label">Cintura</div></div><div class="metric"><div class="value">+3 kg</div><div class="label">Masa magra</div></div></div>
+                    <p class="result-quote">"Antes usaba hojas de cálculo separadas. Ahora todo está integrado."</p>
+                    <div class="result-author"><div class="result-avatar">ML</div><div class="result-author-info"><span class="name">Michel L.</span><span class="role">6 meses de seguimiento</span></div></div>
+                </div>
+                <div class="result-card">
+                    <div class="result-metrics"><div class="metric"><div class="value">+45 kg</div><div class="label">Sentadilla</div></div><div class="metric"><div class="value">92%</div><div class="label">Adherencia</div></div></div>
+                    <p class="result-quote">"Los objetivos parciales me mantienen motivado. Veo progreso cada semana."</p>
+                    <div class="result-author"><div class="result-avatar">JP</div><div class="result-author-info"><span class="name">Juan P.</span><span class="role">4 meses de seguimiento</span></div></div>
+                </div>
+                <div class="result-card">
+                    <div class="result-metrics"><div class="metric"><div class="value">-6%</div><div class="label">Grasa corp.</div></div><div class="metric"><div class="value">+2.1</div><div class="label">FFMI</div></div></div>
+                    <p class="result-quote">"El plan se ajusta solo según mis controles. No tengo que adivinar."</p>
+                    <div class="result-author"><div class="result-avatar">LC</div><div class="result-author-info"><span class="name">Laura C.</span><span class="role">8 meses de seguimiento</span></div></div>
+                </div>
+            </div>
+            <p style="text-align:center;margin-top:32px;font-size:0.85rem;color:#64748b;"><i class="fas fa-info-circle"></i> Resultados individuales. Dependen de adherencia, genética y punto de partida.</p>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="planes">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Planes</span>
+                <h2 class="section-title">Elegí tu nivel de seguimiento</h2>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <span class="pricing-badge starter">Starter</span>
+                    <h3>Autoguiado</h3>
+                    <div class="price">Gratis <span>/ siempre</span></div>
+                    <p class="description">Para quienes quieren empezar solos.</p>
+                    <ul class="pricing-features">
+                        <li><i class="fas fa-check"></i> Dashboard de progreso</li>
+                        <li><i class="fas fa-check"></i> Registro de mediciones</li>
+                        <li><i class="fas fa-check"></i> Calculadoras básicas</li>
+                        <li><i class="fas fa-check"></i> Objetivos automáticos</li>
+                    </ul>
+                    <a href="/login" class="btn btn-secondary">Empezar gratis</a>
+                </div>
+                <div class="pricing-card featured">
+                    <span class="pricing-badge pro">Pro</span>
+                    <h3>Seguimiento</h3>
+                    <div class="price">Consultar <span>/ mes</span></div>
+                    <p class="description">Seguimiento activo con ajustes periódicos.</p>
+                    <ul class="pricing-features">
+                        <li><i class="fas fa-check"></i> Todo de Starter</li>
+                        <li><i class="fas fa-check"></i> Plan nutricional completo</li>
+                        <li><i class="fas fa-check"></i> Programa de entrenamiento</li>
+                        <li><i class="fas fa-check"></i> Controles cada 2 semanas</li>
+                        <li><i class="fas fa-check"></i> Ajustes según progreso</li>
+                    </ul>
+                    <a href="#contacto" class="btn btn-primary">Empezar ahora</a>
+                </div>
+                <div class="pricing-card">
+                    <span class="pricing-badge premium">Premium</span>
+                    <h3>Completo</h3>
+                    <div class="price">Consultar <span>/ mes</span></div>
+                    <p class="description">Seguimiento intensivo con contacto directo.</p>
+                    <ul class="pricing-features">
+                        <li><i class="fas fa-check"></i> Todo de Pro</li>
+                        <li><i class="fas fa-check"></i> Controles semanales</li>
+                        <li><i class="fas fa-check"></i> Llamadas mensuales</li>
+                        <li><i class="fas fa-check"></i> Informes PDF completos</li>
+                        <li><i class="fas fa-check"></i> Prioridad en respuestas</li>
+                    </ul>
+                    <a href="#contacto" class="btn btn-secondary">Hablar con nosotros</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust -->
+    <section class="trust">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Confianza y credenciales</h2>
+                <p class="section-subtitle">Basado en evidencia, no en modas.</p>
+            </div>
+            <div class="trust-grid">
+                <div class="trust-item"><i class="fas fa-user-md"></i><h4>Equipo médico</h4><p>Supervisión de profesionales matriculados.</p></div>
+                <div class="trust-item"><i class="fas fa-book-medical"></i><h4>Basado en evidencia</h4><p>Guías clínicas y literatura científica.</p></div>
+                <div class="trust-item"><i class="fas fa-shield-alt"></i><h4>Privacidad</h4><p>Datos encriptados y control por roles.</p></div>
+                <div class="trust-item"><i class="fas fa-sync-alt"></i><h4>Actualización</h4><p>Sistema en mejora constante.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Preguntas</span>
+                <h2 class="section-title">Preguntas frecuentes</h2>
+            </div>
+            <div class="faq-grid">
+                <div class="faq-item active"><button class="faq-question">¿Es solo nutrición o incluye más?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Incluye nutrición, entrenamiento y seguimiento médico básico. Todo integrado con métricas compartidas.</div></div>
+                <div class="faq-item"><button class="faq-question">¿Cada cuánto se hace control?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Depende del plan. Starter es autoguiado, Pro cada 2 semanas, Premium semanal.</div></div>
+                <div class="faq-item"><button class="faq-question">¿Qué necesito para medir?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Mínimo: balanza y cinta métrica. Ideal: plicómetro o báscula de bioimpedancia.</div></div>
+                <div class="faq-item"><button class="faq-question">¿Sirve si entreno en casa?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Sí. Tenemos programas para gimnasio, casa con mancuernas o solo peso corporal.</div></div>
+                <div class="faq-item"><button class="faq-question">¿Cómo manejan la privacidad?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Datos encriptados, acceso por roles y cumplimiento de normativas de privacidad.</div></div>
+                <div class="faq-item"><button class="faq-question">¿Puedo cancelar cuando quiera?<i class="fas fa-chevron-down"></i></button><div class="faq-answer">Sí, sin permanencia mínima. Tus datos quedan disponibles para descarga.</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Final -->
+    <section class="cta-final" id="contacto">
+        <div class="container">
+            <h2>Empezá hoy con tu evaluación inicial</h2>
+            <p>5 minutos para configurar tu perfil. Sin tarjeta de crédito.</p>
+            <a href="/login" class="btn btn-white btn-lg"><i class="fas fa-play"></i> Hacer evaluación inicial</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/" class="logo" style="color:white;"><img src="/static/assets/media/favicons/iconw.png" alt="Omega">Omega<span>Medicina</span></a>
+                    <p>Medicina + nutrición + entrenamiento en un solo sistema.</p>
+                    <div class="footer-social">
+                        <a href="https://www.instagram.com/_omegamedicina/" target="_blank"><i class="fab fa-instagram"></i></a>
+                        <a href="https://www.youtube.com/channel/UCcdQQBV_jNs2_VutELtJrGw" target="_blank"><i class="fab fa-youtube"></i></a>
+                        <a href="https://tiktok.com/@datoffaletti" target="_blank"><i class="fab fa-tiktok"></i></a>
+                        <a href="https://linktr.ee/omegamedicina" target="_blank"><i class="fas fa-link"></i></a>
+                    </div>
+                </div>
+                <div class="footer-column"><h4>Producto</h4><ul><li><a href="#features">Servicios</a></li><li><a href="#planes">Planes</a></li><li><a href="#resultados">Resultados</a></li><li><a href="#faq">FAQs</a></li></ul></div>
+                <div class="footer-column"><h4>Empresa</h4><ul><li><a href="/sobre-nosotros">Sobre nosotros</a></li><li><a href="/blog">Blog</a></li><li><a href="mailto:datoffaletti@gmail.com">Contacto</a></li></ul></div>
+                <div class="footer-column"><h4>Legal</h4><ul><li><a href="/terminos-condiciones">Términos</a></li><li><a href="/politica-privacidad">Privacidad</a></li></ul></div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2024 OmegaMedicina. Todos los derechos reservados.</span>
+                <span>Desarrollado por <a href="https://www.instagram.com/diegotoffaletti/" target="_blank" style="color:#d65151;">Diego Toffaletti</a></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll
+        window.addEventListener('scroll', () => {
+            document.getElementById('header').classList.toggle('scrolled', window.scrollY > 50);
+        });
+        // FAQ accordion
+        document.querySelectorAll('.faq-question').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.parentElement;
+                document.querySelectorAll('.faq-item').forEach(i => { if(i !== item) i.classList.remove('active'); });
+                item.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

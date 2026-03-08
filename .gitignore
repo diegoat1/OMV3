@@ -22,6 +22,7 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 env/
 ENV/
 
@@ -54,6 +55,10 @@ Thumbs.db
 
 # Project specific
 _gsdata_/
+
+# Secrets / OAuth credentials
+config/google-drive-token.json
+config/google-oauth-client.json
 
 # Node.js
 node_modules/

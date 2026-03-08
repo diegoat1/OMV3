@@ -2593,24 +2593,62 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
                 calidad = max(0, min(10, calidad))
                 resultado['calidad'] = calidad
 
+            totales = {'proteina_g': 0, 'grasa_g': 0, 'carbohidratos_g': 0, 'calorias': 0}
+
             for i in alimentos:
                 if porciones[i].varValue and porciones[i].varValue > 0:
+                    p_g = round(porciones[i].varValue * medida_casera[i] * proteina[i] / 100, 1)
+                    g_g = round(porciones[i].varValue * medida_casera[i] * grasa[i] / 100, 1)
+                    c_g = round(porciones[i].varValue * medida_casera[i] * carbos[i] / 100, 1)
+                    cal = round(p_g * 4 + c_g * 4 + g_g * 9, 1)
                     resultado['alimentos_variables'].append({
                         'nombre': i,
                         'porciones': round(porciones[i].varValue, 2),
                         'medida': mcdescripcion[i],
-                        'total_gramos': round(porciones[i].varValue * medida_casera[i], 2)
+                        'total_gramos': round(porciones[i].varValue * medida_casera[i], 2),
+                        'medida_casera_g': medida_casera[i],
+                        'medida_desc': mcdescripcion[i],
+                        'proteina_100g': proteina[i],
+                        'grasa_100g': grasa[i],
+                        'carbohidratos_100g': carbos[i],
+                        'proteina_g': p_g,
+                        'grasa_g': g_g,
+                        'carbohidratos_g': c_g,
+                        'calorias': cal,
                     })
-            
+                    totales['proteina_g'] += p_g
+                    totales['grasa_g'] += g_g
+                    totales['carbohidratos_g'] += c_g
+                    totales['calorias'] += cal
+
             for i in alimentosnovar:
                 valor_porcion = value(porcionesnovar[i])
                 if valor_porcion and valor_porcion > 0:
+                    p_g = round(valor_porcion * medida_casera[i] * proteina[i] / 100, 1)
+                    g_g = round(valor_porcion * medida_casera[i] * grasa[i] / 100, 1)
+                    c_g = round(valor_porcion * medida_casera[i] * carbos[i] / 100, 1)
+                    cal = round(p_g * 4 + c_g * 4 + g_g * 9, 1)
                     resultado['alimentos_fijos'].append({
                         'nombre': i,
                         'porciones': round(valor_porcion, 2),
                         'medida': mcdescripcion[i],
-                        'total_gramos': round(valor_porcion * medida_casera[i], 2)
+                        'total_gramos': round(valor_porcion * medida_casera[i], 2),
+                        'medida_casera_g': medida_casera[i],
+                        'medida_desc': mcdescripcion[i],
+                        'proteina_100g': proteina[i],
+                        'grasa_100g': grasa[i],
+                        'carbohidratos_100g': carbos[i],
+                        'proteina_g': p_g,
+                        'grasa_g': g_g,
+                        'carbohidratos_g': c_g,
+                        'calorias': cal,
                     })
+                    totales['proteina_g'] += p_g
+                    totales['grasa_g'] += g_g
+                    totales['carbohidratos_g'] += c_g
+                    totales['calorias'] += cal
+
+            resultado['totales'] = {k: round(v, 1) for k, v in totales.items()}
         
         basededatos.close()
         return resultado

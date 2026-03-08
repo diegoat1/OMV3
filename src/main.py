@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, make_response, session, redirect, url_for, flash, jsonify
 from flask_wtf import CSRFProtect
+from flask_cors import CORS
 import sqlite3
 import math
 from datetime import datetime, timedelta
@@ -14,10 +15,35 @@ from google_drive import upload_file_to_drive, slugify
 from training import (crear_tablas, inicializar_matriz_entrenamiento,
                       obtener_entrenamiento_del_dia, registrar_sesion_completada,
                       avanzar_dia_plan, guardar_plan_optimizado, obtener_conexion_db)
+from api.v3 import api_v3
 
 app = Flask(__name__)
 app.secret_key = 'my_secret_key'
 csrf = CSRFProtect(app)
+
+# Registrar API v3
+app.register_blueprint(api_v3)
+CORS(app, resources={r"/api/v3/*": {"origins": "*"}})
+
+# CSRF: deshabilitamos el check automático global y lo aplicamos solo en rutas web
+# (las rutas /api/ no usan CSRF — usan Bearer token)
+app.config['WTF_CSRF_CHECK_DEFAULT'] = False
+
+@app.before_request
+def csrf_protect_web_only():
+    """Aplica CSRF solo a rutas web (no a /api/)."""
+    if request.path.startswith('/api/'):
+        return
+    if request.method not in app.config.get('WTF_CSRF_METHODS', {'POST', 'PUT', 'PATCH', 'DELETE'}):
+        return
+    if not request.endpoint:
+        return
+    view = app.view_functions.get(request.endpoint)
+    if view:
+        dest = f"{view.__module__}.{view.__name__}"
+        if dest in csrf._exempt_views:
+            return
+    csrf.protect()
 
 # Inicializar la base de datos y la matriz de entrenamiento del módulo training
 crear_tablas()
@@ -6497,4 +6523,4 @@ functions.crear_tablas_telemedicina()
 
 if __name__ == '__main__':
     app.config['TEMPLATES AUTO_RELOAD'] = True
-    app.run(debug=True, port=8000)
+    app.run(debug=True, port=8000, host='0.0.0.0')
