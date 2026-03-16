@@ -9,7 +9,14 @@ from ..common.auth import require_auth, require_admin, require_owner_or_admin, g
 from ..common.database import get_db_connection, get_clinical_connection, resolve_patient_id
 import sqlite3
 import json
+import os
+import sys
 from datetime import datetime
+
+# Ensure src/ is on sys.path so 'import functions' works regardless of CWD
+_src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 
 # ============================================
@@ -566,10 +573,6 @@ def optimize_training_plan(plan_id):
     user = get_current_user()
     
     try:
-        # Importar función de optimización del sistema legacy
-        import sys
-        sys.path.insert(0, 'src')
-        
         return success_response({
             'plan_id': plan_id,
             'status': 'optimization_pending',
@@ -1010,8 +1013,6 @@ def submit_strength_results():
         customAnalysisDate?: string
     }
     """
-    import sys
-    sys.path.insert(0, 'src')
     try:
         import functions
     except ImportError:
@@ -1082,8 +1083,6 @@ def get_all_strength_admin():
     """
     Obtiene todos los registros de fuerza de todos los usuarios (solo admin).
     """
-    import sys
-    sys.path.insert(0, 'src')
     try:
         import functions
     except ImportError:
@@ -1133,8 +1132,6 @@ def optimize_training(record_id):
         runningConfig?: { enabled: bool, days: int[], initialSpeed: float, initialMinutes: float }
     }
     """
-    import sys
-    sys.path.insert(0, 'src')
     try:
         import functions
     except ImportError:

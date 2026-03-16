@@ -63,3 +63,10 @@ config/google-oauth-client.json
 # Node.js
 node_modules/
 package-lock.json
+
+# Claude Code / Expo dev
+.claude/
+.expo/
+
+# Database backups
+*.db.bak

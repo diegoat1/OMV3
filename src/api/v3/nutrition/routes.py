@@ -9,7 +9,14 @@ from ..common.auth import require_auth, require_admin, require_owner_or_admin, g
 from ..common.database import get_db_connection, get_clinical_connection, resolve_patient_id
 import sqlite3
 import json
+import os
+import sys
 from datetime import datetime, date, timedelta
+
+# Ensure src/ is on sys.path so 'import functions' works regardless of CWD
+_src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 
 # ============================================
@@ -668,43 +675,58 @@ def list_food_groups():
 @require_auth
 def list_recipes():
     """
-    Lista todas las recetas.
-    
+    Lista recetas desde la nueva tabla relacional en clinical.db.
+
     Query Params:
         q: Búsqueda por nombre
+        categoria: filtrar por categoria
         page: Página
         per_page: Items por página
     """
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     search = request.args.get('q', '').strip()
-    
+    categoria = request.args.get('categoria', '').strip()
+
     try:
-        conn = get_db_connection(sqlite3.Row)
+        conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        query = "SELECT ID, NOMBRERECETA FROM RECETAS WHERE 1=1"
+
+        query = "SELECT id, nombre, categoria, palabras_clave, created_by FROM recipes WHERE 1=1"
         params = []
-        
+
         if search:
-            query += " AND NOMBRERECETA LIKE ?"
-            params.append(f"%{search}%")
-        
-        # Contar total
-        count_query = query.replace("SELECT ID, NOMBRERECETA", "SELECT COUNT(*)")
+            query += " AND (nombre LIKE ? OR palabras_clave LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%"])
+
+        if categoria:
+            query += " AND (categoria = ? OR categoria = 'ambas')"
+            params.append(categoria)
+
+        # Count
+        count_query = query.replace(
+            "SELECT id, nombre, categoria, palabras_clave, created_by",
+            "SELECT COUNT(*)"
+        )
         cursor.execute(count_query, params)
         total = cursor.fetchone()[0]
-        
-        # Paginación
-        query += " ORDER BY NOMBRERECETA ASC LIMIT ? OFFSET ?"
+
+        query += " ORDER BY nombre ASC LIMIT ? OFFSET ?"
         params.extend([per_page, (page - 1) * per_page])
-        
+
         cursor.execute(query, params)
-        recipes = [{'id': row[0], 'nombre': row[1]} for row in cursor.fetchall()]
+        recipes = []
+        for row in cursor.fetchall():
+            r = dict(row)
+            # Count ingredients
+            cursor.execute("SELECT COUNT(*) FROM recipe_ingredients WHERE recipe_id = ?", [r['id']])
+            r['num_ingredientes'] = cursor.fetchone()[0]
+            recipes.append(r)
+
         conn.close()
-        
+
         return paginated_response(recipes, page, per_page, total)
-        
+
     except Exception as e:
         return error_response(
             f'Error listando recetas: {str(e)}',
@@ -717,25 +739,60 @@ def list_recipes():
 @require_auth
 def get_recipe(recipe_id):
     """
-    Obtiene una receta específica con todos sus ingredientes.
+    Obtiene una receta con sus ingredientes y relaciones.
     """
     try:
-        conn = get_db_connection(sqlite3.Row)
+        conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM RECETAS WHERE ID = ?", [recipe_id])
+
+        cursor.execute("SELECT * FROM recipes WHERE id = ?", [recipe_id])
         recipe = cursor.fetchone()
-        conn.close()
-        
+
         if not recipe:
-            return error_response(
-                'Receta no encontrada',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
-            )
-        
-        return success_response({'recipe': dict(recipe)})
-        
+            conn.close()
+            return error_response('Receta no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        recipe_dict = dict(recipe)
+
+        # Get ingredients
+        cursor.execute("""
+            SELECT id, alimento_nombre, alimento_id, medida_tipo, rol,
+                   base_ingredient_id, ratio, tipo_ratio, cantidad_fija, orden
+            FROM recipe_ingredients WHERE recipe_id = ?
+            ORDER BY orden
+        """, [recipe_id])
+        ingredientes = [dict(row) for row in cursor.fetchall()]
+
+        # Enrich with nutritional data from legacy ALIMENTOS
+        conn_legacy = get_db_connection(sqlite3.Row)
+        cur_legacy = conn_legacy.cursor()
+
+        for ing in ingredientes:
+            medida_tipo = ing.get('medida_tipo', 0) or 0
+            if medida_tipo == 0:
+                mc_col, mc_desc_col = 'Gramo1', 'Medidacasera1'
+            else:
+                mc_col, mc_desc_col = 'Gramo2', 'Medidacasera2'
+
+            cur_legacy.execute(f"""
+                SELECT P, G, CH, {mc_col}, {mc_desc_col}
+                FROM ALIMENTOS WHERE Largadescripcion = ?
+            """, [ing['alimento_nombre']])
+            food = cur_legacy.fetchone()
+            if food:
+                ing['proteina_100g'] = food[0]
+                ing['grasa_100g'] = food[1]
+                ing['carbohidratos_100g'] = food[2]
+                ing['medida_casera_g'] = food[3]
+                ing['medida_desc'] = food[4]
+
+        conn_legacy.close()
+        conn.close()
+
+        recipe_dict['ingredientes'] = ingredientes
+
+        return success_response({'recipe': recipe_dict})
+
     except Exception as e:
         return error_response(
             f'Error obteniendo receta: {str(e)}',
@@ -748,8 +805,9 @@ def get_recipe(recipe_id):
 @require_auth
 def calculate_recipe(recipe_id):
     """
-    Calcula las porciones de una receta para objetivos específicos.
-    
+    Calcula porciones de una receta usando el nuevo solver genérico.
+    Delegates to solve_meal internally with the recipe's ingredients.
+
     Request Body:
         {
             "proteina": 30,
@@ -760,250 +818,557 @@ def calculate_recipe(recipe_id):
     """
     user = get_current_user()
     data = request.get_json() or {}
-    
+
+    # Build a solve-meal request with this recipe
+    solve_data = {
+        'recetas': [{'recipe_id': recipe_id}],
+        'libertad': data.get('libertad'),
+    }
+
+    if data.get('proteina'):
+        solve_data['objetivo'] = {
+            'proteina': float(data.get('proteina', 0)),
+            'grasa': float(data.get('grasa', 0)),
+            'carbohidratos': float(data.get('carbohidratos', 0)),
+        }
+
+    # Reuse solve_meal logic by calling the function directly
+    # We simulate the request context
     try:
-        # Get recipe name from legacy DB (recipes still used by calculate_recipe_portions)
-        conn_legacy = get_db_connection(sqlite3.Row)
-        cursor_legacy = conn_legacy.cursor()
-        
-        cursor_legacy.execute("SELECT NOMBRERECETA FROM RECETAS WHERE ID = ?", [recipe_id])
-        recipe = cursor_legacy.fetchone()
-        conn_legacy.close()
-        
-        if not recipe:
-            return error_response(
-                'Receta no encontrada',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
-            )
-        
-        nombre_receta = recipe[0]
-        
-        # Si no se proporcionan macros, obtener del plan del usuario en clinical.db
-        if not data.get('proteina'):
+        objetivo = solve_data.get('objetivo')
+        if not objetivo:
             patient = resolve_patient_id(user['nombre_apellido'])
             if patient:
                 conn_cl = get_clinical_connection()
                 cursor_cl = conn_cl.cursor()
                 cursor_cl.execute("""
-                    SELECT proteina, grasa, carbohidratos, libertad 
+                    SELECT proteina, grasa, carbohidratos, libertad
                     FROM nutrition_plans WHERE patient_id = ?
                     ORDER BY created_at DESC LIMIT 1
                 """, [patient['patient_id']])
                 dieta = cursor_cl.fetchone()
                 conn_cl.close()
                 if dieta:
-                    data['proteina'] = dieta[0]
-                    data['grasa'] = dieta[1]
-                    data['carbohidratos'] = dieta[2]
-                    data['libertad'] = dieta[3] or 0
-        
-        # Importar función de cálculo del sistema legacy
-        import sys
-        sys.path.insert(0, 'src')
-        try:
-            import functions
-            resultado = functions.calculate_recipe_portions(
-                nombrereceta=nombre_receta,
-                p0=float(data.get('proteina', 30)),
-                g0=float(data.get('grasa', 15)),
-                ch0=float(data.get('carbohidratos', 40)),
-                libertad=float(data.get('libertad', 0))
-            )
-            
-            return success_response({
-                'recipe_id': recipe_id,
-                'recipe_name': nombre_receta,
-                'calculation': resultado
+                    objetivo = {
+                        'proteina': float(dieta[0] or 0),
+                        'grasa': float(dieta[1] or 0),
+                        'carbohidratos': float(dieta[2] or 0),
+                    }
+                    if not solve_data.get('libertad'):
+                        solve_data['libertad'] = float(dieta[3] or 5)
+
+        if not objetivo:
+            return error_response('Se requieren macros objetivo o un plan nutricional activo',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        # Load recipe ingredients
+        conn_cl = get_clinical_connection(sqlite3.Row)
+        cur = conn_cl.cursor()
+        conn_legacy = get_db_connection(sqlite3.Row)
+        cur_legacy = conn_legacy.cursor()
+
+        cur.execute("SELECT nombre FROM recipes WHERE id = ?", [recipe_id])
+        recipe_row = cur.fetchone()
+        if not recipe_row:
+            conn_cl.close()
+            conn_legacy.close()
+            return error_response('Receta no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        recipe_name = recipe_row[0]
+
+        cur.execute("""
+            SELECT id, alimento_nombre, medida_tipo, rol,
+                   base_ingredient_id, ratio, tipo_ratio, cantidad_fija
+            FROM recipe_ingredients WHERE recipe_id = ? ORDER BY orden
+        """, [recipe_id])
+        ingredients = cur.fetchall()
+
+        all_alimentos = []
+        base_groups = {}
+        ing_id_map = {}
+
+        for ing in ingredients:
+            ing_d = dict(ing)
+            temp_id = f"r{recipe_id}_{ing_d['id']}"
+            ing_id_map[ing_d['id']] = temp_id
+
+            medida_tipo = ing_d['medida_tipo'] or 0
+            mc_col = 'Gramo1' if medida_tipo == 0 else 'Gramo2'
+            mc_desc_col = 'Medidacasera1' if medida_tipo == 0 else 'Medidacasera2'
+
+            cur_legacy.execute(f"""
+                SELECT P, G, CH, {mc_col}, {mc_desc_col}
+                FROM ALIMENTOS WHERE Largadescripcion = ?
+            """, [ing_d['alimento_nombre']])
+            food = cur_legacy.fetchone()
+            if not food:
+                continue
+
+            all_alimentos.append({
+                'id': temp_id,
+                'nombre': ing_d['alimento_nombre'],
+                'proteina_100g': float(food[0] or 0),
+                'grasa_100g': float(food[1] or 0),
+                'carbohidratos_100g': float(food[2] or 0),
+                'medida_casera_g': float(food[3] or 100),
+                'medida_desc': food[4] or 'porción',
             })
-        except Exception as calc_error:
-            return success_response({
-                'recipe_id': recipe_id,
-                'recipe_name': nombre_receta,
-                'calculation': {
-                    'status': 'pending',
-                    'message': 'Cálculo simplificado - usar sistema legacy para cálculo completo',
-                    'macros_objetivo': data
-                }
-            })
-        
+
+            if ing_d['rol'] == 'base':
+                base_groups[ing_d['id']] = {'base_id': temp_id, 'dependientes': [], 'fijos': []}
+            elif ing_d['rol'] == 'dependiente':
+                base_db_id = ing_d['base_ingredient_id']
+                if base_db_id in base_groups:
+                    base_groups[base_db_id]['dependientes'].append({
+                        'id': temp_id,
+                        'ratio': float(ing_d['ratio'] or 1),
+                        'tipo_ratio': ing_d['tipo_ratio'] or 'peso',
+                    })
+            elif ing_d['rol'] == 'fijo':
+                for bg in base_groups.values():
+                    bg['fijos'].append({'id': temp_id, 'cantidad_fija': float(ing_d['cantidad_fija'] or 1)})
+                    break
+
+        conn_cl.close()
+        conn_legacy.close()
+
+        import functions
+        resultado = functions.solve_meal(
+            alimentos=all_alimentos,
+            objetivo=objetivo,
+            libertad=float(solve_data.get('libertad', 5)),
+            dependencias=list(base_groups.values()) if base_groups else None,
+        )
+
+        return success_response({
+            'recipe_id': recipe_id,
+            'recipe_name': recipe_name,
+            'calculation': resultado,
+        })
+
     except Exception as e:
         return error_response(
             f'Error calculando receta: {str(e)}',
-            code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
         )
 
 
-@nutrition_bp.route('/calculate-day', methods=['POST'])
+
+# ============================================
+# SOLVE MEAL (Solver genérico)
+# ============================================
+
+@nutrition_bp.route('/solve-meal', methods=['POST'])
 @require_auth
-def calculate_day():
+def solve_meal():
     """
-    Calcula recetas para una comida o todas las comidas del dia.
-    Usa el solver legacy (PuLP) con los macro targets del plan nutricional activo.
+    Solver genérico: optimiza cantidades de alimentos para alcanzar macros objetivo.
+    Acepta alimentos sueltos y/o recetas (con dependencias predefinidas).
 
     Request Body:
         {
-            "comida": "almuerzo",           // optional - if omitted, calculates ALL meals
-            "recetas": {                     // recipe IDs per meal
-                "desayuno": [1, 5],
-                "almuerzo": [12],
-                "cena": [3, 7]
-            }
-        }
-
-    Response:
-        {
-            "resultados": {
-                "almuerzo": {
-                    "macros_objetivo": { "proteina": 30, "grasa": 15, "carbohidratos": 40 },
-                    "recetas": [
-                        { "recipe_id": 12, "recipe_name": "...", "calculation": { ... } }
-                    ]
+            "objetivo": {"proteina": 40, "grasa": 20, "carbohidratos": 60},
+            "libertad": 10,
+            "alimentos": [
+                {
+                    "id": "123",
+                    "nombre": "Pechuga de pollo",
+                    "proteina_100g": 23.1,
+                    "grasa_100g": 1.2,
+                    "carbohidratos_100g": 0,
+                    "medida_casera_g": 150,
+                    "medida_desc": "unidad"
                 }
-            }
+            ],
+            "recetas": [{"recipe_id": 5}]
         }
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
     data = request.get_json() or {}
 
-    comida_filter = data.get('comida')  # None = all meals
-    recetas_map = data.get('recetas', {})
+    objetivo = data.get('objetivo')
+    if not objetivo:
+        # Fallback: get from patient's nutrition plan
+        patient = resolve_patient_id(user['nombre_apellido'])
+        if patient:
+            conn_cl = get_clinical_connection()
+            cur = conn_cl.cursor()
+            meal_key = data.get('meal_key')
+            if meal_key:
+                # Get per-meal macros
+                meal_col_map = {
+                    'desayuno': ('desayuno_p', 'desayuno_g', 'desayuno_c'),
+                    'media_manana': ('media_man_p', 'media_man_g', 'media_man_c'),
+                    'almuerzo': ('almuerzo_p', 'almuerzo_g', 'almuerzo_c'),
+                    'merienda': ('merienda_p', 'merienda_g', 'merienda_c'),
+                    'media_tarde': ('media_tar_p', 'media_tar_g', 'media_tar_c'),
+                    'cena': ('cena_p', 'cena_g', 'cena_c'),
+                }
+                cols = meal_col_map.get(meal_key)
+                if cols:
+                    cur.execute(f"""
+                        SELECT proteina, grasa, carbohidratos, {cols[0]}, {cols[1]}, {cols[2]}, libertad
+                        FROM nutrition_plans WHERE patient_id = ?
+                        ORDER BY created_at DESC LIMIT 1
+                    """, [patient['patient_id']])
+                    plan = cur.fetchone()
+                    if plan:
+                        objetivo = {
+                            'proteina': float(plan[0] or 0) * float(plan[3] or 0),
+                            'grasa': float(plan[1] or 0) * float(plan[4] or 0),
+                            'carbohidratos': float(plan[2] or 0) * float(plan[5] or 0),
+                        }
+                        if not data.get('libertad'):
+                            data['libertad'] = float(plan[6] or 5)
+            else:
+                cur.execute("""
+                    SELECT proteina, grasa, carbohidratos, libertad
+                    FROM nutrition_plans WHERE patient_id = ?
+                    ORDER BY created_at DESC LIMIT 1
+                """, [patient['patient_id']])
+                plan = cur.fetchone()
+                if plan:
+                    objetivo = {
+                        'proteina': float(plan[0] or 0),
+                        'grasa': float(plan[1] or 0),
+                        'carbohidratos': float(plan[2] or 0),
+                    }
+                    if not data.get('libertad'):
+                        data['libertad'] = float(plan[3] or 5)
+            conn_cl.close()
 
-    if not recetas_map:
+    if not objetivo:
         return error_response(
-            'Debes indicar al menos una receta por comida en "recetas"',
+            'Se requiere "objetivo" con macros o un plan nutricional activo',
             code=ErrorCodes.VALIDATION_ERROR, status_code=400
         )
 
-    try:
-        # Get nutrition plan for macro targets
-        if not patient:
-            return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+    libertad_val = float(data.get('libertad', 5))
+    all_alimentos = list(data.get('alimentos', []))
+    recipe_refs = data.get('recetas', [])
+    all_dependencias = []
 
-        conn = get_clinical_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT proteina, grasa, carbohidratos,
-                   desayuno_p, desayuno_g, desayuno_c,
-                   media_man_p, media_man_g, media_man_c,
-                   almuerzo_p, almuerzo_g, almuerzo_c,
-                   merienda_p, merienda_g, merienda_c,
-                   media_tar_p, media_tar_g, media_tar_c,
-                   cena_p, cena_g, cena_c, libertad
-            FROM nutrition_plans WHERE patient_id = ?
-            ORDER BY created_at DESC LIMIT 1
-        """, [patient['patient_id']])
-        dieta = cursor.fetchone()
-        conn.close()
+    # Load recipe ingredients from clinical.db
+    if recipe_refs:
+        conn_cl = get_clinical_connection(sqlite3.Row)
+        cur = conn_cl.cursor()
 
-        if not dieta:
-            return error_response(
-                'No hay plan nutricional activo para calcular',
-                code=ErrorCodes.NOT_FOUND, status_code=404
-            )
-
-        prot_total = float(dieta[0] or 0)
-        grasa_total = float(dieta[1] or 0)
-        ch_total = float(dieta[2] or 0)
-        libertad = float(dieta[21] or 0)
-
-        meal_macro_indices = {
-            'desayuno':     (3, 4, 5),
-            'media_manana': (6, 7, 8),
-            'almuerzo':     (9, 10, 11),
-            'merienda':     (12, 13, 14),
-            'media_tarde':  (15, 16, 17),
-            'cena':         (18, 19, 20),
-        }
-
-        # Get recipe names from legacy DB
+        # Also need ALIMENTOS from legacy DB for macro data
         conn_legacy = get_db_connection(sqlite3.Row)
-        cursor_legacy = conn_legacy.cursor()
+        cur_legacy = conn_legacy.cursor()
 
-        import sys
-        sys.path.insert(0, 'src')
-        import functions
-
-        resultados = {}
-
-        meals_to_calc = [comida_filter] if comida_filter else list(recetas_map.keys())
-
-        for comida_name in meals_to_calc:
-            recipe_ids = recetas_map.get(comida_name, [])
-            if not recipe_ids:
+        for ref in recipe_refs:
+            rid = ref.get('recipe_id')
+            if not rid:
                 continue
 
-            indices = meal_macro_indices.get(comida_name)
-            if not indices:
+            cur.execute("""
+                SELECT id, alimento_nombre, medida_tipo, rol,
+                       base_ingredient_id, ratio, tipo_ratio, cantidad_fija
+                FROM recipe_ingredients WHERE recipe_id = ?
+                ORDER BY orden
+            """, [rid])
+            ingredients = cur.fetchall()
+
+            if not ingredients:
                 continue
 
-            dp = float(dieta[indices[0]] or 0)
-            dg = float(dieta[indices[1]] or 0)
-            dc = float(dieta[indices[2]] or 0)
+            # Map ingredient row IDs to temp alimento IDs
+            ing_id_map = {}
+            base_groups = {}  # base_ing_db_id -> {base_id, dependientes}
 
-            p_meal = prot_total * dp
-            g_meal = grasa_total * dg
-            c_meal = ch_total * dc
+            for ing in ingredients:
+                ing_dict = dict(ing)
+                ali_nombre = ing_dict['alimento_nombre']
+                temp_id = f"r{rid}_{ing_dict['id']}"
+                ing_id_map[ing_dict['id']] = temp_id
 
-            n_recipes = len(recipe_ids)
-            p_per = p_meal / n_recipes if n_recipes else 0
-            g_per = g_meal / n_recipes if n_recipes else 0
-            c_per = c_meal / n_recipes if n_recipes else 0
+                # Get nutritional data from ALIMENTOS
+                medida_tipo = ing_dict['medida_tipo'] or 0
+                if medida_tipo == 0:
+                    mc_col, mc_desc_col = 'Gramo1', 'Medidacasera1'
+                else:
+                    mc_col, mc_desc_col = 'Gramo2', 'Medidacasera2'
 
-            meal_results = []
-            for rid in recipe_ids:
-                cursor_legacy.execute("SELECT NOMBRERECETA FROM RECETAS WHERE ID = ?", [int(rid)])
-                row = cursor_legacy.fetchone()
-                nombre = row[0] if row else None
+                cur_legacy.execute(f"""
+                    SELECT P, G, CH, {mc_col}, {mc_desc_col}
+                    FROM ALIMENTOS WHERE Largadescripcion = ?
+                """, [ali_nombre])
+                food_row = cur_legacy.fetchone()
 
-                if not nombre:
-                    meal_results.append({
-                        'recipe_id': rid,
-                        'recipe_name': None,
-                        'calculation': {'status': 'error', 'message': 'Receta no encontrada'}
-                    })
+                if not food_row:
                     continue
 
-                try:
-                    calc = functions.calculate_recipe_portions(
-                        nombrereceta=nombre,
-                        p0=p_per, g0=g_per, ch0=c_per, libertad=libertad
-                    )
-                    meal_results.append({
-                        'recipe_id': rid,
-                        'recipe_name': nombre,
-                        'calculation': calc
-                    })
-                except Exception as calc_err:
-                    meal_results.append({
-                        'recipe_id': rid,
-                        'recipe_name': nombre,
-                        'calculation': {
-                            'status': 'error',
-                            'message': str(calc_err)
-                        }
-                    })
+                alimento_data = {
+                    'id': temp_id,
+                    'nombre': ali_nombre,
+                    'proteina_100g': float(food_row[0] or 0),
+                    'grasa_100g': float(food_row[1] or 0),
+                    'carbohidratos_100g': float(food_row[2] or 0),
+                    'medida_casera_g': float(food_row[3] or 100),
+                    'medida_desc': food_row[4] or 'porción',
+                    'recipe_id': rid,
+                }
+                all_alimentos.append(alimento_data)
 
-            resultados[comida_name] = {
-                'macros_objetivo': {
-                    'proteina': round(p_meal, 1),
-                    'grasa': round(g_meal, 1),
-                    'carbohidratos': round(c_meal, 1),
-                },
-                'recetas': meal_results,
-            }
+                rol = ing_dict['rol']
+                if rol == 'base':
+                    base_groups[ing_dict['id']] = {
+                        'base_id': temp_id,
+                        'dependientes': [],
+                        'fijos': [],
+                    }
+                elif rol == 'dependiente':
+                    base_db_id = ing_dict['base_ingredient_id']
+                    if base_db_id in base_groups:
+                        base_groups[base_db_id]['dependientes'].append({
+                            'id': temp_id,
+                            'ratio': float(ing_dict['ratio'] or 1),
+                            'tipo_ratio': ing_dict['tipo_ratio'] or 'peso',
+                        })
+                elif rol == 'fijo':
+                    # Find which base group to attach to (first one)
+                    for bg in base_groups.values():
+                        bg['fijos'].append({
+                            'id': temp_id,
+                            'cantidad_fija': float(ing_dict['cantidad_fija'] or 1),
+                        })
+                        break
 
+            all_dependencias.extend(base_groups.values())
+
+        conn_cl.close()
         conn_legacy.close()
 
-        return success_response({'resultados': resultados})
+    if not all_alimentos:
+        return error_response(
+            'No hay alimentos para optimizar',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400
+        )
+
+    # Call solver
+    import functions
+    resultado = functions.solve_meal(
+        alimentos=all_alimentos,
+        objetivo=objetivo,
+        libertad=libertad_val,
+        dependencias=all_dependencias if all_dependencias else None,
+    )
+
+    return success_response(resultado)
+
+
+# ============================================
+# RECETAS CRUD (new relational model)
+# ============================================
+
+@nutrition_bp.route('/recipes', methods=['POST'])
+@require_auth
+def create_recipe():
+    """
+    Crea una receta con ingredientes y relaciones de dependencia.
+
+    Request Body:
+        {
+            "nombre": "Masa de pizza",
+            "categoria": "almuerzo_cena",
+            "palabras_clave": "pizza masa",
+            "ingredientes": [
+                {"alimento_nombre": "Harina común", "alimento_id": 45, "medida_tipo": 0, "rol": "base"},
+                {"alimento_nombre": "Agua", "rol": "dependiente", "base_index": 0, "ratio": 0.6, "tipo_ratio": "peso"},
+                {"alimento_nombre": "Levadura", "rol": "dependiente", "base_index": 0, "ratio": 0.02, "tipo_ratio": "peso"},
+                {"alimento_nombre": "Sal", "rol": "fijo", "cantidad_fija": 0.5}
+            ]
+        }
+    base_index: 0-based index into the ingredientes array pointing to which 'base' this depends on.
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    nombre = data.get('nombre', '').strip()
+    if not nombre:
+        return error_response('Nombre de receta requerido', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    ingredientes = data.get('ingredientes', [])
+    if len(ingredientes) < 2:
+        return error_response('Una receta necesita al menos 2 ingredientes', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    categoria = data.get('categoria', 'ambas')
+    palabras_clave = data.get('palabras_clave', '')
+
+    try:
+        conn = get_clinical_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO recipes (nombre, palabras_clave, categoria, created_by)
+            VALUES (?, ?, ?, ?)
+        """, [nombre, palabras_clave, categoria, user['user_id']])
+        recipe_id = cursor.lastrowid
+
+        # First pass: insert all ingredients and collect base IDs
+        base_ids = {}  # index -> db row id
+        inserted_ids = {}  # index -> db row id
+
+        for idx, ing in enumerate(ingredientes):
+            rol = ing.get('rol', 'base')
+            cursor.execute("""
+                INSERT INTO recipe_ingredients
+                    (recipe_id, alimento_nombre, alimento_id, medida_tipo, rol, orden)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, [
+                recipe_id,
+                ing.get('alimento_nombre', ''),
+                ing.get('alimento_id'),
+                ing.get('medida_tipo', 0),
+                rol,
+                idx,
+            ])
+            row_id = cursor.lastrowid
+            inserted_ids[idx] = row_id
+            if rol == 'base':
+                base_ids[idx] = row_id
+
+        # Second pass: set base_ingredient_id, ratio, etc. for dependents
+        for idx, ing in enumerate(ingredientes):
+            rol = ing.get('rol', 'base')
+            if rol == 'dependiente':
+                base_index = ing.get('base_index', 0)
+                base_ing_id = base_ids.get(base_index)
+                cursor.execute("""
+                    UPDATE recipe_ingredients
+                    SET base_ingredient_id = ?, ratio = ?, tipo_ratio = ?
+                    WHERE id = ?
+                """, [
+                    base_ing_id,
+                    float(ing.get('ratio', 1)),
+                    ing.get('tipo_ratio', 'peso'),
+                    inserted_ids[idx],
+                ])
+            elif rol == 'fijo':
+                cursor.execute("""
+                    UPDATE recipe_ingredients SET cantidad_fija = ? WHERE id = ?
+                """, [float(ing.get('cantidad_fija', 1)), inserted_ids[idx]])
+
+        conn.commit()
+        conn.close()
+
+        return success_response({'recipe_id': recipe_id, 'nombre': nombre})
 
     except Exception as e:
         return error_response(
-            f'Error calculando dia: {str(e)}',
-            code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            f'Error creando receta: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
+        )
+
+
+@nutrition_bp.route('/recipes/<int:recipe_id>', methods=['PUT'])
+@require_auth
+def update_recipe(recipe_id):
+    """
+    Actualiza una receta existente (nombre, categoría, ingredientes).
+    Reemplaza todos los ingredientes.
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    try:
+        conn = get_clinical_connection()
+        cursor = conn.cursor()
+
+        # Verify recipe exists
+        cursor.execute("SELECT id, created_by FROM recipes WHERE id = ?", [recipe_id])
+        recipe = cursor.fetchone()
+        if not recipe:
+            conn.close()
+            return error_response('Receta no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        # Update header
+        nombre = data.get('nombre')
+        if nombre:
+            cursor.execute("UPDATE recipes SET nombre = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                           [nombre.strip(), recipe_id])
+        if 'categoria' in data:
+            cursor.execute("UPDATE recipes SET categoria = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                           [data['categoria'], recipe_id])
+        if 'palabras_clave' in data:
+            cursor.execute("UPDATE recipes SET palabras_clave = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                           [data['palabras_clave'], recipe_id])
+
+        # Replace ingredients if provided
+        ingredientes = data.get('ingredientes')
+        if ingredientes is not None:
+            cursor.execute("DELETE FROM recipe_ingredients WHERE recipe_id = ?", [recipe_id])
+
+            base_ids = {}
+            inserted_ids = {}
+
+            for idx, ing in enumerate(ingredientes):
+                rol = ing.get('rol', 'base')
+                cursor.execute("""
+                    INSERT INTO recipe_ingredients
+                        (recipe_id, alimento_nombre, alimento_id, medida_tipo, rol, orden)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, [recipe_id, ing.get('alimento_nombre', ''), ing.get('alimento_id'),
+                      ing.get('medida_tipo', 0), rol, idx])
+                row_id = cursor.lastrowid
+                inserted_ids[idx] = row_id
+                if rol == 'base':
+                    base_ids[idx] = row_id
+
+            for idx, ing in enumerate(ingredientes):
+                rol = ing.get('rol', 'base')
+                if rol == 'dependiente':
+                    base_index = ing.get('base_index', 0)
+                    base_ing_id = base_ids.get(base_index)
+                    cursor.execute("""
+                        UPDATE recipe_ingredients
+                        SET base_ingredient_id = ?, ratio = ?, tipo_ratio = ?
+                        WHERE id = ?
+                    """, [base_ing_id, float(ing.get('ratio', 1)),
+                          ing.get('tipo_ratio', 'peso'), inserted_ids[idx]])
+                elif rol == 'fijo':
+                    cursor.execute("""
+                        UPDATE recipe_ingredients SET cantidad_fija = ? WHERE id = ?
+                    """, [float(ing.get('cantidad_fija', 1)), inserted_ids[idx]])
+
+        conn.commit()
+        conn.close()
+
+        return success_response({'recipe_id': recipe_id, 'message': 'Receta actualizada'})
+
+    except Exception as e:
+        return error_response(
+            f'Error actualizando receta: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
+        )
+
+
+@nutrition_bp.route('/recipes/<int:recipe_id>', methods=['DELETE'])
+@require_auth
+def delete_recipe(recipe_id):
+    """Elimina una receta y sus ingredientes (cascade)."""
+    user = get_current_user()
+
+    try:
+        conn = get_clinical_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM recipes WHERE id = ?", [recipe_id])
+        if not cursor.fetchone():
+            conn.close()
+            return error_response('Receta no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        cursor.execute("DELETE FROM recipes WHERE id = ?", [recipe_id])
+        conn.commit()
+        conn.close()
+
+        return success_response({'message': 'Receta eliminada'})
+
+    except Exception as e:
+        return error_response(
+            f'Error eliminando receta: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
         )
 
 
@@ -1379,7 +1744,7 @@ def save_meal_config():
 def calculate_meal_plan(plan_id):
     """
     Auto-calcula todas las recetas de un plan alimentario guardado.
-    Returns per-meal recipe calculations using the legacy recipe calculator.
+    Uses the new solve_meal solver for each recipe.
     """
     user = get_current_user()
     patient = resolve_patient_id(user['nombre_apellido'])
@@ -1405,7 +1770,6 @@ def calculate_meal_plan(plan_id):
         plan_data = json.loads(plan_dict.get('plan_json', '{}'))
         comidas = plan_data.get('comidas', {})
 
-        # Get per-meal macros from nutrition_plans
         cursor.execute("""
             SELECT proteina, grasa, carbohidratos,
                    desayuno_p, desayuno_g, desayuno_c,
@@ -1418,9 +1782,9 @@ def calculate_meal_plan(plan_id):
             ORDER BY created_at DESC LIMIT 1
         """, [patient['patient_id']])
         dieta = cursor.fetchone()
-        conn.close()
 
         if not dieta:
+            conn.close()
             return success_response({
                 'plan_id': plan_id,
                 'calculations': None,
@@ -1430,6 +1794,7 @@ def calculate_meal_plan(plan_id):
         prot_total = float(dieta[0] or 0)
         grasa_total = float(dieta[1] or 0)
         ch_total = float(dieta[2] or 0)
+        libertad = float(dieta[21] or 0)
 
         meal_macro_indices = {
             'desayuno':     (3, 4, 5),
@@ -1440,11 +1805,12 @@ def calculate_meal_plan(plan_id):
             'cena':         (18, 19, 20),
         }
 
-        libertad = float(dieta[21] or 0)
-        resultados = {}
+        conn_legacy = get_db_connection(sqlite3.Row)
+        cur_legacy = conn_legacy.cursor()
 
-        import sys
-        sys.path.insert(0, 'src')
+        import functions
+
+        resultados = {}
 
         for comida_name, recipe_ids in comidas.items():
             if not recipe_ids:
@@ -1453,23 +1819,88 @@ def calculate_meal_plan(plan_id):
             if not indices:
                 continue
 
-            dp, dg, dc = float(dieta[indices[0]] or 0), float(dieta[indices[1]] or 0), float(dieta[indices[2]] or 0)
+            dp = float(dieta[indices[0]] or 0)
+            dg = float(dieta[indices[1]] or 0)
+            dc = float(dieta[indices[2]] or 0)
             p_meal = prot_total * dp
             g_meal = grasa_total * dg
             c_meal = ch_total * dc
             n_recipes = len(recipe_ids)
 
-            p_per = p_meal / n_recipes if n_recipes else 0
-            g_per = g_meal / n_recipes if n_recipes else 0
-            c_per = c_meal / n_recipes if n_recipes else 0
-
             meal_results = []
             for rid in recipe_ids:
+                rid = int(rid)
+                p_per = p_meal / n_recipes if n_recipes else 0
+                g_per = g_meal / n_recipes if n_recipes else 0
+                c_per = c_meal / n_recipes if n_recipes else 0
+
+                # Load recipe ingredients from new relational table
+                cursor.execute("""
+                    SELECT id, alimento_nombre, medida_tipo, rol,
+                           base_ingredient_id, ratio, tipo_ratio, cantidad_fija
+                    FROM recipe_ingredients WHERE recipe_id = ? ORDER BY orden
+                """, [rid])
+                ingredients = cursor.fetchall()
+
+                if not ingredients:
+                    meal_results.append({
+                        'recipe_id': rid,
+                        'calculation': {'status': 'error', 'message': 'Receta sin ingredientes'}
+                    })
+                    continue
+
+                all_alimentos = []
+                base_groups = {}
+
+                for ing in ingredients:
+                    ing_d = dict(ing)
+                    temp_id = f"r{rid}_{ing_d['id']}"
+                    medida_tipo = ing_d['medida_tipo'] or 0
+                    mc_col = 'Gramo1' if medida_tipo == 0 else 'Gramo2'
+                    mc_desc = 'Medidacasera1' if medida_tipo == 0 else 'Medidacasera2'
+
+                    cur_legacy.execute(f"""
+                        SELECT P, G, CH, {mc_col}, {mc_desc}
+                        FROM ALIMENTOS WHERE Largadescripcion = ?
+                    """, [ing_d['alimento_nombre']])
+                    food = cur_legacy.fetchone()
+                    if not food:
+                        continue
+
+                    all_alimentos.append({
+                        'id': temp_id,
+                        'nombre': ing_d['alimento_nombre'],
+                        'proteina_100g': float(food[0] or 0),
+                        'grasa_100g': float(food[1] or 0),
+                        'carbohidratos_100g': float(food[2] or 0),
+                        'medida_casera_g': float(food[3] or 100),
+                        'medida_desc': food[4] or 'porción',
+                    })
+
+                    if ing_d['rol'] == 'base':
+                        base_groups[ing_d['id']] = {'base_id': temp_id, 'dependientes': [], 'fijos': []}
+                    elif ing_d['rol'] == 'dependiente':
+                        base_db_id = ing_d['base_ingredient_id']
+                        if base_db_id in base_groups:
+                            base_groups[base_db_id]['dependientes'].append({
+                                'id': temp_id,
+                                'ratio': float(ing_d['ratio'] or 1),
+                                'tipo_ratio': ing_d['tipo_ratio'] or 'peso',
+                            })
+                    elif ing_d['rol'] == 'fijo':
+                        for bg in base_groups.values():
+                            bg['fijos'].append({
+                                'id': temp_id,
+                                'cantidad_fija': float(ing_d['cantidad_fija'] or 1),
+                            })
+                            break
+
                 try:
-                    import functions
-                    calc = functions.calculate_recipe_portions(
-                        nombrereceta=None, recipe_id=int(rid),
-                        p0=p_per, g0=g_per, ch0=c_per, libertad=libertad
+                    calc = functions.solve_meal(
+                        alimentos=all_alimentos,
+                        objetivo={'proteina': p_per, 'grasa': g_per, 'carbohidratos': c_per},
+                        libertad=libertad,
+                        dependencias=list(base_groups.values()) if base_groups else None,
                     )
                     meal_results.append({'recipe_id': rid, 'calculation': calc})
                 except Exception:
@@ -1493,6 +1924,9 @@ def calculate_meal_plan(plan_id):
                 },
                 'recetas': meal_results,
             }
+
+        conn.close()
+        conn_legacy.close()
 
         return success_response({
             'plan_id': plan_id,
@@ -2228,8 +2662,6 @@ def save_block_constructor():
     Guarda una combinación creada por el usuario con detalles de alimentos.
     Body: { comida, alimentos: [{categoria, descripcion, porciones}], alias, es_publica?: bool }
     """
-    import sys
-    sys.path.insert(0, 'src')
     try:
         import functions
     except ImportError:
@@ -2397,8 +2829,6 @@ def get_food_groups_catalog():
     Retorna alimentos de GRUPOSALIMENTOS con bloques nutricionales calculados.
     Query: ?macro=P|G|C (optional), ?momento=desayuno|almuerzo|... (optional)
     """
-    import sys
-    sys.path.insert(0, 'src')
     try:
         import functions
     except ImportError:

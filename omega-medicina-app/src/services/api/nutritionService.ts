@@ -308,9 +308,50 @@ export const nutritionService = {
     return apiClient.post<any>(ENDPOINTS.NUTRITION_RECIPE_CALCULATE, data, { recipeId: String(recipeId) });
   },
 
-  // Calculate day - solve recipes for one or all meals
-  async calculateDay(recetas: Record<string, number[]>, comida?: string) {
-    return apiClient.post<any>(ENDPOINTS.NUTRITION_CALCULATE_DAY, { recetas, comida });
+  // Solve meal - generic solver for any combination of foods + recipes
+  async solveMeal(payload: {
+    objetivo?: { proteina: number; grasa: number; carbohidratos: number };
+    libertad?: number;
+    meal_key?: string;
+    alimentos?: Array<{
+      id: string;
+      nombre: string;
+      proteina_100g: number;
+      grasa_100g: number;
+      carbohidratos_100g: number;
+      medida_casera_g: number;
+      medida_desc?: string;
+    }>;
+    recetas?: Array<{ recipe_id: number }>;
+  }) {
+    return apiClient.post<any>(ENDPOINTS.NUTRITION_SOLVE_MEAL, payload);
+  },
+
+  // Recipe CRUD
+  async createRecipe(data: {
+    nombre: string;
+    categoria?: string;
+    palabras_clave?: string;
+    ingredientes: Array<{
+      alimento_nombre: string;
+      alimento_id?: number;
+      medida_tipo?: number;
+      rol: 'base' | 'dependiente' | 'fijo';
+      base_index?: number;
+      ratio?: number;
+      tipo_ratio?: 'peso' | 'medida_casera';
+      cantidad_fija?: number;
+    }>;
+  }) {
+    return apiClient.post<{ recipe_id: number; nombre: string }>(ENDPOINTS.NUTRITION_RECIPES, data);
+  },
+
+  async updateRecipe(recipeId: number, data: any) {
+    return apiClient.put<any>(ENDPOINTS.NUTRITION_RECIPE_DETAIL, data, { recipeId: String(recipeId) });
+  },
+
+  async deleteRecipe(recipeId: number) {
+    return apiClient.delete<any>(ENDPOINTS.NUTRITION_RECIPE_DETAIL, { recipeId: String(recipeId) });
   },
 
   // Meal Plans

@@ -244,26 +244,34 @@ CREATE TABLE IF NOT EXISTS foods (
     porcion2_g      REAL
 );
 
--- Reemplaza: RECETAS (estructura columnar legacy se mantiene por compatibilidad)
+-- Reemplaza: RECETAS (nueva estructura relacional)
 CREATE TABLE IF NOT EXISTS recipes (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre          TEXT NOT NULL,
-    -- Ingredientes variables (usuario ajusta porciones)
-    ingrediente_var1 TEXT,
-    ingrediente_var2 TEXT,
-    ingrediente_var3 TEXT,
-    -- Ingredientes dependientes (fijos)
-    ingrediente_dep1 TEXT,
-    ingrediente_dep2 TEXT,
-    ingrediente_dep3 TEXT,
-    ingrediente_dep4 TEXT,
-    ingrediente_dep5 TEXT,
-    ingrediente_dep6 TEXT,
-    ingrediente_dep7 TEXT,
-    ingrediente_dep8 TEXT,
-    ingrediente_dep9 TEXT,
-    ingrediente_dep10 TEXT
+    palabras_clave  TEXT,
+    categoria       TEXT CHECK(categoria IN ('desayuno_merienda', 'almuerzo_cena', 'ambas')),
+    created_by      INTEGER,
+    legacy_id       INTEGER,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_recipes_nombre ON recipes(nombre);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
+
+CREATE TABLE IF NOT EXISTS recipe_ingredients (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipe_id           INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    alimento_nombre     TEXT NOT NULL,
+    alimento_id         INTEGER,
+    medida_tipo         INTEGER DEFAULT 0,
+    rol                 TEXT NOT NULL CHECK(rol IN ('base', 'dependiente', 'fijo')),
+    base_ingredient_id  INTEGER REFERENCES recipe_ingredients(id),
+    ratio               REAL,
+    tipo_ratio          TEXT CHECK(tipo_ratio IN ('peso', 'medida_casera')),
+    cantidad_fija       REAL,
+    orden               INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id);
 
 -- Reemplaza: GRUPOSALIMENTOS
 CREATE TABLE IF NOT EXISTS food_groups (

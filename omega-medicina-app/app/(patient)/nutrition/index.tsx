@@ -64,7 +64,9 @@ function fmtDate(d: Date) { return d.toISOString().slice(0, 10); }
 interface LoggedFood {
   id: string; name: string; brand?: string;
   quantity_g: number; unit?: string;
+  medida_casera_g?: number; // stable serving size for solver (never changes)
   calories: number; protein: number; fat: number; carbs: number;
+  protein_100g?: number; fat_100g?: number; carbs_100g?: number;
   eaten?: boolean;
 }
 
@@ -73,17 +75,27 @@ function parseFoodsJson(raw: any): LoggedFood[] {
   try {
     const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!Array.isArray(arr)) return [];
-    return arr.map((f: any) => ({
-      id: f.id || f.nombre || String(Math.random()),
-      name: f.name || f.nombre || 'Sin nombre',
-      brand: f.brand || f.marca || undefined,
-      quantity_g: f.quantity_g || f.total_gramos || 100,
-      calories: f.calories || f.calorias || 0,
-      protein: f.protein || f.proteina_g || 0,
-      fat: f.fat || f.grasa_g || 0,
-      carbs: f.carbs || f.carbohidratos_g || 0,
-      eaten: f.eaten ?? true,
-    }));
+    return arr.map((f: any) => {
+      const qty = f.quantity_g || f.total_gramos || 100;
+      const prot = f.protein || f.proteina_g || 0;
+      const fat = f.fat || f.grasa_g || 0;
+      const carb = f.carbs || f.carbohidratos_g || 0;
+      const factor = qty > 0 ? 100 / qty : 1;
+      return {
+        id: f.id || f.nombre || String(Math.random()),
+        name: f.name || f.nombre || 'Sin nombre',
+        brand: f.brand || f.marca || undefined,
+        quantity_g: qty,
+        unit: f.unit || f.medida_desc || undefined,
+        medida_casera_g: f.medida_casera_g ?? qty,
+        calories: f.calories || f.calorias || 0,
+        protein: prot, fat, carbs: carb,
+        protein_100g: f.protein_100g ?? f.proteina_100g ?? Math.round(prot * factor * 10) / 10,
+        fat_100g: f.fat_100g ?? f.grasa_100g ?? Math.round(fat * factor * 10) / 10,
+        carbs_100g: f.carbs_100g ?? f.carbohidratos_100g ?? Math.round(carb * factor * 10) / 10,
+        eaten: f.eaten ?? false,
+      };
+    });
   } catch { return []; }
 }
 
@@ -496,47 +508,70 @@ export default function NutritionScreen() {
     router.push({ pathname: '/(patient)/nutrition/food-search', params: { meal: mealKey, date: dateStr } });
   }, [router, dateStr]);
 
-  // Build recetas map from meals that have recipes
-  const getRecetasMap = useCallback((onlyMeal?: string) => {
-    const map: Record<string, number[]> = {};
-    for (const m of meals) {
-      if (onlyMeal && m.meal_key !== onlyMeal) continue;
-      if (m.recipe_id) map[m.meal_key] = [m.recipe_id];
-    }
-    return map;
-  }, [meals]);
+  // Build solve-meal payload from a meal's foods
+  const buildSolveMealPayload = useCallback((meal: MealData) => {
+    const alimentos: any[] = [];
+    const recipeIds: number[] = [];
 
-  // Apply calculation results to meals and save
-  const applyCalculation = useCallback((resultados: Record<string, any>) => {
-    const updated = meals.map(m => {
-      const res = resultados[m.meal_key];
-      if (!res?.recetas?.length) return m;
-
-      const newFoods: LoggedFood[] = [];
-      let lastRecipeId = m.recipe_id;
-      let lastRecipeName = m.recipe_name;
-
-      for (const r of res.recetas) {
-        const calc = r.calculation;
-        if (calc?.status !== 'success') continue;
-        const allF = [...(calc.alimentos_variables || []), ...(calc.alimentos_fijos || [])];
-        for (const a of allF) {
-          newFoods.push({
-            id: `r_${r.recipe_id}_${a.nombre}`, name: a.nombre || 'Sin nombre',
-            quantity_g: a.total_gramos || 100, calories: a.calorias || 0,
-            protein: a.proteina_g || 0, fat: a.grasa_g || 0, carbs: a.carbohidratos_g || 0, eaten: true,
-          });
-        }
-        lastRecipeId = r.recipe_id;
-        lastRecipeName = r.recipe_name;
+    for (const f of meal.foods) {
+      // If it's a recipe food (starts with r_), collect recipe_id
+      if (f.id.startsWith('r_') && meal.recipe_id) {
+        if (!recipeIds.includes(meal.recipe_id)) recipeIds.push(meal.recipe_id);
+        continue; // recipe ingredients will come from backend
       }
+      // Independent food — send stable per-100g macros and stable medida_casera_g
+      alimentos.push({
+        id: f.id,
+        nombre: f.name,
+        proteina_100g: f.protein_100g ?? (f.quantity_g > 0 ? Math.round(f.protein * 100 / f.quantity_g * 10) / 10 : 0),
+        grasa_100g: f.fat_100g ?? (f.quantity_g > 0 ? Math.round(f.fat * 100 / f.quantity_g * 10) / 10 : 0),
+        carbohidratos_100g: f.carbs_100g ?? (f.quantity_g > 0 ? Math.round(f.carbs * 100 / f.quantity_g * 10) / 10 : 0),
+        medida_casera_g: f.medida_casera_g || f.quantity_g || 100,
+        medida_desc: f.unit || 'porción',
+      });
+    }
 
-      if (newFoods.length === 0) return m;
+    return {
+      meal_key: meal.meal_key,
+      libertad: 10,
+      alimentos,
+      recetas: recipeIds.map(id => ({ recipe_id: id })),
+    };
+  }, []);
 
-      // Keep manual (non-recipe) foods, replace recipe foods
-      const manualFoods = m.foods.filter(f => !f.id.startsWith('r_'));
-      return { ...m, foods: [...manualFoods, ...newFoods], recipe_id: lastRecipeId, recipe_name: lastRecipeName };
+  // Apply solve-meal result to a single meal
+  const applySolveResult = useCallback((mealKey: string, solveData: any) => {
+    if (solveData?.status !== 'success' || !solveData?.alimentos?.length) return;
+
+    const updated = meals.map(m => {
+      if (m.meal_key !== mealKey) return m;
+
+      // Preserve eaten state from original foods where possible
+      const originalFoodsMap = new Map(m.foods.map(f => [f.id, f]));
+      const newFoods: LoggedFood[] = solveData.alimentos.map((a: any) => {
+        const orig = originalFoodsMap.get(String(a.id));
+        const qty = a.total_gramos || 100;
+        const mc = orig?.medida_casera_g || a.medida_casera_g || qty;
+        return {
+          id: String(a.id),
+          name: a.nombre || 'Sin nombre',
+          quantity_g: qty,
+          unit: orig?.unit || a.medida_desc || undefined,
+          medida_casera_g: mc,
+          calories: a.calorias || 0,
+          protein: a.proteina_g || 0,
+          fat: a.grasa_g || 0,
+          carbs: a.carbohidratos_g || 0,
+          protein_100g: orig?.protein_100g ?? (qty > 0 ? Math.round((a.proteina_g || 0) * 100 / qty * 10) / 10 : 0),
+          fat_100g: orig?.fat_100g ?? (qty > 0 ? Math.round((a.grasa_g || 0) * 100 / qty * 10) / 10 : 0),
+          carbs_100g: orig?.carbs_100g ?? (qty > 0 ? Math.round((a.carbohidratos_g || 0) * 100 / qty * 10) / 10 : 0),
+          eaten: orig?.eaten ?? false,
+        };
+      });
+
+      return { ...m, foods: newFoods };
     });
+
     saveMut.mutate(buildMealPayload(updated));
   }, [meals, saveMut, buildMealPayload]);
 
@@ -544,33 +579,72 @@ export default function NutritionScreen() {
 
   const handleRecalculate = useCallback(async (mealKey: string) => {
     const meal = meals.find(m => m.meal_key === mealKey);
-    if (!meal?.recipe_id) { Alert.alert('Sin receta', 'Esta comida no tiene receta asignada.'); return; }
+    if (!meal || meal.foods.length === 0) {
+      Alert.alert('Sin alimentos', 'Agrega alimentos a esta comida primero.');
+      return;
+    }
     setCalculating(mealKey);
     try {
-      const recetas = { [mealKey]: [meal.recipe_id] };
-      const result = await nutritionService.calculateDay(recetas, mealKey);
+      const payload = buildSolveMealPayload(meal);
+      const result = await nutritionService.solveMeal(payload);
       const data = (result as any)?.data || result;
-      if (data?.resultados) applyCalculation(data.resultados);
-      else Alert.alert('Sin resultados', 'No se obtuvieron resultados del calculo.');
+      if (data?.status === 'success') applySolveResult(mealKey, data);
+      else Alert.alert('Sin resultados', data?.message || 'No se obtuvieron resultados del calculo.');
     } catch { Alert.alert('Error', 'No se pudo calcular la comida.'); }
     finally { setCalculating(null); }
-  }, [meals, applyCalculation]);
+  }, [meals, buildSolveMealPayload, applySolveResult]);
 
   const handleCalculateAll = useCallback(async () => {
-    const recetas = getRecetasMap();
-    if (Object.keys(recetas).length === 0) {
-      Alert.alert('Sin recetas', 'Ninguna comida tiene receta asignada. Agrega recetas primero.');
+    const mealsWithFood = meals.filter(m => m.foods.length > 0);
+    if (mealsWithFood.length === 0) {
+      Alert.alert('Sin alimentos', 'Agrega alimentos a al menos una comida.');
       return;
     }
     setCalculating('all');
     try {
-      const result = await nutritionService.calculateDay(recetas);
-      const data = (result as any)?.data || result;
-      if (data?.resultados) applyCalculation(data.resultados);
-      else Alert.alert('Sin resultados', 'No se obtuvieron resultados del calculo.');
+      const results: { mealKey: string; data: any }[] = [];
+      // Solve each meal independently
+      await Promise.all(mealsWithFood.map(async (meal) => {
+        const payload = buildSolveMealPayload(meal);
+        const result = await nutritionService.solveMeal(payload);
+        const data = (result as any)?.data || result;
+        results.push({ mealKey: meal.meal_key, data });
+      }));
+
+      // Apply all results at once
+      let updated = [...meals];
+      for (const { mealKey, data } of results) {
+        if (data?.status !== 'success' || !data?.alimentos?.length) continue;
+        updated = updated.map(m => {
+          if (m.meal_key !== mealKey) return m;
+          const originalFoodsMap = new Map(m.foods.map(f => [f.id, f]));
+          const newFoods: LoggedFood[] = data.alimentos.map((a: any) => {
+            const orig = originalFoodsMap.get(String(a.id));
+            const qty = a.total_gramos || 100;
+            const mc = orig?.medida_casera_g || a.medida_casera_g || qty;
+            return {
+              id: String(a.id),
+              name: a.nombre || 'Sin nombre',
+              quantity_g: qty,
+              unit: orig?.unit || a.medida_desc || undefined,
+              medida_casera_g: mc,
+              calories: a.calorias || 0,
+              protein: a.proteina_g || 0,
+              fat: a.grasa_g || 0,
+              carbs: a.carbohidratos_g || 0,
+              protein_100g: orig?.protein_100g ?? (qty > 0 ? Math.round((a.proteina_g || 0) * 100 / qty * 10) / 10 : 0),
+              fat_100g: orig?.fat_100g ?? (qty > 0 ? Math.round((a.grasa_g || 0) * 100 / qty * 10) / 10 : 0),
+              carbs_100g: orig?.carbs_100g ?? (qty > 0 ? Math.round((a.carbohidratos_g || 0) * 100 / qty * 10) / 10 : 0),
+              eaten: orig?.eaten ?? false,
+            };
+          });
+          return { ...m, foods: newFoods };
+        });
+      }
+      saveMut.mutate(buildMealPayload(updated));
     } catch { Alert.alert('Error', 'No se pudieron calcular las comidas.'); }
     finally { setCalculating(null); }
-  }, [getRecetasMap, applyCalculation]);
+  }, [meals, buildSolveMealPayload, saveMut, buildMealPayload]);
 
   const handleSaveConfig = useCallback((nc: MealConfigState, ent: string | null) => {
     setMealConfigs(nc); setEntrenoAfter(ent); setShowConfig(false);
@@ -653,7 +727,7 @@ export default function NutritionScreen() {
             {meals.map(meal => {
               const meta = MEAL_META[meal.meal_key]; if (!meta) return null;
               const totals = mealTotals(meal.foods);
-              const hasRecipe = meal.foods.some(f => f.id.startsWith('r_'));
+              const hasFoods = meal.foods.length > 0;
               return (
                 <View key={meal.meal_key} style={[styles.mealCard, meal.completed && styles.mealCardDone]}>
                   <View style={styles.mealHdr}>
@@ -690,7 +764,7 @@ export default function NutritionScreen() {
                     <Pressable style={styles.addBtn} onPress={() => handleAddChoice(meal.meal_key)}>
                       <Plus size={16} color={Colors.primary} /><Text style={styles.addBtnText}>Agregar</Text>
                     </Pressable>
-                    {(meal.recipe_id || hasRecipe) && (
+                    {hasFoods && (
                       <Pressable style={styles.calcBtn} onPress={() => handleRecalculate(meal.meal_key)} disabled={calculating !== null}>
                         {calculating === meal.meal_key ? (
                           <ActivityIndicator size={12} color={Colors.primary} />

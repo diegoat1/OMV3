@@ -6,20 +6,29 @@ import sqlite3
 import os
 
 # Rutas de bases de datos
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'Basededatos')
-TELEMED_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'telemedicina.db')
-AUTH_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'auth.db')
-CLINICAL_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'db', 'clinical.db')
+# Si DATABASE_DIR está definido (ej: PythonAnywhere), las DBs se buscan ahí
+_DB_DIR = os.environ.get('DATABASE_DIR', '')
 
-# Rutas alternativas (para compatibilidad)
-if not os.path.exists(DATABASE_PATH):
-    DATABASE_PATH = 'src/Basededatos'
-if not os.path.exists(TELEMED_DATABASE_PATH):
-    TELEMED_DATABASE_PATH = 'src/telemedicina.db'
-if not os.path.exists(AUTH_DATABASE_PATH):
-    AUTH_DATABASE_PATH = 'src/auth.db'
-if not os.path.exists(CLINICAL_DATABASE_PATH):
-    CLINICAL_DATABASE_PATH = 'src/db/clinical.db'
+if _DB_DIR:
+    DATABASE_PATH = os.path.join(_DB_DIR, 'Basededatos')
+    TELEMED_DATABASE_PATH = os.path.join(_DB_DIR, 'telemedicina.db')
+    AUTH_DATABASE_PATH = os.path.join(_DB_DIR, 'auth.db')
+    CLINICAL_DATABASE_PATH = os.path.join(_DB_DIR, 'db', 'clinical.db')
+else:
+    DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'Basededatos')
+    TELEMED_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'telemedicina.db')
+    AUTH_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'auth.db')
+    CLINICAL_DATABASE_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'db', 'clinical.db')
+
+    # Rutas alternativas (para compatibilidad local)
+    if not os.path.exists(DATABASE_PATH):
+        DATABASE_PATH = 'src/Basededatos'
+    if not os.path.exists(TELEMED_DATABASE_PATH):
+        TELEMED_DATABASE_PATH = 'src/telemedicina.db'
+    if not os.path.exists(AUTH_DATABASE_PATH):
+        AUTH_DATABASE_PATH = 'src/auth.db'
+    if not os.path.exists(CLINICAL_DATABASE_PATH):
+        CLINICAL_DATABASE_PATH = 'src/db/clinical.db'
 
 
 def get_db_connection(row_factory=None):

@@ -13,7 +13,9 @@ function getDevBaseUrl() {
 export const API_CONFIG = {
   USE_DEMO_MODE: false,
 
-  BASE_URL: __DEV__ ? getDevBaseUrl() : 'https://api.omegamedicina.com/api/v3',
+  BASE_URL: __DEV__
+    ? getDevBaseUrl()
+    : (Constants.expoConfig?.extra?.apiUrl as string) ?? 'https://api.omegamedicina.com/api/v3',
 
   TIMEOUT: 10000,
 
@@ -71,7 +73,7 @@ export const API_CONFIG = {
     NUTRITION_LIBRARY_FAVORITE: '/nutrition/meal-plans/library/:presetId/favorite',
     NUTRITION_FOOD_CATALOG: '/nutrition/food-groups/catalog',
     NUTRITION_SAVE_MEAL_CONFIG: '/nutrition/meal-plans/save-config',
-    NUTRITION_CALCULATE_DAY: '/nutrition/calculate-day',
+    NUTRITION_SOLVE_MEAL: '/nutrition/solve-meal',
     NUTRITION_DAILY_LOG: '/nutrition/daily-log',
     NUTRITION_DAILY_LOG_HISTORY: '/nutrition/daily-log/history',
 

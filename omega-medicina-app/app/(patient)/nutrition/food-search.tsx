@@ -233,7 +233,7 @@ export default function FoodSearchScreen() {
               carbohidratos: existingMeal?.target_c || 0,
             } as any);
             const calc = ((calcRes as any)?.data || calcRes)?.calculation;
-            const allF = [...(calc?.alimentos_variables || []), ...(calc?.alimentos_fijos || [])];
+            const allF = calc?.alimentos || [...(calc?.alimentos_variables || []), ...(calc?.alimentos_fijos || [])];
             for (const a of allF) {
               newFoods.push({
                 id: `r_${item.recipeId}_${a.nombre}`,
@@ -251,17 +251,20 @@ export default function FoodSearchScreen() {
             // Skip failed recipe calculations
           }
         } else {
-          // Regular food: add with 100g default
-          const factor = 100 / 100;
+          // Regular food: add with 100g default, store per-100g macros for solver stability
           newFoods.push({
             id: item.id,
             name: item.name,
             brand: item.brand || undefined,
             quantity_g: 100,
-            calories: Math.round(item.calories * factor),
-            protein: Math.round(item.protein * factor * 10) / 10,
-            fat: Math.round(item.fat * factor * 10) / 10,
-            carbs: Math.round(item.carbs * factor * 10) / 10,
+            medida_casera_g: 100,
+            calories: Math.round(item.calories),
+            protein: Math.round(item.protein * 10) / 10,
+            fat: Math.round(item.fat * 10) / 10,
+            carbs: Math.round(item.carbs * 10) / 10,
+            protein_100g: Math.round(item.protein * 10) / 10,
+            fat_100g: Math.round(item.fat * 10) / 10,
+            carbs_100g: Math.round(item.carbs * 10) / 10,
           });
         }
       }
