@@ -6,17 +6,18 @@ from flask import jsonify
 from datetime import datetime
 
 
-def success_response(data=None, message=None, meta=None):
+def success_response(data=None, message=None, meta=None, status_code=200):
     """
     Genera una respuesta exitosa estándar.
-    
+
     Args:
         data: Datos a retornar
         message: Mensaje opcional
         meta: Metadatos adicionales
-    
+        status_code: HTTP status code (default 200, use 201 for created)
+
     Returns:
-        JSON response con formato estándar
+        Tuple (JSON response, status_code) — Flask unwraps it transparently
     """
     response = {
         'success': True,
@@ -27,11 +28,11 @@ def success_response(data=None, message=None, meta=None):
             **(meta or {})
         }
     }
-    
+
     if message:
         response['message'] = message
-    
-    return jsonify(response)
+
+    return jsonify(response), status_code
 
 
 def error_response(message, code='ERROR', details=None, status_code=400):

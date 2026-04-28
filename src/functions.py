@@ -2,10 +2,15 @@ import numpy as np
 from pulp import *
 import sqlite3
 import json
+import os
 from datetime import datetime
 
-DATABASE_PATH = "src/Basededatos"
-TELEMED_DATABASE_PATH = "src/telemedicina.db"
+# Resolve DB paths in a way that works regardless of cwd (PythonAnywhere WSGI safe).
+# If DATABASE_DIR is set (production), DBs live there. Otherwise fall back to files
+# next to this module (`src/Basededatos`, `src/telemedicina.db`).
+_DB_DIR = os.environ.get('DATABASE_DIR') or os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.path.join(_DB_DIR, 'Basededatos')
+TELEMED_DATABASE_PATH = os.path.join(_DB_DIR, 'telemedicina.db')
 
 def decode_json_data(json_string):
     if json_string:
@@ -99,7 +104,7 @@ import numpy as np
 
 def creadordeperfil(perfil):
     # Base de datos
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     try:
         cursor.execute("CREATE TABLE PERFILESTATICO (NOMBRE_APELLIDO VARCHAR(50), DNI INTEGER PRIMARY KEY, NUMERO_TELEFONO INTEGER, EMAIL VARCHAR(50), SEXO VARCHAR(20), FECHA_NACIMIENTO DATE, ALTURA DECIMAL, CIRC_CUELLO DECIMAL, CIRC_MUNECA DECIMAL, CIRC_TOBILLO DECIMAL)")
@@ -121,7 +126,7 @@ def creadordeperfil(perfil):
 
 def actualizarperfilest(perfil):
     #Base de datos
-    basedatos = sqlite3.connect("src/Basededatos")
+    basedatos = sqlite3.connect(DATABASE_PATH)
     cursor = basedatos.cursor()
     try:
         cursor.execute("UPDATE PERFILESTATICO SET NOMBRE_APELLIDO= ?, NUMERO_TELEFONO=?, EMAIL=?, SEXO=?, FECHA_NACIMIENTO=?, ALTURA=?, CIRC_CUELLO=?, CIRC_MUNECA=?, CIRC_TOBILLO=? WHERE DNI = ?", (perfil[0], perfil[2], perfil[3], perfil[4], perfil[5], perfil[6], perfil[7], perfil[8], perfil[9], perfil[1]))
@@ -139,7 +144,7 @@ def actualizarperfilest(perfil):
 
 def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
     # Base de datos
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     try:
         cursor.execute("CREATE TABLE PERFILDINAMICO (ID INTEGER PRIMARY KEY AUTOINCREMENT, NOMBRE_APELLIDO VARCHAR(50), FECHA_REGISTRO DATE, CIRC_CIN DECIMAL, CIRC_CAD DECIMAL, CIRC_ABD DECIMAL, PESO DECIMAL, BF DECIMAL, IMC DECIMAL, IMMC DECIMAL, PESO_GRASO DECIMAL, PESO_MAGRO DECIMAL, DELTADIA INTEGER, DELTAPESO DECIMAL, DELTADIAPESO DECIMAL, DELTAPG DECIMAL, DELTADIAPG DECIMAL, DELTAPM DECIMAL, DELTADIAPM DECIMAL, DELTAPESOCAT VARCHAR(50), LBMLOSS DECIMAL, LBMLOSSCAT VARCHAR(50), FBMGAIN DECIMAL, FBMGAINCAT VARCHAR (50), SCOREIMMC DECIMAL, SCOREBF DECIMAL, BODYSCORE DECIMAL, INCDAYS INTEGER, DECDAYS INTEGER, DAYS INTEGER, PF DECIMAL, PMF DECIMAL, PGF DECIMAL, ABDF DECIMAL, CINF DECIMAL, CADF DECIMAL, SOLVER_CATEGORY VARCHAR(50))")
@@ -286,7 +291,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
         cursor.execute("INSERT INTO PERFILDINAMICO (NOMBRE_APELLIDO, FECHA_REGISTRO, CIRC_CIN, CIRC_CAD, CIRC_ABD, PESO, BF, IMC, IMMC, PESO_GRASO, PESO_MAGRO, DELTADIA, DELTAPESO, DELTADIAPESO, DELTAPG, DELTADIAPG, DELTAPM, DELTADIAPM, DELTAPESOCAT, LBMLOSS, LBMLOSSCAT, FBMGAIN, FBMGAINCAT) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", perfil)
         basededatos.commit()
 
-        basededatos=sqlite3.connect("src/Basededatos")
+        basededatos=sqlite3.connect(DATABASE_PATH)
         cursor=basededatos.cursor()
 
         #SELECCIONAR ID
@@ -512,7 +517,7 @@ def actualizarperfil(nameuser, fdr, peso, cabd, ccin, ccad):
 
 def actualizarperfildin(perfil):
     #Base de datos
-    basedatos = sqlite3.connect("src/Basededatos")
+    basedatos = sqlite3.connect(DATABASE_PATH)
     cursor = basedatos.cursor()
     #Obtener datos de la tabla perfil estatico - altura, sexo, circunferencia de cuello
     cursor.execute("SELECT ALTURA FROM PERFILESTATICO WHERE NOMBRE_APELLIDO=?", [perfil[1]])
@@ -653,7 +658,7 @@ def actualizarperfildin(perfil):
     nameuser = perfil[1]
     basedatos.commit()
     
-    basededatos=sqlite3.connect("src/Basededatos")
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
 
     #SELECCIONAR ID
@@ -814,7 +819,7 @@ def crear_tabla_analisis_fuerza_detallado():
     """Crea la tabla FUERZA si no existe."""
     basededatos = None
     try:
-        basededatos = sqlite3.connect("src/Basededatos")
+        basededatos = sqlite3.connect(DATABASE_PATH)
         cursor = basededatos.cursor()
         
         # Primero eliminamos la tabla antigua si existe
@@ -860,7 +865,7 @@ def guardar_historia_levantamiento_completa(data_calculado, data_crudo, username
     """
     basededatos = None
     try:
-        basededatos = sqlite3.connect("src/Basededatos")
+        basededatos = sqlite3.connect(DATABASE_PATH)
         cursor = basededatos.cursor()
         
         # Obtener el ID del usuario
@@ -1124,7 +1129,7 @@ def get_user_strength_history(user_dni, limite=10):
 ### CREA UNA LISTA CON TODOS LOS USUARIOS ###
 
 def creadordelista():
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     cursor.execute(
         "SELECT NOMBRE_APELLIDO, DNI FROM PERFILESTATICO ORDER BY NOMBRE_APELLIDO ASC")
@@ -1139,7 +1144,7 @@ def creadordelista():
 def goal(goal):
     
     #Conectar con la base de datos
-    basededatos=sqlite3.connect("src/Basededatos")
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
 
     #Guardar datos
@@ -1433,7 +1438,7 @@ def calcular_objetivos_automaticos(nombre_usuario):
     import math
     from datetime import datetime
     
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     
     try:
@@ -1652,7 +1657,7 @@ def calcular_objetivos_automaticos(nombre_usuario):
 def plannutricional(planner, estrategia='', velocidad_cambio=0, deficit_calorico=0, disponibilidad_energetica=0, factor_actividad=1.55):
 
     #Conectar con la base de datos
-    basededatos=sqlite3.connect("src/Basededatos")
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
 
     #Obtener datos de la base de datos
@@ -1852,7 +1857,7 @@ def calcular_plan_nutricional_automatico(nombre_usuario, factor_actividad=1.55):
     import json
     from datetime import datetime
     
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     
     try:
@@ -2136,7 +2141,7 @@ def calcular_plan_nutricional_automatico(nombre_usuario, factor_actividad=1.55):
 
 def creadordealimento(alimento):
     # Base de datos
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     try:
         cursor.execute("INSERT INTO ALIMENTOS (Largadescripcion, P, G, CH, F, Gramo1, Medidacasera1, Gramo2, Medidacasera2) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", alimento)
@@ -2154,7 +2159,7 @@ def creadordealimento(alimento):
 
 def editfood(alimento):
     #Base de datos
-    basedatos = sqlite3.connect("src/Basededatos")
+    basedatos = sqlite3.connect(DATABASE_PATH)
     cursor = basedatos.cursor()
     try:
         cursor.execute("UPDATE ALIMENTOS SET Largadescripcion=?, P=?, G=?, CH=?, F=?, Gramo1=?, Medidacasera1=?, Gramo2=?, Medidacasera2=? WHERE ID = ?", (alimento[1], alimento[2], alimento[3], alimento[4], alimento[5], alimento[6], alimento[7], alimento[8], alimento[9], alimento[0]))
@@ -2171,7 +2176,7 @@ def editfood(alimento):
 ### FUNCIÓN QUE CREA UNA LISTA CON TODAS LAS RECETAS ###
 
 def listadereceta():
-    basededatos = sqlite3.connect("src/Basededatos")
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     cursor.execute("SELECT NOMBRERECETA, NOMBRERECETA FROM RECETAS ORDER BY NOMBRERECETA ASC")
     lista = []
@@ -2183,7 +2188,7 @@ def listadereceta():
 ### FUNCIÓN QUE CREA UNA LISTA CON TODOS LOS ALIMENTOS ###
 
 def listadealimentos():
-    basededatos=sqlite3.connect("src/Basededatos")
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
     cursor.execute("SELECT Largadescripcion, Largadescripcion FROM ALIMENTOS ORDER BY Largadescripcion ASC")
     lista=[('','')]
@@ -2195,7 +2200,7 @@ def listadealimentos():
 ### CREA UNA LISTA DE LA PRESENTACIÓN DE LAS PORCIONES ###
 
 def listadeporciones(alimento):
-    basededatos=sqlite3.connect("src/Basededatos")
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
     cursor.execute("SELECT Medidacasera1, Medidacasera2 FROM ALIMENTOS WHERE Largadescripcion=?", [alimento])
     listaporciones=[]
@@ -2217,7 +2222,7 @@ def listadeporciones(alimento):
 ### FUNCIÓN RECETARIO ###
 
 def recetario(receta):
-    basededatos=sqlite3.connect('src/Basededatos')
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
     cursor.execute("INSERT INTO RECETAS (NOMBRERECETA, ALIIND1, PORIND1, ALIIND2, PORIND2, ALIIND3, PORIND3, ALIDEP1, PORDEP1, RELFIJ1, RELALI1, VALOR1, ALIDEP2, PORDEP2, RELFIJ2, RELALI2, VALOR2, ALIDEP3, PORDEP3, RELFIJ3, RELALI3, VALOR3, ALIDEP4, PORDEP4, RELFIJ4, RELALI4, VALOR4, ALIDEP5, PORDEP5, RELFIJ5, RELALI5, VALOR5, ALIDEP6, PORDEP6, RELFIJ6, RELALI6, VALOR6, ALIDEP7, PORDEP7, RELFIJ7, RELALI7, VALOR7, ALIDEP8, PORDEP8, RELFIJ8, RELALI8, VALOR8, ALIDEP9, PORDEP9, RELFIJ9, RELALI9, VALOR9, ALIDEP10, PORDEP10, RELFIJ10, RELALI10, VALOR10) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (receta.recipename.data, receta.foodi1.data, receta.foodisize1.data, receta.foodi2.data, receta.foodisize2.data, receta.foodi3.data, receta.foodisize3.data, receta.food1.data, receta.foodsize1.data, receta.relfood1.data, receta.reffood1.data, receta.valfood1.data, receta.food2.data, receta.foodsize2.data, receta.relfood2.data, receta.reffood2.data, receta.valfood2.data, receta.food3.data, receta.foodsize3.data, receta.relfood3.data, receta.reffood3.data, receta.valfood3.data, receta.food4.data, receta.foodsize4.data, receta.relfood4.data, receta.reffood4.data, receta.valfood4.data, receta.food5.data, receta.foodsize5.data, receta.relfood5.data, receta.reffood5.data, receta.valfood5.data, receta.food6.data, receta.foodsize6.data, receta.relfood6.data, receta.reffood6.data, receta.valfood6.data, receta.food7.data, receta.foodsize7.data, receta.relfood7.data, receta.reffood7.data, receta.valfood7.data, receta.food8.data, receta.foodsize8.data, receta.relfood8.data, receta.reffood8.data, receta.valfood8.data, receta.food9.data, receta.foodsize9.data, receta.relfood9.data, receta.reffood9.data, receta.valfood9.data, receta.food10.data, receta.foodsize10.data, receta.relfood10.data, receta.reffood10.data, receta.valfood10.data ))
     basededatos.commit()
@@ -2225,7 +2230,7 @@ def recetario(receta):
 ### CALCULA LAS CANTIDADES QUE HAY QUE COMER DE CADA ALIMENTO PARA UNA RECETA ESPECIFICA ###
 
 def recipe(recipeform, nameuser):
-    basededatos=sqlite3.connect('src/Basededatos')
+    basededatos=sqlite3.connect(DATABASE_PATH)
     cursor=basededatos.cursor()
     cursor.execute("SELECT PROTEINA, GRASA, CH, LIBERTAD FROM DIETA WHERE NOMBRE_APELLIDO=?", [nameuser])
     dieta=cursor.fetchall()
@@ -2275,7 +2280,7 @@ def recipe(recipeform, nameuser):
     
     def solver(p0, g0, ch0, libertad, nombrereceta):
         
-        basededatos = sqlite3.connect("src/Basededatos")
+        basededatos = sqlite3.connect(DATABASE_PATH)
         cursor = basededatos.cursor()
         cursor.execute("SELECT * FROM RECETAS WHERE NOMBRERECETA=?", [nombrereceta])
         receta = cursor.fetchall()[0]
@@ -2725,7 +2730,7 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
         dict: Diccionario con los resultados del cálculo
     """
     try:
-        basededatos = sqlite3.connect("src/Basededatos")
+        basededatos = sqlite3.connect(DATABASE_PATH)
         cursor = basededatos.cursor()
         cursor.execute("SELECT * FROM RECETAS WHERE NOMBRERECETA=?", [nombrereceta])
         receta = cursor.fetchall()[0]
@@ -2925,7 +2930,7 @@ def calculate_recipe_portions(nombrereceta, p0, g0, ch0, libertad):
         }
 
 def get_training_plan(user_id):
-    conn = sqlite3.connect('src/Basededatos')
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT plan_json FROM Planes_Entrenamiento WHERE user_id = ? AND active = 1", (user_id,))
     plan_data = cursor.fetchone()
@@ -2949,7 +2954,7 @@ def predict_next_workouts(user_id, num_predictions=5):
     Returns:
         list: Lista de entrenamientos predichos con formato similar al entrenamiento actual
     """
-    conn = sqlite3.connect('src/Basededatos')
+    conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     try:
@@ -3194,7 +3199,7 @@ def process_diet(diet_form, nameuser):
     #     print(f"{field.name}: {field.data}")
 
     # Conexión con la base de datos
-    basededatos = sqlite3.connect('src/Basededatos')
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     cursor.execute("SELECT PROTEINA, GRASA, CH, LIBERTAD FROM DIETA WHERE NOMBRE_APELLIDO=?", [nameuser])
     dieta = cursor.fetchall()
@@ -4474,7 +4479,7 @@ def obtener_analisis_completo_usuario(nombre_usuario):
     import sqlite3
     from datetime import datetime, timedelta
     
-    basededatos = sqlite3.connect('src/Basededatos')
+    basededatos = sqlite3.connect(DATABASE_PATH)
     cursor = basededatos.cursor()
     
     try:
