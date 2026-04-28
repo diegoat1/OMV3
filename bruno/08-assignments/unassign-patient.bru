@@ -1,0 +1,15 @@
+meta {
+  name: Unassign patient (specialist)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/assignments/unassign-patient/REPLACE_PATIENT_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

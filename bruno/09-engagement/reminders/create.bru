@@ -1,0 +1,25 @@
+meta {
+  name: Create reminder
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/engagement/reminders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "titulo": "Tomar suplemento",
+    "descripcion": "Vitamina D 1000 UI",
+    "fecha": "2026-04-27",
+    "hora": "08:00",
+    "tipo": "medicacion"
+  }
+}

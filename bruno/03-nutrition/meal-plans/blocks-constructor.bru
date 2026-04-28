@@ -1,0 +1,22 @@
+meta {
+  name: Block constructor
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/nutrition/meal-plans/blocks/constructor
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "meal_key": "almuerzo",
+    "preferencias": []
+  }
+}

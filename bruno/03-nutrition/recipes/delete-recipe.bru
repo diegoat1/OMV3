@@ -1,0 +1,15 @@
+meta {
+  name: Delete recipe
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/nutrition/recipes/REPLACE_RECIPE_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Body composition history
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/analytics/body-composition/history?limit=200
+  body: none
+  auth: bearer
+}
+
+params:query {
+  limit: 200
+  ~desde:
+  ~hasta:
+}
+
+auth:bearer {
+  token: {{token}}
+}

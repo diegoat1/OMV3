@@ -1,0 +1,20 @@
+meta {
+  name: List foods
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/nutrition/foods?q=&limit=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~q:
+  limit: 50
+}
+
+auth:bearer {
+  token: {{token}}
+}

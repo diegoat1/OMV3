@@ -1,0 +1,15 @@
+meta {
+  name: List meal plans
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/nutrition/meal-plans
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

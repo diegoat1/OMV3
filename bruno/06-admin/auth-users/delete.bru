@@ -1,0 +1,15 @@
+meta {
+  name: Delete auth user
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/admin/auth-users/REPLACE_USER_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

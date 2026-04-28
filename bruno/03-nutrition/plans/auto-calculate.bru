@@ -1,0 +1,32 @@
+meta {
+  name: Auto-calculate plan
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/nutrition/plans/auto-calculate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "factor_actividad": 1.55
+  }
+}
+
+docs {
+  Calcula plan automático según datos actuales y objetivo. Requiere medición + objetivo activo.
+  Admin/doctor puede agregar "nombre_apellido": "Apellido, Nombre" para calcular para otro paciente.
+}
+
+tests {
+  test("status 200 or 404", function() {
+    expect([200, 404]).to.include(res.getStatus());
+  });
+}

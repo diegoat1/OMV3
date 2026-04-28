@@ -1,0 +1,21 @@
+meta {
+  name: Update template
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/telemedicine/templates/REPLACE_TEMPLATE_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Template editado"
+  }
+}

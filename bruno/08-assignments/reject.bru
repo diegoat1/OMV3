@@ -1,0 +1,15 @@
+meta {
+  name: Reject request
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/assignments/REPLACE_ASSIGNMENT_ID/reject
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

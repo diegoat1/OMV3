@@ -1,0 +1,19 @@
+meta {
+  name: Check-in history
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/checkin/history?limit=30
+  body: none
+  auth: bearer
+}
+
+params:query {
+  limit: 30
+}
+
+auth:bearer {
+  token: {{token}}
+}

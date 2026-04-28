@@ -1,0 +1,15 @@
+meta {
+  name: Toggle active
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/admin/auth-users/REPLACE_USER_ID/toggle-active
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

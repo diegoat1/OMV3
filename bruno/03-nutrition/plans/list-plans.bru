@@ -1,0 +1,21 @@
+meta {
+  name: List nutrition plans
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/nutrition/plans
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

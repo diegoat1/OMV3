@@ -1,0 +1,15 @@
+meta {
+  name: Advance to next day
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/training/sessions/advance
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Get plan by id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/nutrition/plans/REPLACE_PLAN_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Reemplazar REPLACE_PLAN_ID con un id obtenido de list-plans.
+}

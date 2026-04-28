@@ -1,0 +1,23 @@
+meta {
+  name: Create template
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/templates
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Template Bruno test",
+    "tipo": "consulta",
+    "contenido": "Estructura de consulta"
+  }
+}

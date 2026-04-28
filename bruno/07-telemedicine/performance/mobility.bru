@@ -1,0 +1,15 @@
+meta {
+  name: Mobility (GET / POST)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/performance/mobility
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

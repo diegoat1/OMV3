@@ -1,0 +1,15 @@
+meta {
+  name: Delete situation
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/telemedicine/situations/REPLACE_SITUATION_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

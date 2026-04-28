@@ -1,0 +1,15 @@
+meta {
+  name: Delete reminder
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/engagement/reminders/REPLACE_REMINDER_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

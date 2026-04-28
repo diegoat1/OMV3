@@ -1,0 +1,15 @@
+meta {
+  name: Endurance (GET / POST)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/performance/endurance
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

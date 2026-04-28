@@ -1,0 +1,15 @@
+meta {
+  name: My sent requests
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/assignments/my-requests
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

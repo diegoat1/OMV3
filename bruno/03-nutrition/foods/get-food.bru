@@ -1,0 +1,15 @@
+meta {
+  name: Get food by id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/nutrition/foods/REPLACE_FOOD_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

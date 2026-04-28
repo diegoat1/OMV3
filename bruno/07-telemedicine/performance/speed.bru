@@ -1,0 +1,19 @@
+meta {
+  name: Speed test (GET / POST)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/performance/speed
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Cambiar a method=POST con body { "valor": 5.2, "unidad": "m/s" } para registrar una nueva medición.
+}

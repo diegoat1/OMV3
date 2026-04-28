@@ -1,0 +1,26 @@
+meta {
+  name: Submit strength analysis
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/training/strength/submit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "peso_corporal": 75,
+    "ejercicios": {
+      "squat": { "peso": 100, "reps": 5 },
+      "bench": { "peso": 80, "reps": 5 },
+      "deadlift": { "peso": 120, "reps": 5 }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List medical records
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/records
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

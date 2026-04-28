@@ -1,0 +1,21 @@
+meta {
+  name: Update task
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/engagement/tasks/REPLACE_TASK_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "completed": true
+  }
+}

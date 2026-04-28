@@ -1,0 +1,38 @@
+meta {
+  name: Create nutrition plan
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/nutrition/plans
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "calorias": 2200,
+    "proteina": 165,
+    "grasa": 70,
+    "ch": 230,
+    "factor_actividad": 1.55,
+    "velocidad_cambio": 0.5,
+    "deficit_calorico": 0,
+    "libertad": 5,
+    "desayuno_p": 0.25, "desayuno_g": 0.25, "desayuno_c": 0.25,
+    "almuerzo_p": 0.30, "almuerzo_g": 0.30, "almuerzo_c": 0.30,
+    "merienda_p": 0.20, "merienda_g": 0.20, "merienda_c": 0.20,
+    "cena_p": 0.25, "cena_g": 0.25, "cena_c": 0.25
+  }
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

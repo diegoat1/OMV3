@@ -1,0 +1,15 @@
+meta {
+  name: List exercises
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/training/exercises
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

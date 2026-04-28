@@ -1,0 +1,21 @@
+meta {
+  name: Adjust calories
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/nutrition/plans/REPLACE_PLAN_ID/adjust-calories
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "calorias": 2400
+  }
+}

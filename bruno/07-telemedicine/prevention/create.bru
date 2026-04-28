@@ -1,0 +1,23 @@
+meta {
+  name: Create prevention plan
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/prevention
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "tipo": "control",
+    "descripcion": "Chequeo anual",
+    "fecha_recomendada": "2026-12-01"
+  }
+}

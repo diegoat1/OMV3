@@ -1,0 +1,15 @@
+meta {
+  name: Delete task
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/engagement/tasks/REPLACE_TASK_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

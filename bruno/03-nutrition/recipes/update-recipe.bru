@@ -1,0 +1,23 @@
+meta {
+  name: Update recipe
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/nutrition/recipes/REPLACE_RECIPE_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Masa de pizza (editada)",
+    "categoria": "cena",
+    "palabras_clave": "pizza casera"
+  }
+}

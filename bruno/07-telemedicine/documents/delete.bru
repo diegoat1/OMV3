@@ -1,0 +1,15 @@
+meta {
+  name: Delete document
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/telemedicine/documents/REPLACE_DOC_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

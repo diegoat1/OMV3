@@ -1,0 +1,22 @@
+meta {
+  name: Add favorite block
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/nutrition/meal-plans/blocks/favorites
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Mi bloque favorito",
+    "comidas": []
+  }
+}

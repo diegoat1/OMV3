@@ -1,0 +1,15 @@
+meta {
+  name: Food groups catalog
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/nutrition/food-groups/catalog
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

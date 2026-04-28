@@ -1,0 +1,24 @@
+meta {
+  name: Update plan
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/nutrition/plans/REPLACE_PLAN_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "calorias": 2300,
+    "proteina": 170,
+    "grasa": 75,
+    "ch": 240
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List situations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/situations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

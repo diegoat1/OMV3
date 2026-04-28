@@ -1,0 +1,23 @@
+meta {
+  name: Create patient (telemed)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/patients
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Patient Bruno Test",
+    "dni": "77777777",
+    "fecha_nacimiento": "1990-01-01"
+  }
+}

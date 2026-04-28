@@ -1,0 +1,26 @@
+meta {
+  name: BMR (public)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/bmr
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "peso": 75,
+    "altura": 175,
+    "edad": 30,
+    "sexo": "M",
+    "formula": "katch_mcardle",
+    "peso_magro": 60
+  }
+}
+
+docs {
+  Fórmulas: katch_mcardle (default, requiere peso_magro), mifflin_st_jeor, harris_benedict.
+}

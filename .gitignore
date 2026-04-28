@@ -44,7 +44,11 @@ Basededatos/
 *.db
 *.sqlite3
 *.sqlite
+# DBs needed for PythonAnywhere deploy (whitelisted)
+!src/Basededatos
+!src/auth.db
 !src/telemedicina.db
+!src/db/clinical.db
 
 # Logs
 *.log
@@ -67,6 +71,13 @@ package-lock.json
 # Claude Code / Expo dev
 .claude/
 .expo/
+
+# Mobile app archived outside repo (do not re-track)
+omega-medicina-app/
+
+# Syncthing / Playwright MCP cache
+.stfolder/
+.playwright-mcp/
 
 # Database backups
 *.db.bak

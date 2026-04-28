@@ -1,0 +1,42 @@
+meta {
+  name: Create recipe
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/nutrition/recipes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Masa de pizza (Bruno test)",
+    "categoria": "almuerzo_cena",
+    "palabras_clave": "pizza masa harina",
+    "ingredientes": [
+      { "alimento_nombre": "Harina común", "alimento_id": 45, "rol": "base" },
+      { "alimento_nombre": "Agua", "rol": "dependiente", "base_index": 0, "ratio": 0.6, "tipo_ratio": "peso" },
+      { "alimento_nombre": "Sal", "rol": "fijo", "cantidad_fija": 0.5 }
+    ]
+  }
+}
+
+docs {
+  Roles permitidos: base, dependiente, fijo.
+  - base: cantidad libre (la calcula el solver)
+  - dependiente: ratio respecto a una base (base_index = índice 0-based en ingredientes[])
+  - fijo: cantidad_fija en gramos
+  tipo_ratio: "peso" o "medida_casera"
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

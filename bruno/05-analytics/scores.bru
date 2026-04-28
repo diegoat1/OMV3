@@ -1,0 +1,23 @@
+meta {
+  name: Scores (FFMI / BF)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/analytics/scores
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~user:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Score calculation usa los valores almacenados en measurements (score_ffmi, score_bf, body_score), no recalcula.
+}

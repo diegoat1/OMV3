@@ -1,0 +1,21 @@
+meta {
+  name: Update appointment status
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/telemedicine/appointments/REPLACE_APPOINTMENT_ID/status
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "status": "completed"
+  }
+}

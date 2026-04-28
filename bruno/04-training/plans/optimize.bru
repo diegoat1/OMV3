@@ -1,0 +1,19 @@
+meta {
+  name: Optimize plan (PuLP)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/training/plans/REPLACE_PLAN_ID/optimize
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {}
+}

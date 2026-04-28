@@ -1,0 +1,51 @@
+meta {
+  name: Save daily meals
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/nutrition/daily-log
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "fecha": "2026-04-26",
+    "meals": [
+      {
+        "meal_key": "desayuno",
+        "completed": true,
+        "foods_json": [
+          { "id": "123", "nombre": "Avena", "cantidad": 60, "P": 8, "G": 4, "CH": 40 }
+        ],
+        "total_p": 8, "total_g": 4, "total_c": 40, "total_cal": 228,
+        "target_p": 10, "target_g": 5, "target_c": 45
+      },
+      {
+        "meal_key": "almuerzo",
+        "completed": false,
+        "foods_json": [],
+        "total_p": 0, "total_g": 0, "total_c": 0, "total_cal": 0,
+        "target_p": 50, "target_g": 20, "target_c": 80
+      }
+    ]
+  }
+}
+
+docs {
+  UPSERT en (patient_id, fecha, meal_key). El frontend manda TODAS las comidas habilitadas en cada save.
+  meal_score se calcula automáticamente cuando completed=true.
+  Admin/doctor puede pasar "nombre_apellido" para guardar para otro paciente.
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

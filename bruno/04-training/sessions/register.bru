@@ -1,0 +1,27 @@
+meta {
+  name: Register completed session
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/training/sessions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "plan_id": 1,
+    "duracion_minutos": 60,
+    "notas": "Sesión registrada desde Bruno",
+    "ejercicios_completados": [
+      { "ejercicio": "squat", "sets": 3, "reps": 5, "peso": 100 },
+      { "ejercicio": "bench", "sets": 3, "reps": 5, "peso": 80 }
+    ]
+  }
+}

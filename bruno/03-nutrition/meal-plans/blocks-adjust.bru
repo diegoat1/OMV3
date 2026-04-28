@@ -1,0 +1,22 @@
+meta {
+  name: Adjust blocks
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/nutrition/meal-plans/blocks/adjust
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "meal_key": "almuerzo",
+    "ajuste": "subir"
+  }
+}

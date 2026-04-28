@@ -1,0 +1,15 @@
+meta {
+  name: List templates
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/templates
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

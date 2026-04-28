@@ -1,0 +1,21 @@
+meta {
+  name: Update favorite block
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{baseUrl}}/nutrition/meal-plans/blocks/favorites/REPLACE_FAV_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Bloque editado"
+  }
+}

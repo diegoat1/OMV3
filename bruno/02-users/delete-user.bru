@@ -1,0 +1,25 @@
+meta {
+  name: Delete user (admin)
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/users/REPLACE_DNI_OR_USER_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Reemplazar el path con un user_id/DNI específico antes de correr. NO eliminar el usuario logueado.
+}
+
+tests {
+  test("status returned", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 403, 404]);
+  });
+}

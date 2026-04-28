@@ -1,0 +1,15 @@
+meta {
+  name: List training plans
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/training/plans
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

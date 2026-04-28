@@ -1,0 +1,30 @@
+meta {
+  name: Refresh token
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody() && res.getBody().success) {
+    bru.setEnvVar("token", res.getBody().data.token);
+  }
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("new token returned", function() {
+    expect(res.getBody().data.token).to.be.a("string");
+  });
+}

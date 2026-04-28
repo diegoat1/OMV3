@@ -1,0 +1,23 @@
+meta {
+  name: Submit symptoms
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/checkin/symptoms
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "sintomas": ["dolor_cabeza"],
+    "intensidad": 5,
+    "notas": "Leve dolor de cabeza al despertar"
+  }
+}

@@ -1,0 +1,30 @@
+meta {
+  name: Get daily log (today)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/nutrition/daily-log
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~fecha:
+  ~nombre_apellido:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Sin query params trae el log de hoy. fecha=YYYY-MM-DD para otra fecha. nombre_apellido para que un admin/doctor consulte otro paciente.
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

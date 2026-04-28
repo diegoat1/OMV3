@@ -1,0 +1,15 @@
+meta {
+  name: Get recipe by id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/nutrition/recipes/REPLACE_RECIPE_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

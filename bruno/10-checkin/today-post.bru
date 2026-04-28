@@ -1,0 +1,28 @@
+meta {
+  name: Submit today's check-in
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/checkin/today
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "energia": 8,
+    "estado_animo": 7,
+    "calidad_sueno": 8,
+    "horas_sueno": 7.5,
+    "estres": 4,
+    "hidratacion_litros": 2.5,
+    "pasos": 8500,
+    "notas": "Día bueno, sin novedades"
+  }
+}

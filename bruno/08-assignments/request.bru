@@ -1,0 +1,27 @@
+meta {
+  name: Request patient assignment
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/assignments/request
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "patient_dni": "12345678",
+    "rol": "nutricionista",
+    "mensaje": "Solicito ser tu nutricionista"
+  }
+}
+
+docs {
+  rol: nutricionista | doctor | entrenador. Solo especialistas pueden solicitar.
+}

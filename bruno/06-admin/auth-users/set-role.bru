@@ -1,0 +1,25 @@
+meta {
+  name: Set role
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/admin/auth-users/REPLACE_USER_ID/role
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "role": "doctor"
+  }
+}
+
+docs {
+  Roles permitidos: user, doctor, admin (separar por comas para múltiples).
+}

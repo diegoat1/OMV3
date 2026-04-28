@@ -1,0 +1,25 @@
+meta {
+  name: List measurements
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/{{userId}}/measurements?limit=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  limit: 50
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

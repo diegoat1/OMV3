@@ -1,0 +1,25 @@
+meta {
+  name: Record vitals
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/vitals
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "presion_sistolica": 120,
+    "presion_diastolica": 80,
+    "frecuencia_cardiaca": 70,
+    "temperatura": 36.5,
+    "saturacion": 98
+  }
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Update document
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/telemedicine/documents/REPLACE_DOC_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Documento renombrado"
+  }
+}

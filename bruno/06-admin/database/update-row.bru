@@ -1,0 +1,21 @@
+meta {
+  name: Update table row
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/admin/database/tables/REPLACE_TABLE_NAME/REPLACE_ROW_ID
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "campo": "nuevo_valor"
+  }
+}

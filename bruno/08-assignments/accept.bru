@@ -1,0 +1,15 @@
+meta {
+  name: Accept request
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/assignments/REPLACE_ASSIGNMENT_ID/accept
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

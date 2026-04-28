@@ -1,0 +1,33 @@
+meta {
+  name: Create user (admin)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/users
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "dni": "88888888",
+    "nombre_apellido": "Test, Bruno",
+    "email": "bruno.test@example.com",
+    "sexo": "M",
+    "altura": 175,
+    "telefono": "11-1111-1111",
+    "fecha_nacimiento": "1990-01-15"
+  }
+}
+
+tests {
+  test("status 200 or 409 (exists) or 403 (non-admin)", function() {
+    expect([200, 403, 409]).to.include(res.getStatus());
+  });
+}

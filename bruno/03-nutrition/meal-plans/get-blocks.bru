@@ -1,0 +1,19 @@
+meta {
+  name: Get blocks (presets)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/nutrition/meal-plans/blocks
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Devuelve estructura nested {blocks: {comidas: ...}}. Frontend desempaqueta a data.comidas.
+}

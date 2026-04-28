@@ -1,0 +1,15 @@
+meta {
+  name: Engagement performance
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/engagement/performance
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

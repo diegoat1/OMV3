@@ -1,0 +1,24 @@
+meta {
+  name: Validate token
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/auth/validate
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("valid true", function() {
+    expect(res.getBody().data.valid).to.equal(true);
+  });
+}

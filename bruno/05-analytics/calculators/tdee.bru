@@ -1,0 +1,23 @@
+meta {
+  name: TDEE (public)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/tdee
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "bmr": 1800,
+    "factor_actividad": 1.55
+  }
+}
+
+docs {
+  Si no se manda bmr, lo calcula desde peso/altura/edad/sexo/peso_magro.
+  factor_actividad: 1.2 (sedentario), 1.375 (ligero), 1.55 (moderado), 1.725 (alto), 1.9 (muy alto).
+}

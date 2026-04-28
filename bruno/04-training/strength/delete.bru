@@ -1,0 +1,15 @@
+meta {
+  name: Delete strength record (admin)
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/training/strength/REPLACE_RECORD_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

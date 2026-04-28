@@ -1,0 +1,24 @@
+meta {
+  name: Create task
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/engagement/tasks
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "titulo": "Caminar 30 minutos",
+    "descripcion": "Caminar a paso moderado",
+    "fecha_objetivo": "2026-04-30",
+    "categoria": "ejercicio"
+  }
+}

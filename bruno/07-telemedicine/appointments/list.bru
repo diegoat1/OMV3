@@ -1,0 +1,15 @@
+meta {
+  name: List appointments
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/appointments
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

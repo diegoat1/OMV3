@@ -1,0 +1,15 @@
+meta {
+  name: Get vitals
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/vitals
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

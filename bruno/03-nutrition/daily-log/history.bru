@@ -1,0 +1,21 @@
+meta {
+  name: Daily log history
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/nutrition/daily-log/history?limit=30
+  body: none
+  auth: bearer
+}
+
+params:query {
+  limit: 30
+  ~desde:
+  ~hasta:
+}
+
+auth:bearer {
+  token: {{token}}
+}

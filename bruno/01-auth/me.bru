@@ -1,0 +1,24 @@
+meta {
+  name: Get me
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/auth/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("returns user", function() {
+    expect(res.getBody().data.user).to.exist;
+  });
+}

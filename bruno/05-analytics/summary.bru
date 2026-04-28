@@ -1,0 +1,19 @@
+meta {
+  name: Summary
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/analytics/summary
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~user:
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Shopping list
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/nutrition/meal-plans/REPLACE_PLAN_ID/shopping-list
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

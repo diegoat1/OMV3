@@ -1,0 +1,15 @@
+meta {
+  name: Export table
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/admin/database/export/REPLACE_TABLE_NAME
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Create document
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "tipo": "estudio",
+    "nombre": "Análisis de sangre",
+    "url": "https://example.com/doc.pdf"
+  }
+}

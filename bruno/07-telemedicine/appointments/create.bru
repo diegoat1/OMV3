@@ -1,0 +1,25 @@
+meta {
+  name: Create appointment
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/appointments
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "patient_id": 1,
+    "fecha": "2026-05-01",
+    "hora": "10:00",
+    "motivo": "Control mensual",
+    "tipo": "presencial"
+  }
+}

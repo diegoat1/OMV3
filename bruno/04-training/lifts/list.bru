@@ -1,0 +1,15 @@
+meta {
+  name: List user lifts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/training/lifts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,47 @@
+meta {
+  name: Create measurement
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/{{userId}}/measurements
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "peso": 75.5,
+    "circ_abdomen": 82,
+    "circ_cintura": 78,
+    "circ_cadera": 95,
+    "circ_cuello": 38,
+    "circ_hombro": 110,
+    "circ_pecho": 100,
+    "circ_brazo": 35,
+    "circ_antebrazo": 28,
+    "circ_muslo": 55,
+    "circ_pantorrilla": 38
+  }
+}
+
+docs {
+  Validación según sexo del paciente:
+  - M: peso + circ_abdomen requeridos
+  - F: peso + circ_cintura + circ_cadera + circ_abdomen requeridos
+  El backend calcula bf_percent (Navy), peso_magro/graso, ffmi automáticamente.
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("calculated bf_percent", function() {
+    expect(res.getBody().data.bf_percent).to.be.a("number");
+  });
+}

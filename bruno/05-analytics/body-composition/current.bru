@@ -1,0 +1,19 @@
+meta {
+  name: Body composition (current)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/analytics/body-composition
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~user:
+}
+
+auth:bearer {
+  token: {{token}}
+}

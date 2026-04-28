@@ -1,0 +1,25 @@
+meta {
+  name: Delete measurement
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/users/{{userId}}/measurements/REPLACE_MEASUREMENT_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Reemplazar REPLACE_MEASUREMENT_ID con un id real obtenido de list-measurements.
+}
+
+tests {
+  test("status returned", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 404]);
+  });
+}

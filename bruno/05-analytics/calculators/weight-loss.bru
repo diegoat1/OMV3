@@ -1,0 +1,24 @@
+meta {
+  name: Weight loss plan (public)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/weight-loss
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "peso_actual": 80,
+    "peso_objetivo": 70,
+    "tdee": 2200,
+    "velocidad": 0.5
+  }
+}
+
+docs {
+  velocidad en kg/semana, clamped a [0.25, 1.0]. 1kg de grasa ≈ 7700 kcal.
+}

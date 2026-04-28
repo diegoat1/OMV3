@@ -1,0 +1,15 @@
+meta {
+  name: Flexibility (GET / POST)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/telemedicine/performance/flexibility
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

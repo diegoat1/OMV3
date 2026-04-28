@@ -1,0 +1,24 @@
+meta {
+  name: FFMI (public)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/ffmi
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "peso": 75,
+    "altura": 175,
+    "bf_percent": 15
+  }
+}
+
+docs {
+  Acepta {peso, altura, bf_percent} o {peso_magro, altura}.
+  Devuelve ffmi (ajustado a 1.80m) y ffmi_normalizado.
+}

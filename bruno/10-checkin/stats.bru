@@ -1,0 +1,15 @@
+meta {
+  name: Check-in stats
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/checkin/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

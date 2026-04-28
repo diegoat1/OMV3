@@ -1,0 +1,15 @@
+meta {
+  name: Current session
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/training/sessions/current
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

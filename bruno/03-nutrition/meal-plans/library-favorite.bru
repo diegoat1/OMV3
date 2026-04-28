@@ -1,0 +1,19 @@
+meta {
+  name: Toggle library favorite
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/nutrition/meal-plans/library/REPLACE_PRESET_ID/favorite
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  POST = marcar como favorito. DELETE = quitar.
+}

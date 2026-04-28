@@ -1,0 +1,25 @@
+meta {
+  name: Auto roadmap (phased cut/bulk)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/users/{{userId}}/goals/auto-roadmap
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Devuelve roadmap de fases progresivas (corte/volumen) hasta el límite genético, con circunferencias por fase.
+}
+
+tests {
+  test("status 200 or 404", function() {
+    expect([200, 404]).to.include(res.getStatus());
+  });
+}

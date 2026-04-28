@@ -1,0 +1,4 @@
+environments/*.local.bru
+bruno-runtime/
+.bruno-results/
+*.results.json

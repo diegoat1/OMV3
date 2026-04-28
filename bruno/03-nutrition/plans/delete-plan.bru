@@ -1,0 +1,15 @@
+meta {
+  name: Delete plan
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/nutrition/plans/REPLACE_PLAN_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

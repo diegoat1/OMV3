@@ -1,0 +1,64 @@
+meta {
+  name: Solve meal (generic solver v2)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/nutrition/solve-meal
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "objetivo": {
+      "proteina": 40,
+      "grasa": 20,
+      "carbohidratos": 60
+    },
+    "libertad": 10,
+    "alimentos": [
+      {
+        "id": "123",
+        "nombre": "Pechuga de pollo",
+        "proteina_100g": 23.1,
+        "grasa_100g": 1.2,
+        "carbohidratos_100g": 0,
+        "medida_casera_g": 150,
+        "medida_desc": "unidad"
+      },
+      {
+        "id": "456",
+        "nombre": "Arroz blanco cocido",
+        "proteina_100g": 2.7,
+        "grasa_100g": 0.3,
+        "carbohidratos_100g": 28.0,
+        "medida_casera_g": 100,
+        "medida_desc": "taza"
+      }
+    ],
+    "recetas": []
+  }
+}
+
+docs {
+  Solver genérico v2 (PuLP cascade: Completo → Proteínas → Calorías).
+  - Si se omite "objetivo", usa nutrition_plans del paciente. Pasar "meal_key" (desayuno|media_manana|almuerzo|merienda|media_tarde|cena) para usar targets per-meal.
+  - "alimentos": independientes (cantidad libre).
+  - "recetas": cada item {recipe_id} se carga con sus ingredientes y dependencias.
+  Returns: { status, metodo, calidad, alimentos: [{id, nombre, porciones, total_gramos, P/G/CH, rol}], totales }
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("solver returned alimentos", function() {
+    expect(res.getBody().data.alimentos).to.be.an("array");
+  });
+}

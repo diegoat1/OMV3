@@ -1,0 +1,15 @@
+meta {
+  name: List database tables
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/admin/database/tables
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

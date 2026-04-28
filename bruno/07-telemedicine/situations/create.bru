@@ -1,0 +1,23 @@
+meta {
+  name: Create situation
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/telemedicine/situations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "tipo": "alergia",
+    "descripcion": "Polen",
+    "patient_id": 1
+  }
+}

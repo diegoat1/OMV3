@@ -1,0 +1,15 @@
+meta {
+  name: Block library
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/nutrition/meal-plans/library
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

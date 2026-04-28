@@ -1,0 +1,15 @@
+meta {
+  name: Delete template
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/telemedicine/templates/REPLACE_TEMPLATE_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

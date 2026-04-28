@@ -1,0 +1,15 @@
+meta {
+  name: Get today's check-in
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/checkin/today
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

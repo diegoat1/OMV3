@@ -1,0 +1,19 @@
+meta {
+  name: Optimize from strength record
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/training/strength/REPLACE_RECORD_ID/optimize
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {}
+}

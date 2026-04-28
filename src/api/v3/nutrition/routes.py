@@ -155,34 +155,66 @@ def create_plan():
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
     
+    calorias = float(data.get('calorias', 2000))
+    proteina = float(data.get('proteina', 150))
+    grasa = float(data.get('grasa', 60))
+    ch = float(data.get('ch', data.get('carbohidratos', 200)))
+    factor_actividad = float(data.get('factor_actividad', 1.55))
+    velocidad_cambio = float(data.get('velocidad_cambio', 0))
+    deficit_calorico = float(data.get('deficit_calorico', 0))
+    disponibilidad_energetica = data.get('disponibilidad_energetica')
+    libertad = int(data.get('libertad', 5))
+
+    # Default 4-meal equitable distribution (media_man and media_tar disabled)
+    default_pct = {
+        'desayuno': 0.25, 'media_man': 0.0, 'almuerzo': 0.30,
+        'merienda': 0.20, 'media_tar': 0.0, 'cena': 0.25,
+    }
+    dist = {}
+    for meal in ['desayuno', 'media_man', 'almuerzo', 'merienda', 'media_tar', 'cena']:
+        pct = default_pct.get(meal, 0)
+        for macro in ['p', 'g', 'c']:
+            key = f'{meal}_{macro}'
+            dist[key] = float(data.get(key, pct))
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            INSERT INTO nutrition_plans 
-            (patient_id, calorias, proteina, grasa, carbohidratos, 
-             factor_actividad, velocidad_cambio, deficit_calorico,
-             disponibilidad_energetica, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+            INSERT INTO nutrition_plans
+            (patient_id, calorias, proteina, grasa, carbohidratos,
+             desayuno_p, desayuno_g, desayuno_c,
+             media_man_p, media_man_g, media_man_c,
+             almuerzo_p, almuerzo_g, almuerzo_c,
+             merienda_p, merienda_g, merienda_c,
+             media_tar_p, media_tar_g, media_tar_c,
+             cena_p, cena_g, cena_c,
+             libertad, factor_actividad, velocidad_cambio,
+             deficit_calorico, disponibilidad_energetica, created_at)
+            VALUES (?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, datetime('now', 'localtime'))
         """, [
-            patient['patient_id'],
-            data.get('calorias', 2000),
-            data.get('proteina', 150),
-            data.get('grasa', 60),
-            data.get('ch', 200),
-            data.get('factor_actividad', 1.55),
-            data.get('velocidad_cambio', 0),
-            data.get('deficit_calorico', 0),
-            data.get('disponibilidad_energetica')
+            patient['patient_id'], calorias, proteina, grasa, ch,
+            dist['desayuno_p'], dist['desayuno_g'], dist['desayuno_c'],
+            dist['media_man_p'], dist['media_man_g'], dist['media_man_c'],
+            dist['almuerzo_p'], dist['almuerzo_g'], dist['almuerzo_c'],
+            dist['merienda_p'], dist['merienda_g'], dist['merienda_c'],
+            dist['media_tar_p'], dist['media_tar_g'], dist['media_tar_c'],
+            dist['cena_p'], dist['cena_g'], dist['cena_c'],
+            libertad, factor_actividad, velocidad_cambio,
+            deficit_calorico, disponibilidad_energetica,
         ])
-        
+
         plan_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         return success_response(
-            {'id': plan_id, 'nombre_apellido': nombre_apellido},
+            {'id': plan_id, 'nombre_apellido': nombre_apellido,
+             'calorias': calorias, 'proteina': proteina,
+             'grasa': grasa, 'carbohidratos': ch},
             message='Plan nutricional creado exitosamente'
         )
         
@@ -1018,6 +1050,14 @@ def solve_meal():
                             'grasa': float(plan[1] or 0) * float(plan[4] or 0),
                             'carbohidratos': float(plan[2] or 0) * float(plan[5] or 0),
                         }
+                        # Validate non-zero targets
+                        if objetivo['proteina'] == 0 and objetivo['grasa'] == 0 and objetivo['carbohidratos'] == 0:
+                            conn_cl.close()
+                            return error_response(
+                                f'No hay targets definidos para {meal_key}. Configure la distribucion de comidas primero.',
+                                code=ErrorCodes.VALIDATION_ERROR,
+                                status_code=400
+                            )
                         if not data.get('libertad'):
                             data['libertad'] = float(plan[6] or 5)
             else:
@@ -1563,6 +1603,22 @@ def get_meal_blocks():
                     'carbohidratos': round(ch_total * dc_v, 1),
                 },
             }
+
+        # Fallback: if no distributions found (legacy plan), generate default split
+        if not comidas:
+            default_pcts = {
+                'desayuno': 0.25, 'almuerzo': 0.30,
+                'merienda': 0.20, 'cena': 0.25,
+            }
+            for fname, pct in default_pcts.items():
+                comidas[fname] = {
+                    'porcentajes': {'proteina': pct, 'grasa': pct, 'carbohidratos': pct},
+                    'gramos': {
+                        'proteina': round(proteina_total * pct, 1),
+                        'grasa': round(grasa_total * pct, 1),
+                        'carbohidratos': round(ch_total * pct, 1),
+                    },
+                }
 
         return success_response({
             'blocks': {

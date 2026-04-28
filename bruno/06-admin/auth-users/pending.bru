@@ -1,0 +1,15 @@
+meta {
+  name: Pending users
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/admin/pending-users
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

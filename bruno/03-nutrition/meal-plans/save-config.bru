@@ -1,0 +1,26 @@
+meta {
+  name: Save meal config
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/nutrition/meal-plans/save-config
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "comidas": {
+      "desayuno": { "habilitada": true, "porcentaje": 25 },
+      "almuerzo": { "habilitada": true, "porcentaje": 30 },
+      "merienda": { "habilitada": true, "porcentaje": 20 },
+      "cena": { "habilitada": true, "porcentaje": 25 }
+    }
+  }
+}

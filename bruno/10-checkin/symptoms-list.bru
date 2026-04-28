@@ -1,0 +1,15 @@
+meta {
+  name: List symptoms
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/checkin/symptoms
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

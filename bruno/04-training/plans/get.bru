@@ -1,0 +1,15 @@
+meta {
+  name: Get training plan
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/training/plans/REPLACE_PLAN_ID
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

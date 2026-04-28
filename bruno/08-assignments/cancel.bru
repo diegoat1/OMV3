@@ -1,0 +1,15 @@
+meta {
+  name: Cancel request
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/assignments/REPLACE_ASSIGNMENT_ID/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

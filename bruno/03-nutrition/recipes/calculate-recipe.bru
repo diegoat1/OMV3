@@ -1,0 +1,26 @@
+meta {
+  name: Calculate recipe portions
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/nutrition/recipes/REPLACE_RECIPE_ID/calculate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "objetivo": {
+      "proteina": 30,
+      "grasa": 15,
+      "carbohidratos": 50
+    },
+    "libertad": 5
+  }
+}

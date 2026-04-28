@@ -1,0 +1,27 @@
+meta {
+  name: Register
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Test User",
+    "email": "test.user@example.com",
+    "documento": "99999999",
+    "telefono": "11-1234-5678",
+    "desired_role": "patient"
+  }
+}
+
+tests {
+  test("status 200 or 409 (duplicate)", function() {
+    expect([200, 409]).to.include(res.getStatus());
+  });
+}

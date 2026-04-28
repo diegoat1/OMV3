@@ -1,0 +1,24 @@
+meta {
+  name: Muscle gain plan (public)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/muscle-gain
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "peso_actual": 70,
+    "peso_objetivo": 75,
+    "tdee": 2200,
+    "velocidad": 0.25
+  }
+}
+
+docs {
+  velocidad en kg/semana, clamped a [0.1, 0.5].
+}

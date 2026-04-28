@@ -1,0 +1,25 @@
+meta {
+  name: Body fat (Navy method) (public)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/analytics/calculators/body-fat
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "sexo": "M",
+    "altura": 175,
+    "circ_abdomen": 85,
+    "circ_cuello": 38
+  }
+}
+
+docs {
+  M: requiere altura + circ_abdomen (cuello opcional para fórmula Navy completa).
+  F: requiere altura + circ_cintura + circ_cadera (+ cuello opcional).
+}
