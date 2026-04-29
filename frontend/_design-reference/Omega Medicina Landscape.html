@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Landscape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { padding: 40px 20px; background:
+    radial-gradient(1400px 900px at 10% 0%, rgba(226,62,74,0.06), transparent 60%),
+    radial-gradient(1000px 800px at 100% 100%, rgba(79,184,168,0.04), transparent 60%),
+    var(--bg-0);
+  }
+  .top-bar { max-width: 1700px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .top-bar .brand { display: flex; align-items: center; gap: 12px; }
+  .top-bar .brand img { width: 32px; height: 26px; object-fit: contain; }
+  .top-bar h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .top-bar h1 em { font-family: var(--font-serif); color: var(--omega); font-size: 24px; }
+  .top-bar .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  .mode-switch { display: flex; gap: 2px; background: var(--bg-1); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+  .mode-switch a { padding: 7px 14px; font-size: 12px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: var(--font-sans); font-weight: 500; }
+  .mode-switch a.active { background: var(--omega-soft); color: var(--omega); }
+  .mode-switch a:hover:not(.active) { color: var(--text-1); }
+
+  .landscape-grid {
+    max-width: 1700px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(760px, 1fr)); gap: 40px;
+  }
+
+  /* Horizontal phone frame (landscape) */
+  .phone-landscape {
+    width: 760px; height: 374px; /* 2:1 aspect for readability; actual iPhone is ~2.16:1 */
+    border-radius: 54px; overflow: hidden; position: relative; background: #0B0A0C;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 12px #1a181b, 0 0 0 13px #0b0a0c;
+    margin: 0 auto;
+  }
+  /* Dynamic island on the left when landscape (rotated device) */
+  .phone-landscape .island {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    width: 34px; height: 120px; border-radius: 24px; background: #000; z-index: 100;
+  }
+  .phone-landscape .statusbar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 50px;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 28px 0; z-index: 50; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: #F4F1F3;
+  }
+  .phone-landscape .statusbar .time { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .phone-landscape .home-indicator {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 134px; background: rgba(255,255,255,0.5); border-radius: 100px; z-index: 100;
+  }
+  .phone-landscape .screen-land {
+    position: absolute; left: 50px; top: 0; right: 20px; bottom: 0;
+    background: var(--bg-0); overflow: hidden;
+    display: flex;
+  }
+
+  .screen-caption { text-align: center; margin-top: 16px; }
+  .screen-caption .l { font-size: 13px; font-weight: 600; color: var(--text-1); }
+  .screen-caption .s { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* Landscape two-pane layout: left rail + content */
+  .land-rail {
+    width: 190px; background: rgba(19,18,21,0.8); border-right: 1px solid var(--line);
+    padding: 14px 10px; display: flex; flex-direction: column; gap: 2px;
+    overflow-y: auto; flex-shrink: 0;
+  }
+  .land-rail .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+  .land-rail .logo img { width: 20px; height: 16px; }
+  .land-rail .logo span { font-size: 11px; font-weight: 600; }
+  .land-rail .logo em { font-family: var(--font-serif); color: var(--omega); font-size: 13px; }
+  .land-rail button {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+    background: transparent; border: 0; color: var(--text-2); font-size: 11px;
+    border-radius: 6px; cursor: pointer; text-align: left; font-family: var(--font-sans);
+  }
+  .land-rail button.active { background: var(--omega-soft); color: var(--omega); }
+  .land-content {
+    flex: 1; overflow-y: auto; padding: 16px 18px;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  section.group {
+    max-width: 1700px; margin: 0 auto 36px;
+  }
+  section.group > h2 {
+    font-size: 18px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section.group > h2::before {
+    content: ''; display: inline-block; width: 3px; height: 18px; background: var(--omega); border-radius: 2px;
+  }
+  section.group > h2 em { font-family: var(--font-serif); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="brand">
+    <img src="assets/logo-white.png" alt="Omega"/>
+    <div>
+      <h1><em>Omega</em> Medicina</h1>
+      <div class="sub">Vista landscape · todas las pantallas apaisadas</div>
+    </div>
+  </div>
+  <div class="mode-switch">
+    <a href="Omega Medicina.html">Móvil</a>
+    <a href="Omega Medicina Landscape.html" class="active">Landscape</a>
+    <a href="Omega Medicina Desktop.html">Escritorio</a>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens-patient.jsx"></script>
+<script type="text/babel" src="screens-doctor.jsx"></script>
+<script type="text/babel" src="screens-auth.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// Landscape phone with left rail (module nav) + content pane
+function LandscapePhone({ label, sub, rail, initial, screens, accent = '#E23E4A' }) {
+  const [active, setActive] = useState(initial);
+  const Screen = screens[active] || screens[initial];
+  return (
+    <div>
+      <div className="phone-landscape">
+        <div className="island"/>
+        <div className="statusbar">
+          <span className="time">9:41</span>
+          <svg width="18" height="10" viewBox="0 0 18 10" style={{ transform: 'rotate(90deg)' }}>
+            <rect x="0" y="6" width="3" height="4" rx="0.5" fill="#F4F1F3"/>
+            <rect x="5" y="4" width="3" height="6" rx="0.5" fill="#F4F1F3"/>
+            <rect x="10" y="2" width="3" height="8" rx="0.5" fill="#F4F1F3"/>
+            <rect x="15" y="0" width="3" height="10" rx="0.5" fill="#F4F1F3"/>
+          </svg>
+        </div>
+        <div className="screen-land">
+          <div className="land-rail">
+            <div className="logo">
+              <img src="assets/logo-white.png" alt=""/>
+              <span><em>Omega</em></span>
+            </div>
+            {rail.map(r => (
+              <button key={r.id} className={active === r.id ? 'active' : ''} onClick={() => setActive(r.id)}
+                style={active === r.id ? { background: (r.color || accent) + '22', color: r.color || accent } : {}}>
+                <Icon name={r.icon} size={13} color="currentColor"/>
+                <span>{r.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="land-content">
+            {Screen}
+          </div>
+        </div>
+        <div className="home-indicator"/>
+      </div>
+      <div className="screen-caption">
+        <div className="l">{label}</div>
+        <div className="s">{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+// Landscape-adapted content panes — reuse module data, compress paddings & use 2-col layouts
+const LandHome = () => (
+  <div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+      <div>
+        <div className="mono" style={{ color: 'var(--omega)' }}>Martes · 6 may</div>
+        <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2 }}>Hola, <em style={{ fontFamily: 'var(--font-serif)' }}>Juan</em></div>
+      </div>
+      <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--omega), #7a1a22)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 11, fontWeight: 600 }}>JM</div>
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+      <div style={{ padding: 10, background: 'var(--omega-soft)', borderRadius: 10, border: '1px solid rgba(226,62,74,0.2)' }}>
+        <div className="mono" style={{ color: 'var(--omega)' }}>Entreno</div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>Push Day</div>
+        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>8 ej · 55 min</div>
+      </div>
+      <div style={{ padding: 10, background: 'var(--nutri-soft)', borderRadius: 10, border: '1px solid rgba(232,169,58,0.2)' }}>
+        <div className="mono" style={{ color: 'var(--nutri)' }}>Nutri</div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>1.840 kcal</div>
+        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>710 restantes</div>
+      </div>
+    </div>
+    <div className="mono" style={{ marginBottom: 6 }}>Hoy</div>
+    {[
+      { t: '07:30', l: 'Desayuno', s: 'Avena + frutos rojos', c: 'var(--nutri)' },
+      { t: '12:00', l: 'Entrenamiento', s: 'Push Day · 55 min', c: 'var(--omega)' },
+      { t: '15:00', l: 'Dra. Romero', s: 'Videoconsulta', c: 'var(--medic)' },
+      { t: '19:00', l: 'Medicación', s: 'Omega-3 · 2 caps', c: 'var(--medic)' },
+    ].map((r, i) => (
+      <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', width: 40 }}>{r.t}</div>
+        <div style={{ width: 3, background: r.c, borderRadius: 2 }}/>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{r.l}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{r.s}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const LandTraining = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--omega)' }}>Semana 6 · Push Day</div>
+    <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 10 }}>Pecho · Hombros · Tríceps</div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {[
+        ['Press banca plano', '4 × 8', '70 kg'],
+        ['Press inclinado', '3 × 10', '26 kg'],
+        ['Aperturas en polea', '3 × 12', '15 kg'],
+        ['Press militar barra', '4 × 8', '45 kg'],
+        ['Elevaciones laterales', '4 × 12', '10 kg'],
+        ['Extensión tríceps', '3 × 12', '30 kg'],
+        ['Fondos', '3 × AMRAP', 'BW'],
+        ['Press francés', '3 × 10', '22 kg'],
+      ].map(([n, s, p], i) => (
+        <div key={i} style={{ padding: 8, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 500 }}>{n}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>{s} · <span style={{ color: 'var(--omega)' }}>{p}</span></div>
+        </div>
+      ))}
+    </div>
+    <button style={{ width: '100%', marginTop: 10, padding: 10, background: 'var(--omega)', border: 0, color: '#fff', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Iniciar sesión</button>
+  </div>
+);
+
+const LandNutrition = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--nutri)' }}>Martes · 2.550 kcal meta</div>
+    <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 12 }}>1.840 <span style={{ color: 'var(--text-3)', fontSize: 14 }}>kcal</span></div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+      {[['Prot', 142, 180, 'var(--omega)'], ['Carb', 220, 280, 'var(--nutri)'], ['Gras', 58, 72, 'var(--medic)']].map(([l, c, t, col]) => (
+        <div key={l} style={{ padding: 8, background: 'var(--bg-1)', borderRadius: 8, border: '1px solid var(--line)' }}>
+          <div className="mono" style={{ color: col, fontSize: 9 }}>{l}</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>{c}<span style={{ color: 'var(--text-3)', fontSize: 10 }}>/{t}g</span></div>
+          <div className="bar" style={{ marginTop: 4, height: 3 }}><span style={{ width: (c / t * 100) + '%', background: col }}/></div>
+        </div>
+      ))}
+    </div>
+    {[
+      { m: 'Desayuno', i: 'Avena + frutos + whey', k: 420 },
+      { m: 'Almuerzo', i: 'Pollo + quinoa + verduras', k: 620 },
+      { m: 'Merienda', i: 'Tostadas palta + huevo', k: 380 },
+      { m: 'Cena', i: 'Salmón + batata + ensalada', k: 710, pending: true },
+    ].map((r, i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: r.pending ? 'var(--text-3)' : 'var(--nutri)' }}/>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 500 }}>{r.m}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{r.i}</div>
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 500 }}>{r.k}</div>
+      </div>
+    ))}
+  </div>
+);
+
+const LandProgress = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--analytic)' }}>12 semanas</div>
+    <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 10 }}>-3.8 <span style={{ color: 'var(--text-3)', fontSize: 14 }}>kg</span></div>
+    <svg viewBox="0 0 400 100" style={{ width: '100%', height: 80, marginBottom: 12 }}>
+      <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7D8CFF" stopOpacity="0.3"/><stop offset="100%" stopColor="#7D8CFF" stopOpacity="0"/></linearGradient></defs>
+      <path d="M10,20 L40,24 L70,28 L100,32 L130,36 L160,42 L190,46 L220,50 L250,54 L280,60 L310,66 L340,72 L370,78 L390,82 L390,100 L10,100 Z" fill="url(#pg)"/>
+      <path d="M10,20 L40,24 L70,28 L100,32 L130,36 L160,42 L190,46 L220,50 L250,54 L280,60 L310,66 L340,72 L370,78 L390,82" stroke="#7D8CFF" strokeWidth="1.5" fill="none"/>
+    </svg>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      {[
+        ['Peso', '78.2 kg', '-3.8', 'var(--analytic)'],
+        ['% Grasa', '18.7%', '-3.3', 'var(--nutri)'],
+        ['Músculo', '61.2 kg', '+3.2', 'var(--medic)'],
+        ['Cintura', '84 cm', '-6', 'var(--omega)'],
+      ].map(([l, v, d, c]) => (
+        <div key={l} style={{ padding: 8, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8 }}>
+          <div className="mono" style={{ fontSize: 9 }}>{l}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{v}</div>
+          <div style={{ fontSize: 10, color: c, marginTop: 1 }}>{d}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const LandMedicine = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--medic)' }}>Próxima consulta</div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: 'var(--medic-soft)', border: '1px solid rgba(79,184,168,0.2)', borderRadius: 10, marginTop: 6, marginBottom: 12 }}>
+      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #4FB8A8, #1c5a52)', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 600 }}>SR</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12, fontWeight: 500 }}>Dra. Sofía Romero</div>
+        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>Viernes · 15:00 · Video</div>
+      </div>
+      <button style={{ padding: '6px 12px', background: 'var(--medic)', border: 0, color: '#000', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Unirme</button>
+    </div>
+    <div className="mono" style={{ marginBottom: 6 }}>Medicación</div>
+    {[['Omega-3', '2 caps/día'], ['Vit D3', '1000 UI'], ['Magnesio', '300 mg']].map(([n, d], i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--medic-soft)', color: 'var(--medic)', display: 'grid', placeItems: 'center' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8Z"/></svg>
+        </div>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 500 }}>{n}</div>
+        <div className="mono">{d}</div>
+      </div>
+    ))}
+  </div>
+);
+
+// Doctor
+const LandDoctorHome = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--medic)' }}>Martes · 4 consultas</div>
+    <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 10 }}>Buen día, <em style={{ fontFamily: 'var(--font-serif)' }}>Dra. Romero</em></div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+      {[['84', 'activos'], ['4', 'hoy'], ['7', 'por revisar']].map(([v, l], i) => (
+        <div key={i} style={{ padding: 8, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8 }}>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>{v}</div>
+          <div className="mono" style={{ fontSize: 9 }}>{l}</div>
+        </div>
+      ))}
+    </div>
+    <div className="mono" style={{ marginBottom: 6 }}>Agenda de hoy</div>
+    {[
+      ['09:00', 'Juan Martínez', 'Control', 'ok'],
+      ['10:30', 'Laura Giménez', 'Primera', 'now'],
+      ['12:00', 'Roberto Díaz', 'Seguimiento', ''],
+      ['15:00', 'María Castro', 'Resultados', ''],
+    ].map((r, i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+        <div className="mono" style={{ width: 36, color: 'var(--text-2)' }}>{r[0]}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 500 }}>{r[1]}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{r[2]}</div>
+        </div>
+        {r[3] === 'now' && <span style={{ padding: '2px 6px', background: 'rgba(226,62,74,0.15)', color: 'var(--omega)', borderRadius: 4, fontSize: 9 }}>Ahora</span>}
+      </div>
+    ))}
+  </div>
+);
+
+const LandDoctorPatients = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--medic)' }}>84 pacientes activos</div>
+    <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 10 }}>Mis pacientes</div>
+    <input placeholder="Buscar..." style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text-1)', fontSize: 11, marginBottom: 8, fontFamily: 'inherit' }}/>
+    {[
+      ['Juan Martínez', '34 · Entreno+Nutri', 87, 'ok'],
+      ['Laura Giménez', '28 · Nutri', 92, 'ok'],
+      ['Roberto Díaz', '58 · HTA', 71, 'warn'],
+      ['Pablo Herrera', '45 · Metabólico', 62, 'err'],
+      ['Ana Benítez', '36 · Tiroides', 88, 'warn'],
+      ['Diego Torres', '29 · Entreno', 95, 'ok'],
+    ].map(([n, d, adh, st], i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #4FB8A8, #1c5a52)', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 600 }}>{n.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 500 }}>{n}</div>
+          <div style={{ fontSize: 9, color: 'var(--text-3)' }}>{d}</div>
+        </div>
+        <div style={{ fontSize: 11, color: st === 'ok' ? 'var(--ok)' : st === 'warn' ? 'var(--warn)' : 'var(--err)' }}>{adh}%</div>
+      </div>
+    ))}
+  </div>
+);
+
+// Admin
+const LandAdmin = () => (
+  <div>
+    <div className="mono" style={{ color: 'var(--analytic)' }}>Sistema · operación en vivo</div>
+    <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 2, marginBottom: 10 }}>Panel admin</div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 10 }}>
+      {[['1.284', 'usuarios'], ['942', 'pacientes'], ['47', 'profesionales'], ['99.98%', 'uptime 30d']].map(([v, l]) => (
+        <div key={l} style={{ padding: 8, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>{v}</div>
+          <div className="mono" style={{ fontSize: 9 }}>{l}</div>
+        </div>
+      ))}
+    </div>
+    <div className="mono" style={{ marginBottom: 6 }}>Alertas activas</div>
+    {[
+      ['Storage 78%', 'warn'],
+      ['Latencia API vídeo', 'warn'],
+      ['Backup fallido 05/05', 'err'],
+    ].map(([l, s], i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: s === 'err' ? 'var(--err)' : 'var(--warn)' }}/>
+        <span style={{ fontSize: 11, flex: 1 }}>{l}</span>
+      </div>
+    ))}
+  </div>
+);
+
+// ─────────── Groups of frames
+function Sections() {
+  const patientRail = [
+    { id: 'home', label: 'Inicio', icon: 'dashboard' },
+    { id: 'train', label: 'Entreno', icon: 'training', color: '#E23E4A' },
+    { id: 'nutri', label: 'Nutri', icon: 'nutrition', color: '#E8A93A' },
+    { id: 'progress', label: 'Progreso', icon: 'data', color: '#7D8CFF' },
+    { id: 'medic', label: 'Medicina', icon: 'medicine', color: '#4FB8A8' },
+  ];
+  const doctorRail = [
+    { id: 'home', label: 'Panel', icon: 'dashboard', color: '#4FB8A8' },
+    { id: 'patients', label: 'Pacientes', icon: 'user', color: '#4FB8A8' },
+    { id: 'agenda', label: 'Agenda', icon: 'calendar', color: '#4FB8A8' },
+    { id: 'files', label: 'Archivos', icon: 'file', color: '#4FB8A8' },
+  ];
+  const adminRail = [
+    { id: 'home', label: 'Sistema', icon: 'dashboard', color: '#7D8CFF' },
+    { id: 'users', label: 'Usuarios', icon: 'user', color: '#7D8CFF' },
+    { id: 'audit', label: 'Auditoría', icon: 'history', color: '#7D8CFF' },
+    { id: 'db', label: 'Datos', icon: 'data', color: '#7D8CFF' },
+  ];
+
+  return (
+    <>
+      <section className="group">
+        <h2><em>Paciente</em> · experiencia en landscape</h2>
+        <div className="landscape-grid">
+          <LandscapePhone
+            label="Inicio · Paciente"
+            sub="Dashboard diario con nutrición, entreno y citas"
+            rail={patientRail}
+            initial="home"
+            screens={{
+              home: <LandHome/>,
+              train: <LandTraining/>,
+              nutri: <LandNutrition/>,
+              progress: <LandProgress/>,
+              medic: <LandMedicine/>,
+            }}
+          />
+          <LandscapePhone
+            label="Entrenamiento"
+            sub="Sesión push day — 8 ejercicios"
+            rail={patientRail}
+            initial="train"
+            screens={{
+              home: <LandHome/>,
+              train: <LandTraining/>,
+              nutri: <LandNutrition/>,
+              progress: <LandProgress/>,
+              medic: <LandMedicine/>,
+            }}
+            accent="#E23E4A"
+          />
+          <LandscapePhone
+            label="Nutrición"
+            sub="Macros del día y comidas registradas"
+            rail={patientRail}
+            initial="nutri"
+            screens={{
+              home: <LandHome/>,
+              train: <LandTraining/>,
+              nutri: <LandNutrition/>,
+              progress: <LandProgress/>,
+              medic: <LandMedicine/>,
+            }}
+            accent="#E8A93A"
+          />
+          <LandscapePhone
+            label="Progreso"
+            sub="Composición corporal 12 semanas"
+            rail={patientRail}
+            initial="progress"
+            screens={{
+              home: <LandHome/>,
+              train: <LandTraining/>,
+              nutri: <LandNutrition/>,
+              progress: <LandProgress/>,
+              medic: <LandMedicine/>,
+            }}
+            accent="#7D8CFF"
+          />
+          <LandscapePhone
+            label="Medicina"
+            sub="Próxima consulta y medicación activa"
+            rail={patientRail}
+            initial="medic"
+            screens={{
+              home: <LandHome/>,
+              train: <LandTraining/>,
+              nutri: <LandNutrition/>,
+              progress: <LandProgress/>,
+              medic: <LandMedicine/>,
+            }}
+            accent="#4FB8A8"
+          />
+        </div>
+      </section>
+
+      <section className="group">
+        <h2 style={{ '--omega': '#4FB8A8' }}><em>Doctor</em> · vista clínica</h2>
+        <div className="landscape-grid">
+          <LandscapePhone
+            label="Panel del doctor"
+            sub="Agenda del día · pacientes por revisar"
+            rail={doctorRail}
+            initial="home"
+            screens={{
+              home: <LandDoctorHome/>,
+              patients: <LandDoctorPatients/>,
+              agenda: <LandDoctorHome/>,
+              files: <LandDoctorPatients/>,
+            }}
+            accent="#4FB8A8"
+          />
+          <LandscapePhone
+            label="Listado de pacientes"
+            sub="84 activos · adherencia y estado"
+            rail={doctorRail}
+            initial="patients"
+            screens={{
+              home: <LandDoctorHome/>,
+              patients: <LandDoctorPatients/>,
+              agenda: <LandDoctorHome/>,
+              files: <LandDoctorPatients/>,
+            }}
+            accent="#4FB8A8"
+          />
+        </div>
+      </section>
+
+      <section className="group">
+        <h2><em>Admin</em> · panel de sistema</h2>
+        <div className="landscape-grid">
+          <LandscapePhone
+            label="Panel de sistema"
+            sub="Usuarios · performance · alertas"
+            rail={adminRail}
+            initial="home"
+            screens={{
+              home: <LandAdmin/>,
+              users: <LandAdmin/>,
+              audit: <LandAdmin/>,
+              db: <LandAdmin/>,
+            }}
+            accent="#7D8CFF"
+          />
+        </div>
+      </section>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Sections/>);
+</script>
+</body>
+</html>

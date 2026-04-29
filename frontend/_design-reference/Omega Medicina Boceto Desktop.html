@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Boceto Escritorio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { padding: 36px 24px; }
+  .topbar { max-width: 1700px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .topbar .brand { display: flex; align-items: center; gap: 12px; }
+  .topbar .brand img { width: 32px; height: 26px; object-fit: contain; }
+  .topbar h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .topbar h1 em { font-family: var(--font-serif); color: var(--omega); font-size: 24px; }
+  .topbar .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .sketch-pill { padding: 4px 10px; background: rgba(226,62,74,0.12); color: var(--omega); border-radius: 100px; font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; margin-left: 8px; }
+  .mode-switch { display: flex; gap: 2px; background: var(--bg-1); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+  .mode-switch a { padding: 7px 14px; font-size: 12px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: var(--font-sans); font-weight: 500; }
+  .mode-switch a.active { background: var(--omega-soft); color: var(--omega); }
+  .mode-switch a:hover:not(.active) { color: var(--text-1); }
+
+  /* Browser-style window mock */
+  .win { background: var(--bg-1); border: 1px solid var(--line-strong); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5); max-width: 1500px; margin: 0 auto 28px; }
+  .win .titlebar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--line); }
+  .win .dots { display: flex; gap: 6px; }
+  .win .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .win .dot.r { background: #ED6A5E; } .win .dot.y { background: #F4BF4F; } .win .dot.g { background: #61C554; }
+  .win .url { flex: 1; padding: 5px 12px; background: var(--bg-0); border: 1px solid var(--line); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); text-align: center; }
+  .win .url span { color: var(--text-1); }
+  .win .body { background: var(--bg-0); }
+  .caption { padding: 14px 18px; font-size: 11px; color: var(--text-3); font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid var(--line); background: rgba(255,255,255,0.015); }
+  .caption span { color: var(--text-1); font-weight: 600; }
+
+  /* Desktop screen layouts */
+  .ds { min-height: 580px; padding: 64px 80px; display: flex; flex-direction: column; position: relative; }
+  .ds-grad::before { content: ''; position: absolute; inset: 0; background: radial-gradient(700px 400px at 30% 20%, rgba(226,62,74,0.12), transparent 70%); pointer-events: none; }
+  .ds > * { position: relative; }
+  .input { width: 100%; padding: 13px 16px; border-radius: 10px; background: var(--bg-1); border: 1px solid var(--line); color: var(--text-1); font-size: 14px; font-family: var(--font-sans); outline: none; }
+  .label-mono { font-size: 10px; font-family: var(--font-mono); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.12em; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <img src="assets/logo-white.png" alt="Omega"/>
+    <div>
+      <h1><em>Omega</em> Medicina <span class="sketch-pill">● boceto</span></h1>
+      <div class="sub">Boceto · home, login, crear usuario y selector de rol — escritorio</div>
+    </div>
+  </div>
+  <div class="mode-switch">
+    <a href="Omega Medicina Boceto.html">Móvil</a>
+    <a href="Omega Medicina Boceto Landscape.html">Landscape</a>
+    <a href="Omega Medicina Boceto Desktop.html" class="active">Escritorio</a>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+const ROLES_D = [
+  { id: 'patient', label: 'Paciente', sub: 'Accede a tus planes y citas', icon: 'user', c: '#E23E4A' },
+  { id: 'nutritionist', label: 'Nutricionista', sub: 'Gestiona planes alimentarios', icon: 'nutrition', c: '#E8A93A' },
+  { id: 'trainer', label: 'Entrenador', sub: 'Crea rutinas y seguimientos', icon: 'training', c: '#F16B57' },
+  { id: 'doctor', label: 'Médico', sub: 'Consultas, labs y expedientes', icon: 'medicine', c: '#4FB8A8' },
+  { id: 'admin', label: 'Administrador', sub: 'Gestión del sistema', icon: 'settings', c: '#C9C3BA' },
+];
+
+function Window({ url, label, sub, children }) {
+  return (
+    <div className="win">
+      <div className="titlebar">
+        <div className="dots"><div className="dot r"/><div className="dot y"/><div className="dot g"/></div>
+        <div className="url">app.omegamedicina.com<span>{url}</span></div>
+        <div style={{ width: 56 }}/>
+      </div>
+      <div className="body">{children}</div>
+      <div className="caption"><span>{label}</span> · {sub}</div>
+    </div>
+  );
+}
+
+// ── HOME (welcome): hero + 3 features + dual CTA
+function DeskHome() {
+  return (
+    <div className="ds ds-grad">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 60 }}>
+        <img src="assets/logo-white.png" alt="" style={{ width: 28, height: 22 }}/>
+        <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina</div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 80, alignItems: 'center', flex: 1 }}>
+        <div>
+          <div style={{ fontSize: 76, fontWeight: 500, letterSpacing: '-0.04em', lineHeight: 0.95 }}>
+            <em style={{ fontFamily: 'var(--font-serif)', fontSize: 88 }}>Tu salud</em>,<br/>integrada.
+          </div>
+          <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 22, lineHeight: 1.55, maxWidth: 460 }}>
+            Entrenamiento, nutrición y medicina en un solo ecosistema. Conectado con tus profesionales de confianza.
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
+            <button className="btn btn-primary" style={{ padding: '14px 24px' }}>Crear cuenta <Icon name="chevron-right" size={16}/></button>
+            <button className="btn btn-ghost" style={{ padding: '14px 24px' }}>Ya tengo cuenta</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { i: 'training', l: 'Plan de entrenamiento personalizado', s: 'Rutinas adaptadas con seguimiento de fuerza y volumen.', c: '#E23E4A' },
+            { i: 'nutrition', l: 'Seguimiento nutricional diario', s: 'Macros, comidas y plan ajustado por tu nutricionista.', c: '#E8A93A' },
+            { i: 'medicine', l: 'Consultas con tu equipo médico', s: 'Videoconsultas, labs y expedientes en un solo lugar.', c: '#4FB8A8' },
+          ].map((it, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '18px 20px', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: it.c + '22', color: it.c, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name={it.i} size={20}/>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{it.l}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4, lineHeight: 1.5 }}>{it.s}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+        <span>v1.0 · Boceto exploratorio</span>
+        <span>Términos · Privacidad · Soporte</span>
+      </div>
+    </div>
+  );
+}
+
+// ── LOGIN: split brand + form card
+function DeskLogin() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 580 }}>
+      <div style={{ padding: '64px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRight: '1px solid var(--line)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(500px 400px at 20% 50%, rgba(226,62,74,0.18), transparent 70%)' }}/>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="assets/logo-white.png" alt="" style={{ width: 28, height: 22 }}/>
+          <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina</div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 56, fontWeight: 500, letterSpacing: '-0.04em', lineHeight: 0.98 }}>
+            <em style={{ fontFamily: 'var(--font-serif)', fontSize: 64 }}>Bienvenido</em><br/>de vuelta
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 18, maxWidth: 380, lineHeight: 1.55 }}>
+            Ingresá a tu cuenta y continuá donde dejaste. Tu plan, tus métricas y tus profesionales te están esperando.
+          </div>
+        </div>
+        <div style={{ position: 'relative', fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+          ©2026 Omega Medicina · Todos los derechos reservados
+        </div>
+      </div>
+      <div style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="mono" style={{ marginBottom: 8 }}>Iniciar sesión</div>
+        <div style={{ fontSize: 26, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 28 }}>Acceso a tu cuenta</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label className="label-mono">Email</label>
+            <input className="input" type="email" placeholder="tu@email.com" style={{ marginTop: 6 }}/>
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <label className="label-mono">Contraseña</label>
+              <span style={{ fontSize: 11, color: 'var(--omega)' }}>¿Olvidaste?</span>
+            </div>
+            <input className="input" type="password" placeholder="••••••••" style={{ marginTop: 6 }}/>
+          </div>
+          <button className="btn btn-primary btn-full" style={{ marginTop: 8 }}>Ingresar</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }}/>
+            <span className="mono">o continuá con</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }}/>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button className="btn btn-ghost">Google</button>
+            <button className="btn btn-ghost">Apple</button>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-2)', marginTop: 8 }}>
+            ¿Sin cuenta? <span style={{ color: 'var(--omega)', fontWeight: 600 }}>Crear perfil</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CREATE USER: 2 columnas — pasos a la izquierda, form a la derecha
+function DeskCreate() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', minHeight: 580 }}>
+      <div style={{ padding: '64px 60px', borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="assets/logo-white.png" alt="" style={{ width: 24, height: 18 }}/>
+          <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina</div>
+        </div>
+        <div style={{ fontSize: 38, fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+          <em style={{ fontFamily: 'var(--font-serif)' }}>Creá</em><br/>tu cuenta
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', maxWidth: 280, lineHeight: 1.55 }}>
+          Tres pasos breves. Después elegís el rol con el que vas a entrar al sistema.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+          {[
+            { n: '01', l: 'Cuenta', s: 'Nombre, email y contraseña', a: true },
+            { n: '02', l: 'Datos personales', s: 'Edad, género, altura y peso', a: false },
+            { n: '03', l: 'Rol', s: 'Elegí cómo vas a usar Omega', a: false },
+          ].map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, opacity: s.a ? 1 : 0.5 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: s.a ? 'var(--omega)' : 'var(--bg-2)', color: s.a ? '#fff' : 'var(--text-2)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{s.n}</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{s.l}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>{s.s}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: '64px 80px', display: 'flex', flexDirection: 'column' }}>
+        <div className="mono">Paso 1 / 3</div>
+        <div className="bar" style={{ marginTop: 6, marginBottom: 28, maxWidth: 280 }}><span style={{ width: '33%', background: 'var(--omega)' }}/></div>
+        <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 22 }}>Información de cuenta</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 600 }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="label-mono">Nombre completo</label>
+            <input className="input" placeholder="Tu nombre" style={{ marginTop: 6 }}/>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="label-mono">Email</label>
+            <input className="input" type="email" placeholder="tu@email.com" style={{ marginTop: 6 }}/>
+          </div>
+          <div>
+            <label className="label-mono">Contraseña</label>
+            <input className="input" type="password" placeholder="••••••••" style={{ marginTop: 6 }}/>
+          </div>
+          <div>
+            <label className="label-mono">Confirmar contraseña</label>
+            <input className="input" type="password" placeholder="••••••••" style={{ marginTop: 6 }}/>
+          </div>
+        </div>
+        <div style={{ marginTop: 'auto', paddingTop: 32, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button className="btn btn-ghost">Cancelar</button>
+          <button className="btn btn-primary" style={{ marginLeft: 'auto' }}>Continuar <Icon name="chevron-right" size={16}/></button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 14, lineHeight: 1.5 }}>
+          Al continuar aceptás los <span style={{ color: 'var(--omega)' }}>Términos</span> y la <span style={{ color: 'var(--omega)' }}>Política de privacidad</span>.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ROLE SELECTOR: hero arriba + grid 5 cards
+function DeskRole() {
+  const [sel, setSel] = useState('patient');
+  return (
+    <div className="ds">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+        <img src="assets/logo-white.png" alt="" style={{ width: 24, height: 18 }}/>
+        <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina · paso final</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 40, marginBottom: 32 }}>
+        <div>
+          <div style={{ fontSize: 56, fontWeight: 500, letterSpacing: '-0.04em', lineHeight: 0.98 }}>
+            <em style={{ fontFamily: 'var(--font-serif)', fontSize: 64 }}>Elegí</em> tu experiencia
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 14, maxWidth: 540, lineHeight: 1.55 }}>
+            Cada rol muestra una interfaz diferente con las herramientas adecuadas. Podés cambiar de rol en cualquier momento desde tu perfil.
+          </div>
+        </div>
+        <button disabled={!sel} className="btn btn-primary" style={{ padding: '14px 24px', flexShrink: 0 }}>
+          Continuar <Icon name="chevron-right" size={16}/>
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, flex: 1 }}>
+        {ROLES_D.map(r => (
+          <button key={r.id} onClick={() => setSel(r.id)} style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14,
+            padding: '24px 20px', borderRadius: 16, textAlign: 'left',
+            background: sel === r.id ? r.c + '14' : 'var(--bg-1)',
+            border: `1.5px solid ${sel === r.id ? r.c : 'var(--line)'}`,
+            cursor: 'pointer', color: 'var(--text-1)', fontFamily: 'inherit',
+            transition: 'all 0.15s', position: 'relative',
+          }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: r.c + '22', color: r.c, display: 'grid', placeItems: 'center' }}>
+              <Icon name={r.icon} size={22}/>
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4, lineHeight: 1.45 }}>{r.sub}</div>
+            </div>
+            <div style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 22, height: 22, borderRadius: '50%',
+              border: `1.5px solid ${sel === r.id ? r.c : 'var(--text-3)'}`,
+              background: sel === r.id ? r.c : 'transparent',
+              display: 'grid', placeItems: 'center',
+            }}>
+              {sel === r.id && <Icon name="check" size={12} color="#0B0A0C"/>}
+            </div>
+          </button>
+        ))}
+      </div>
+      <div style={{ marginTop: 26, fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+        Tu cuenta puede tener acceso a múltiples roles. Solicitá acceso adicional luego de crear tu perfil.
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div>
+      <Window url="/" label="Home · welcome" sub="Landing pre-login con hero, features y dual CTA"><DeskHome/></Window>
+      <Window url="/login" label="Login" sub="Split brand + formulario centrado"><DeskLogin/></Window>
+      <Window url="/signup" label="Crear usuario" sub="Pasos a la izquierda, formulario a la derecha"><DeskCreate/></Window>
+      <Window url="/role" label="Selector de rol" sub="5 perfiles en grid · acción primaria a la derecha"><DeskRole/></Window>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

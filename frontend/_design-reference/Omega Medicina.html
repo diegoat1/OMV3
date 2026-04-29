@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .mode-switch-float { position: fixed; top: 20px; right: 24px; z-index: 9999; display: flex; gap: 2px; background: rgba(19,18,21,0.9); padding: 4px; border-radius: 10px; border: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .mode-switch-float a { padding: 6px 12px; font-size: 11px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: var(--font-sans); font-weight: 500; }
+  .mode-switch-float a.active { background: rgba(226,62,74,0.15); color: #F05262; }
+  .mode-switch-float a:hover:not(.active) { color: var(--text-1); }
+</style>
+</head>
+<body>
+<div class="mode-switch-float">
+  <a href="Omega Medicina.html" class="active">Móvil</a>
+  <a href="Omega Medicina Landscape.html">Landscape</a>
+  <a href="Omega Medicina Desktop.html">Escritorio</a>
+</div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens-patient.jsx"></script>
+<script type="text/babel" src="screens-doctor.jsx"></script>
+<script type="text/babel" src="screens-auth.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+// Tweaks defaults
+const TWEAKS = /*EDITMODE-BEGIN*/{
+  "density": "cozy",
+  "accentHue": "crimson",
+  "bgTone": "warm"
+}/*EDITMODE-END*/;
+
+const PATIENT_TABS = [
+  { id: 'home', label: 'Inicio', icon: 'dashboard' },
+  { id: 'training-plan', label: 'Entreno', icon: 'training' },
+  { id: 'nutrition', label: 'Nutri', icon: 'nutrition' },
+  { id: 'progress', label: 'Progreso', icon: 'data' },
+  { id: 'appointments', label: 'Medicina', icon: 'medicine' },
+];
+const DOCTOR_TABS = [
+  { id: 'doc-home', label: 'Inicio', icon: 'dashboard' },
+  { id: 'doc-patients', label: 'Pacientes', icon: 'user' },
+  { id: 'doc-agenda', label: 'Agenda', icon: 'calendar' },
+  { id: 'doc-templates', label: 'Recursos', icon: 'file' },
+];
+const ADMIN_TABS = [
+  { id: 'admin-home', label: 'Panel', icon: 'dashboard' },
+  { id: 'admin-users', label: 'Usuarios', icon: 'user' },
+  { id: 'admin-audit', label: 'Audit', icon: 'history' },
+  { id: 'admin-db', label: 'Datos', icon: 'data' },
+];
+
+function App() {
+  const [role, setRole] = useState(() => localStorage.getItem('om.role') || 'patient');
+  const [screen, setScreen] = useState(() => localStorage.getItem('om.screen') || 'home');
+  const [accent, setAccent] = useState('#E23E4A');
+  const [sheet, setSheet] = useState(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const [tweaks, setTweaks] = useState(TWEAKS);
+
+  useEffect(() => { localStorage.setItem('om.screen', screen); }, [screen]);
+  useEffect(() => { localStorage.setItem('om.role', role); }, [role]);
+
+  // Reset screen when role changes
+  const switchRole = (r) => {
+    setRole(r);
+    if (r === 'patient') setScreen('home');
+    else if (r === 'doctor' || r === 'nutritionist' || r === 'trainer') setScreen('doc-home');
+    else if (r === 'admin') setScreen('admin-home');
+    else setScreen('home');
+  };
+
+  // Tweaks edit-mode protocol
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === '__activate_edit_mode') setTweaksOpen(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
+    };
+    window.addEventListener('message', handler);
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch(_) {}
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const setTweak = (k, v) => {
+    const next = { ...tweaks, [k]: v };
+    setTweaks(next);
+    try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*'); } catch(_) {}
+  };
+
+  const tabs = role === 'patient' ? PATIENT_TABS : role === 'doctor' ? DOCTOR_TABS : ADMIN_TABS;
+  const activeTabId = tabs.find(t => t.id === screen)?.id;
+
+  const renderScreen = () => {
+    const props = { setScreen, setAccent, openSheet: setSheet };
+    switch (screen) {
+      // Patient
+      case 'home': return <PatientHome {...props}/>;
+      case 'training-plan': return <TrainingPlan {...props}/>;
+      case 'session-active': return <SessionActive {...props}/>;
+      case 'exercise-detail': return <ExerciseDetail {...props}/>;
+      case 'training-stats': return <TrainingStats {...props}/>;
+      case 'nutrition': return <Nutrition {...props}/>;
+      case 'food-search': return <FoodSearch {...props}/>;
+      case 'progress': return <Progress {...props}/>;
+      case 'performance': return <Performance {...props}/>;
+      case 'appointments': return <Appointments {...props}/>;
+      case 'video-call': return <VideoCall {...props}/>;
+      case 'checkin': return <CheckIn {...props}/>;
+      // Doctor
+      case 'doc-home': return <DoctorHome {...props}/>;
+      case 'doc-patients': return <DoctorPatients {...props}/>;
+      case 'doc-patient-detail': return <DoctorPatientDetail {...props}/>;
+      case 'doc-files': return <DoctorFiles {...props}/>;
+      case 'doc-agenda': return <Appointments {...props}/>;
+      case 'doc-templates': return <DoctorFiles {...props}/>;
+      // Admin
+      case 'admin-home': return <AdminHome {...props}/>;
+      case 'admin-audit': return <AdminAudit {...props}/>;
+      case 'admin-users': return <AdminHome {...props}/>;
+      case 'admin-db': return <AdminAudit {...props}/>;
+      // Auth
+      case 'login': return <Login {...props}/>;
+      case 'role-select': return <RoleSelector {...props} switchRole={switchRole}/>;
+      case 'create-profile': return <CreateProfile {...props}/>;
+      case 'profile-edit': return <CreateProfile {...props}/>;
+      default: return <PatientHome {...props}/>;
+    }
+  };
+
+  // Screens that hide the tab bar
+  const noTabBar = ['session-active','video-call','exercise-detail','food-search','checkin','doc-patient-detail','doc-files','admin-audit','login','role-select','create-profile','profile-edit'];
+  const noStatusBar = screen === 'video-call';
+  const authScreens = ['login','role-select','create-profile','profile-edit'];
+
+  // Nav sections grouped
+  const navGroups = [
+    { title: 'Paciente', role: 'patient', items: [
+      { id: 'home', label: 'Inicio' },
+      { id: 'training-plan', label: 'Plan de entreno' },
+      { id: 'session-active', label: 'Sesión activa' },
+      { id: 'exercise-detail', label: 'Progresión ejercicio' },
+      { id: 'training-stats', label: 'Cuerpo · Fuerza' },
+      { id: 'nutrition', label: 'Plan nutricional' },
+      { id: 'food-search', label: 'Buscar alimento' },
+      { id: 'progress', label: 'Progreso corporal' },
+      { id: 'performance', label: 'Performance Clock' },
+      { id: 'appointments', label: 'Citas' },
+      { id: 'video-call', label: 'Videoconsulta' },
+      { id: 'checkin', label: 'Check-in diario' },
+    ]},
+    { title: 'Doctor', role: 'doctor', items: [
+      { id: 'doc-home', label: 'Panel doctor' },
+      { id: 'doc-patients', label: 'Pacientes' },
+      { id: 'doc-patient-detail', label: 'Ficha paciente' },
+      { id: 'doc-files', label: 'Archivos del paciente' },
+    ]},
+    { title: 'Admin', role: 'admin', items: [
+      { id: 'admin-home', label: 'Panel admin' },
+      { id: 'admin-audit', label: 'Audit log' },
+    ]},
+  ];
+  const authItems = [
+    { id: 'login', label: 'Login' },
+    { id: 'role-select', label: 'Selector de rol' },
+    { id: 'create-profile', label: 'Crear perfil' },
+  ];
+
+  return (
+    <div className="app-stage">
+      <div className="chrome" style={{ alignSelf: 'flex-start', marginTop: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <img src="assets/logo-white.png" alt="Omega" style={{ width: 36, height: 28, objectFit: 'contain' }}/>
+          <div className="mono" style={{ margin: 0 }}>Omega Medicina · v1</div>
+        </div>
+        <h1><em>Omega</em><br/>Medicina.</h1>
+        <p>Prototipo interactivo del ecosistema completo: paciente, doctor y admin. Cada módulo tiene un acento cromático propio — rojo Omega para entreno, ámbar para nutrición, teal clínico para medicina, índigo para analítica.</p>
+
+        <div className="nav-section">Rol</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['patient','doctor','admin'].map(r => (
+            <button key={r} onClick={() => switchRole(r)} className={role === r ? 'active' : ''}
+              style={{
+                flex: 1, padding: '8px 10px', background: role === r ? 'rgba(226,62,74,0.14)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${role === r ? 'rgba(226,62,74,0.35)' : 'rgba(255,255,255,0.06)'}`,
+                color: role === r ? '#F05262' : 'var(--text-1)',
+                borderRadius: 8, fontSize: 11, cursor: 'pointer', textTransform: 'capitalize',
+                fontFamily: 'var(--font-sans)',
+              }}>{r === 'patient' ? 'Paciente' : r === 'doctor' ? 'Doctor' : 'Admin'}</button>
+          ))}
+        </div>
+
+        {navGroups.filter(g => g.role === role).map(g => (
+          <React.Fragment key={g.title}>
+            <div className="nav-section">Pantallas</div>
+            <div className="nav-grid">
+              {g.items.map(it => (
+                <button key={it.id} className={screen === it.id ? 'active' : ''} onClick={() => setScreen(it.id)}>
+                  <span className="dot"/>{it.label}
+                </button>
+              ))}
+            </div>
+          </React.Fragment>
+        ))}
+
+        <div className="nav-section">Autenticación</div>
+        <div className="nav-grid">
+          {authItems.map(it => (
+            <button key={it.id} className={screen === it.id ? 'active' : ''} onClick={() => setScreen(it.id)}>
+              <span className="dot"/>{it.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="nav-section">Sistema de color</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
+          {[
+            { c: '#E23E4A', l: 'Entrenamiento · Omega' },
+            { c: '#E8A93A', l: 'Nutrición · Ámbar' },
+            { c: '#4FB8A8', l: 'Medicina · Teal clínico' },
+            { c: '#7D8CFF', l: 'Analítica · Índigo' },
+            { c: '#C9C3BA', l: 'Admin · Neutro cálido' },
+          ].map(s => (
+            <div key={s.c} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 14, height: 14, borderRadius: 4, background: s.c }}/>
+              <span style={{ color: 'var(--text-1)' }}>{s.l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Phone */}
+      <div style={{
+        width: 390, height: 844, borderRadius: 52, overflow: 'hidden',
+        position: 'relative', background: '#0B0A0C',
+        boxShadow: '0 50px 120px rgba(0,0,0,0.7), 0 0 0 12px #1a181b, 0 0 0 13px #0b0a0c',
+      }}>
+        {/* Dynamic island */}
+        {!noStatusBar && (
+          <div style={{ position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)', width: 120, height: 34, borderRadius: 24, background: '#000', zIndex: 100 }}/>
+        )}
+        {/* Status bar */}
+        {!noStatusBar && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px 0', zIndex: 50, fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: '#F4F1F3' }}>
+            <span>9:41</span>
+            <span style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+              <svg width="18" height="10" viewBox="0 0 18 10"><rect x="0" y="6" width="3" height="4" rx="0.5" fill="#F4F1F3"/><rect x="5" y="4" width="3" height="6" rx="0.5" fill="#F4F1F3"/><rect x="10" y="2" width="3" height="8" rx="0.5" fill="#F4F1F3"/><rect x="15" y="0" width="3" height="10" rx="0.5" fill="#F4F1F3"/></svg>
+              <svg width="24" height="12" viewBox="0 0 24 12"><rect x="0" y="0" width="22" height="12" rx="3" stroke="#F4F1F3" strokeOpacity="0.4" fill="none"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="#F4F1F3"/></svg>
+            </span>
+          </div>
+        )}
+
+        <div className="screen">
+          <div className="phone-content" style={noStatusBar ? { padding: 0 } : authScreens.includes(screen) ? { padding: 0 } : {}}>
+            {renderScreen()}
+          </div>
+          {userMenuOpen && <UserMenu close={() => setUserMenuOpen(false)} setScreen={setScreen} switchRole={switchRole} currentRole={role}/>}
+        </div>
+
+        {/* Avatar trigger overlay — top-right of phone, above screen content */}
+        {!noStatusBar && !authScreens.includes(screen) && (
+          <button onClick={() => setUserMenuOpen(true)} style={{
+            position: 'absolute', top: 44, right: 20, width: 40, height: 40, borderRadius: '50%',
+            background: 'transparent', border: 0, cursor: 'pointer', zIndex: 55,
+          }}/>
+        )}
+
+        {/* Tab bar */}
+        {!noTabBar.includes(screen) && (
+          <TabBar tabs={tabs} active={activeTabId} onSelect={setScreen} accentColor={accent}/>
+        )}
+
+        {/* Home indicator */}
+        <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', width: 134, height: 5, background: 'rgba(255,255,255,0.5)', borderRadius: 100, zIndex: 100 }}/>
+      </div>
+
+      {/* Tweaks panel */}
+      <div className={'tweaks' + (tweaksOpen ? ' open' : '')}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h4>Tweaks</h4>
+          <button onClick={() => setTweaksOpen(false)} style={{ background: 'transparent', border: 0, color: 'var(--text-2)', cursor: 'pointer' }}>✕</button>
+        </div>
+        <div className="row">
+          <label>Densidad</label>
+          <div className="chips">
+            {['compact','cozy','spacious'].map(d => (
+              <button key={d} onClick={() => setTweak('density', d)} className={'chip' + (tweaks.density === d ? ' active' : '')}>{d}</button>
+            ))}
+          </div>
+        </div>
+        <div className="row">
+          <label>Acento Omega</label>
+          <div className="chips">
+            {[
+              { k: 'red', c: '#E23E4A' },
+              { k: 'crimson', c: '#B8293A' },
+              { k: 'coral', c: '#F16B57' },
+            ].map(s => (
+              <div key={s.k} onClick={() => {
+                setTweak('accentHue', s.k);
+                document.documentElement.style.setProperty('--omega', s.c);
+              }} className={'swatch' + (tweaks.accentHue === s.k ? ' active' : '')} style={{ background: s.c }}/>
+            ))}
+          </div>
+        </div>
+        <div className="row">
+          <label>Tono fondo</label>
+          <div className="chips">
+            {['warm','neutral','cool'].map(t => (
+              <button key={t} onClick={() => {
+                setTweak('bgTone', t);
+                const bg = t === 'warm' ? '#0B0A0C' : t === 'cool' ? '#0A0B0E' : '#0A0A0B';
+                document.body.style.background = bg;
+              }} className={'chip' + (tweaks.bgTone === t ? ' active' : '')}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

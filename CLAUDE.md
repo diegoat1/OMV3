@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-OMV3 is a health, nutrition, and training platform **in active migration** from a legacy Flask/Jinja web app to an Expo React Native mobile app. The Jinja web templates are legacy — consult them only to understand business logic that needs to be migrated. The active development targets are:
+OMV3 is a health, nutrition, and training platform **in active migration** from a legacy Flask/Jinja web app to a responsive web frontend (Vite + React) that targets desktop, mobile web, and native (Android/iOS via Capacitor). The Jinja web templates are legacy — consult them only to understand business logic that needs to be migrated. The active development targets are:
 
 - **`src/api/v3/`** — Flask REST API (the only Flask code being actively developed)
-- **`omega-medicina-app/`** — Expo React Native app (primary frontend)
+- **`frontend/`** — Vite + React + TypeScript app (primary frontend, intended to wrap with Capacitor for native)
 
 ## Running the Application
 
@@ -17,29 +17,23 @@ source .venv/Scripts/activate   # Windows/bash
 python src/main.py
 ```
 
-### Mobile App (Expo, port 8081)
+### Frontend (Vite, port 5173)
 ```bash
-cd omega-medicina-app
-npx expo start --web --port 8081
-# or via dev.bat (Windows) — option 5 for frontend only, 4 for backend only
+cd frontend
+npm install   # first time only
+npm run dev   # starts Vite dev server with /api proxy to localhost:8000
 ```
 
-## Mobile App Commands (run from `omega-medicina-app/`)
+## Frontend Commands (run from `frontend/`)
 
 ```bash
-npm run lint              # ESLint on src/
-npm run lint:fix
-npm run typecheck         # tsc --noEmit
-
-npm test                  # All Jest tests
-npm run test:unit         # Unit tests (src/services)
-npm run test:integration  # Integration tests (src/components)
-npm run test:coverage
-npm run test:watch
-npm run test:quick        # Unit + integration, no E2E
+npm run dev        # Vite dev server (port 5173, /api proxied to backend)
+npm run build      # Production build → dist/
+npm run preview    # Preview the production build locally
+npx tsc --noEmit   # TypeScript typecheck
 ```
 
-There are no automated tests for the Python backend. Ad-hoc scripts exist in `scripts/` for manual verification.
+There are no automated tests yet for the frontend, nor for the Python backend. Ad-hoc scripts exist in `scripts/` for manual verification.
 
 ## API v3 Architecture (`src/api/v3/`)
 
@@ -145,40 +139,41 @@ cp src/Basededatos src/Basededatos_backup
 sqlite3 src/Basededatos ".read migrations/NNN_script.sql"
 ```
 
-## Mobile App Structure (`omega-medicina-app/`)
+## Frontend Structure (`frontend/`)
 
-- `app/` — Expo Router file-based routing; role-based groups: `(admin)`, `(auth)`, `(doctor)`, `(patient)`, `(public)`
-- `src/services/` — API client layer (calls `/api/v3/`)
-- `src/components/` — Reusable React Native components
-- `src/contexts/` — React contexts (auth, etc.)
-- `src/hooks/` — Custom hooks
-- `src/models/` — TypeScript types/interfaces
-- `src/core/mock-data/` — Faker.js test data generators
+Vite + React 19 + TypeScript. State-based routing (no router lib yet — single `screen` state in `App.tsx`).
 
-Tech stack: TypeScript, Expo Router, React Query (`@tanstack/react-query`), Zod, React Hook Form.
+- `src/components/` — Reusable UI: `Sidebar`, `Topbar`, `Icon`, `atoms.tsx` (KPI, Avatar, Chip, Progress)
+- `src/screens/` — Page-level components (`Login`, `PatientHome`, `Placeholder`)
+- `src/services/` — API layer: `apiClient.ts` (fetch wrapper + token store), `authService.ts`
+- `src/types/` — TypeScript types (`api.ts` with `Role`, `AuthUser`, `ApiResponse<T>`)
+- `src/styles/` — `desktop.css` (design system from Claude Design mockups), `responsive.css` (tablet + mobile breakpoints)
+- `_design-reference/` — Original Claude Design mockup HTML/JSX/CSS files (NOT imported by build, reference only)
+- `public/assets/` — Logos and static images
 
 ### API client pattern
 
-All HTTP calls go through `src/services/api/apiClient.ts` (exported singleton `apiClient`). Token is stored in SecureStore (iOS/Android) or AsyncStorage (web). Domain services wrap the client:
+All HTTP calls go through `src/services/apiClient.ts`. Token stored in `localStorage` under key `omd.token`. Domain services wrap the client:
 
 ```typescript
-// src/services/api/someService.ts
-import { apiClient } from './apiClient'
-import { ENDPOINTS } from './config'
+// src/services/someService.ts
+import { api } from './apiClient'
 
 export const someService = {
-  async getResource(id: string) {
-    return apiClient.get<ResourceType>(ENDPOINTS.RESOURCE, { id })
-  },
-  async createResource(payload: CreatePayload) {
-    return apiClient.post<ResourceType>(ENDPOINTS.CREATE_RESOURCE, payload)
-  }
+  getResource: (id: string) => api.get<ResourceType>(`/resource/${id}`),
+  createResource: (payload: Payload) => api.post<ResourceType>('/resource', payload),
 }
 ```
 
-API base URL: `http://localhost:8000/api/v3` in dev (`__DEV__ === true`), `https://api.omegamedicina.com/api/v3` in production.
+API base URL:
+- **Dev:** empty string — Vite proxies `/api/*` to `http://localhost:8000` (configured in `vite.config.ts`)
+- **Prod:** `VITE_API_URL` env var (empty string by default → same-origin). PA deploy is at `https://megamedicina.pythonanywhere.com` and serves the built frontend itself, so no override is needed there.
 
-All endpoints are mapped in `src/services/api/config.ts` (`ENDPOINTS` object).
+All API responses follow the v3 envelope (`{ success, data, meta }` or `{ success: false, error, meta }`); the client unwraps `data` on success and throws `ApiError` on failure.
+
+### Future: Capacitor
+
+The frontend is structured to wrap with Capacitor (`npx cap init`, `npx cap add android`, `npx cap add ios`) for native Android/iOS apps that share the same codebase as the web build.
 
 ## Migration Notes
 

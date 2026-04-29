@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Boceto Landscape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { padding: 40px 20px; background:
+    radial-gradient(1400px 900px at 10% 0%, rgba(226,62,74,0.06), transparent 60%),
+    radial-gradient(1000px 800px at 100% 100%, rgba(79,184,168,0.04), transparent 60%),
+    var(--bg-0);
+  }
+  .top-bar { max-width: 1700px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .top-bar .brand { display: flex; align-items: center; gap: 12px; }
+  .top-bar .brand img { width: 32px; height: 26px; object-fit: contain; }
+  .top-bar h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .top-bar h1 em { font-family: var(--font-serif); color: var(--omega); font-size: 24px; }
+  .top-bar .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .sketch-pill { padding: 4px 10px; background: rgba(226,62,74,0.12); color: var(--omega); border-radius: 100px; font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; margin-left: 8px; }
+
+  .mode-switch { display: flex; gap: 2px; background: var(--bg-1); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+  .mode-switch a { padding: 7px 14px; font-size: 12px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: var(--font-sans); font-weight: 500; }
+  .mode-switch a.active { background: var(--omega-soft); color: var(--omega); }
+  .mode-switch a:hover:not(.active) { color: var(--text-1); }
+
+  .land-grid { max-width: 1700px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(760px, 1fr)); gap: 40px; }
+
+  .phone-l {
+    width: 760px; height: 374px;
+    border-radius: 54px; overflow: hidden; position: relative; background: #0B0A0C;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 12px #1a181b, 0 0 0 13px #0b0a0c;
+    margin: 0 auto;
+  }
+  .phone-l .island { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 34px; height: 120px; border-radius: 24px; background: #000; z-index: 100; }
+  .phone-l .stat { position: absolute; left: 0; top: 0; bottom: 0; width: 50px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 28px 0; z-index: 50; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: #F4F1F3; }
+  .phone-l .stat .time { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .phone-l .home-i { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 5px; height: 134px; background: rgba(255,255,255,0.5); border-radius: 100px; z-index: 100; }
+  .phone-l .screen-l { position: absolute; left: 50px; top: 0; right: 20px; bottom: 0; background: var(--bg-0); overflow-y: auto; }
+
+  .caption { text-align: center; margin-top: 16px; }
+  .caption .l { font-size: 13px; font-weight: 600; color: var(--text-1); }
+  .caption .s { font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: var(--font-mono); }
+
+  section.group { max-width: 1700px; margin: 0 auto 36px; }
+  section.group > h2 { font-size: 18px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+  section.group > h2::before { content: ''; display: inline-block; width: 3px; height: 18px; background: var(--omega); border-radius: 2px; }
+  section.group > h2 em { font-family: var(--font-serif); font-style: italic; }
+
+  /* Landscape variants of each screen */
+  .l-pad { padding: 28px 36px; min-height: 100%; display: flex; flex-direction: column; }
+  .l-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch; }
+  .l-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="brand">
+    <img src="assets/logo-white.png" alt="Omega"/>
+    <div>
+      <h1><em>Omega</em> Medicina <span class="sketch-pill">● boceto</span></h1>
+      <div class="sub">Boceto · home, login, crear usuario y selector de rol — landscape</div>
+    </div>
+  </div>
+  <div class="mode-switch">
+    <a href="Omega Medicina Boceto.html">Móvil</a>
+    <a href="Omega Medicina Boceto Landscape.html" class="active">Landscape</a>
+    <a href="Omega Medicina Boceto Desktop.html">Escritorio</a>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+const ROLES_L = [
+  { id: 'patient', label: 'Paciente', sub: 'Accede a tus planes y citas', icon: 'user', c: '#E23E4A' },
+  { id: 'nutritionist', label: 'Nutricionista', sub: 'Gestiona planes alimentarios', icon: 'nutrition', c: '#E8A93A' },
+  { id: 'trainer', label: 'Entrenador', sub: 'Crea rutinas y seguimientos', icon: 'training', c: '#F16B57' },
+  { id: 'doctor', label: 'Médico', sub: 'Consultas, labs y expedientes', icon: 'medicine', c: '#4FB8A8' },
+  { id: 'admin', label: 'Administrador', sub: 'Gestión del sistema', icon: 'settings', c: '#C9C3BA' },
+];
+
+function PhoneL({ children, label, sub }) {
+  return (
+    <div>
+      <div className="phone-l">
+        <div className="island"/>
+        <div className="stat">
+          <span className="time">9:41</span>
+          <svg width="18" height="10" viewBox="0 0 18 10" style={{ transform: 'rotate(90deg)' }}>
+            <rect x="0" y="6" width="3" height="4" rx="0.5" fill="#F4F1F3"/>
+            <rect x="5" y="4" width="3" height="6" rx="0.5" fill="#F4F1F3"/>
+            <rect x="10" y="2" width="3" height="8" rx="0.5" fill="#F4F1F3"/>
+            <rect x="15" y="0" width="3" height="10" rx="0.5" fill="#F4F1F3"/>
+          </svg>
+        </div>
+        <div className="screen-l">{children}</div>
+        <div className="home-i"/>
+      </div>
+      <div className="caption">
+        <div className="l">{label}</div>
+        <div className="s">{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── HOME landscape: hero a la izquierda, features+CTAs a la derecha
+function LandHome() {
+  return (
+    <div className="l-pad" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(500px 280px at 25% 30%, rgba(226,62,74,0.18), transparent 70%)', pointerEvents: 'none' }}/>
+      <div className="l-cols" style={{ position: 'relative', flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <img src="assets/logo-white.png" alt="" style={{ width: 22, height: 18 }}/>
+            <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.04em', lineHeight: 0.98 }}>
+              <em style={{ fontFamily: 'var(--font-serif)', fontSize: 40 }}>Tu salud</em>,<br/>
+              integrada.
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 12, lineHeight: 1.5, maxWidth: 280 }}>
+              Entrenamiento, nutrición y medicina en un solo ecosistema, conectado con tus profesionales.
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>v1.0 · Boceto exploratorio</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
+          {[
+            { i: 'training', l: 'Plan de entrenamiento personalizado', c: '#E23E4A' },
+            { i: 'nutrition', l: 'Seguimiento nutricional diario', c: '#E8A93A' },
+            { i: 'medicine', l: 'Consultas con tu equipo médico', c: '#4FB8A8' },
+          ].map((it, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: it.c + '22', color: it.c, display: 'grid', placeItems: 'center' }}>
+                <Icon name={it.i} size={14}/>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-1)', flex: 1 }}>{it.l}</div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn btn-primary" style={{ flex: 1, padding: '11px 14px', fontSize: 12 }}>Crear cuenta</button>
+            <button className="btn btn-ghost" style={{ flex: 1, padding: '11px 14px', fontSize: 12 }}>Ya tengo cuenta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LOGIN landscape: branding izquierda, form derecha
+function LandLogin() {
+  return (
+    <div className="l-pad">
+      <div className="l-cols" style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <img src="assets/logo-white.png" alt="" style={{ width: 48, height: 38, objectFit: 'contain', marginBottom: 14 }}/>
+          <div style={{ fontSize: 30, fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            <em style={{ fontFamily: 'var(--font-serif)' }}>Bienvenido</em><br/>de vuelta
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10, maxWidth: 240 }}>
+            Ingresá a tu cuenta de Omega Medicina y continuá donde dejaste.
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+          <div>
+            <label className="mono">Email</label>
+            <input type="email" placeholder="tu@email.com" style={{ width: '100%', marginTop: 4, padding: '11px 14px', borderRadius: 10, background: 'var(--bg-1)', border: '1px solid var(--line)', color: 'var(--text-1)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="mono">Contraseña</label>
+              <span style={{ fontSize: 10, color: 'var(--omega)' }}>¿Olvidaste?</span>
+            </div>
+            <input type="password" placeholder="••••••••" style={{ width: '100%', marginTop: 4, padding: '11px 14px', borderRadius: 10, background: 'var(--bg-1)', border: '1px solid var(--line)', color: 'var(--text-1)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+          </div>
+          <button className="btn btn-primary" style={{ padding: '11px 14px', fontSize: 13, marginTop: 4 }}>Ingresar</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }}/>
+            <span className="mono">o continuá</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--line)' }}/>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <button className="btn btn-ghost" style={{ padding: '9px', fontSize: 11 }}>Google</button>
+            <button className="btn btn-ghost" style={{ padding: '9px', fontSize: 11 }}>Apple</button>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
+            ¿Sin cuenta? <span style={{ color: 'var(--omega)', fontWeight: 600 }}>Crear perfil</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CREATE landscape: pasos en columnas
+function LandCreate() {
+  return (
+    <div className="l-pad">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <Icon name="chevron-left" size={20} color="var(--text-1)"/>
+        <div style={{ flex: 1 }}>
+          <div className="mono">Paso 1 / 2 · Crear perfil</div>
+          <div className="bar" style={{ marginTop: 4 }}><span style={{ width: '50%', background: 'var(--omega)' }}/></div>
+        </div>
+      </div>
+      <div className="l-cols" style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            <em style={{ fontFamily: 'var(--font-serif)' }}>Creá</em> tu cuenta
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 8, maxWidth: 240 }}>Información básica para empezar. Datos personales en el siguiente paso.</div>
+          <div style={{ marginTop: 16, fontSize: 10, color: 'var(--text-3)', lineHeight: 1.6, fontFamily: 'var(--font-mono)' }}>
+            paso 1 · cuenta<br/>
+            paso 2 · datos personales<br/>
+            → selector de rol
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+          {[
+            { l: 'Nombre completo', p: 'Tu nombre' },
+            { l: 'Email', p: 'tu@email.com' },
+            { l: 'Contraseña', p: 'Mínimo 8 caracteres' },
+          ].map((f, i) => (
+            <div key={i}>
+              <label className="mono">{f.l}</label>
+              <input placeholder={f.p} style={{ width: '100%', marginTop: 4, padding: '11px 14px', borderRadius: 10, background: 'var(--bg-1)', border: '1px solid var(--line)', color: 'var(--text-1)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            </div>
+          ))}
+          <button className="btn btn-primary" style={{ padding: '11px 14px', fontSize: 13, marginTop: 6 }}>Continuar <Icon name="chevron-right" size={14}/></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ROLE SELECTOR landscape: hero izquierda, grid 5 cards derecha
+function LandRole() {
+  const [sel, setSel] = useState('patient');
+  return (
+    <div className="l-pad">
+      <div className="l-cols" style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <img src="assets/logo-white.png" alt="" style={{ width: 20, height: 16 }}/>
+            <div className="mono" style={{ color: 'var(--omega)' }}>Omega Medicina</div>
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            <em style={{ fontFamily: 'var(--font-serif)' }}>Elegí</em> tu<br/>experiencia
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10, maxWidth: 240, lineHeight: 1.5 }}>
+            Cada rol muestra una interfaz diferente. Podés cambiar luego desde tu perfil.
+          </div>
+          <button className="btn btn-primary" style={{ padding: '11px 14px', fontSize: 12, marginTop: 16, alignSelf: 'flex-start' }}>
+            Continuar <Icon name="chevron-right" size={14}/>
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center' }}>
+          {ROLES_L.map(r => (
+            <button key={r.id} onClick={() => setSel(r.id)} style={{
+              display: 'flex', gap: 10, padding: '10px 12px', borderRadius: 10, alignItems: 'center',
+              background: sel === r.id ? r.c + '1a' : 'var(--bg-1)',
+              border: `1.5px solid ${sel === r.id ? r.c : 'var(--line)'}`,
+              cursor: 'pointer', color: 'var(--text-1)', textAlign: 'left', fontFamily: 'inherit',
+            }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: r.c + '22', color: r.c, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name={r.icon} size={15}/>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>{r.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-2)', marginTop: 1 }}>{r.sub}</div>
+              </div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', border: `1.5px solid ${sel === r.id ? r.c : 'var(--text-3)'}`, background: sel === r.id ? r.c : 'transparent', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                {sel === r.id && <Icon name="check" size={10} color="#0B0A0C"/>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <section className="group">
+      <h2><em>Boceto</em> · acceso & onboarding en landscape</h2>
+      <div className="land-grid">
+        <PhoneL label="Home · bienvenida" sub="Landing pre-login con CTAs"><LandHome/></PhoneL>
+        <PhoneL label="Login" sub="Branding + formulario en dos columnas"><LandLogin/></PhoneL>
+        <PhoneL label="Crear usuario" sub="Paso 1 — datos de cuenta"><LandCreate/></PhoneL>
+        <PhoneL label="Selector de rol" sub="5 perfiles · uno seleccionado"><LandRole/></PhoneL>
+      </div>
+    </section>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

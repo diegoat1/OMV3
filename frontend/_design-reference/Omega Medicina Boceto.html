@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Boceto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .mode-switch-float { position: fixed; top: 20px; right: 24px; z-index: 9999; display: flex; gap: 2px; background: rgba(19,18,21,0.9); padding: 4px; border-radius: 10px; border: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .mode-switch-float a { padding: 6px 12px; font-size: 11px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: var(--font-sans); font-weight: 500; }
+  .mode-switch-float a.active { background: rgba(226,62,74,0.15); color: #F05262; }
+  .mode-switch-float a:hover:not(.active) { color: var(--text-1); }
+  .sketch-tag { position: fixed; top: 20px; left: 24px; z-index: 9999; padding: 6px 12px; font-size: 10px; color: var(--text-2); background: rgba(19,18,21,0.9); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(8px); font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .sketch-tag span { color: var(--omega); }
+</style>
+</head>
+<body>
+<div class="sketch-tag"><span>●</span> Boceto · Auth & Home</div>
+<div class="mode-switch-float">
+  <a href="Omega Medicina Boceto.html" class="active">Móvil</a>
+  <a href="Omega Medicina Boceto Landscape.html">Landscape</a>
+  <a href="Omega Medicina Boceto Desktop.html">Escritorio</a>
+</div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="boceto-screens.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+function App() {
+  const [screen, setScreen] = useState('home');
+
+  const renderScreen = () => {
+    switch (screen) {
+      case 'home': return <BocetoHome setScreen={setScreen}/>;
+      case 'login': return <BocetoLogin setScreen={setScreen}/>;
+      case 'create-profile': return <BocetoCreate setScreen={setScreen}/>;
+      case 'role-select': return <BocetoRole setScreen={setScreen}/>;
+      case 'done': return <BocetoDone setScreen={setScreen}/>;
+      default: return <BocetoHome setScreen={setScreen}/>;
+    }
+  };
+
+  const screenList = [
+    { id: 'home', label: 'Home (welcome)' },
+    { id: 'login', label: 'Login' },
+    { id: 'create-profile', label: 'Crear usuario' },
+    { id: 'role-select', label: 'Selector de rol' },
+    { id: 'done', label: '· Confirmación' },
+  ];
+
+  return (
+    <div className="app-stage">
+      <div className="chrome" style={{ alignSelf: 'flex-start', marginTop: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <img src="assets/logo-white.png" alt="Omega" style={{ width: 36, height: 28, objectFit: 'contain' }}/>
+          <div className="mono">Boceto · Auth</div>
+        </div>
+        <h1><em>Onboarding</em><br/>+ acceso.</h1>
+        <p>Boceto independiente del flujo de entrada. Solo cuatro pantallas: home de bienvenida, login, alta de cuenta y selector de rol. El prototipo principal queda intacto.</p>
+
+        <div className="nav-section">Pantallas</div>
+        <div className="nav-grid">
+          {screenList.map((s, i) => (
+            <button key={s.id} className={screen === s.id ? 'active' : ''} onClick={() => setScreen(s.id)}>
+              <span className="dot"/>{String(i + 1).padStart(2, '0')} · {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="nav-section">Flujo</div>
+        <div style={{ fontSize: 11, color: 'var(--text-2)', lineHeight: 1.7, fontFamily: 'var(--font-mono)' }}>
+          home<br/>
+          → login &nbsp;|&nbsp; → crear<br/>
+          → role-select<br/>
+          → ✓ done
+        </div>
+
+        <div className="nav-section">Volver</div>
+        <a href="Omega Medicina.html" style={{ display: 'block', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text-2)', textDecoration: 'none', fontSize: 11 }}>← Prototipo principal</a>
+      </div>
+
+      <div style={{
+        width: 390, height: 844, borderRadius: 52, overflow: 'hidden',
+        position: 'relative', background: '#0B0A0C',
+        boxShadow: '0 50px 120px rgba(0,0,0,0.7), 0 0 0 12px #1a181b, 0 0 0 13px #0b0a0c',
+      }}>
+        <div style={{ position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)', width: 120, height: 34, borderRadius: 24, background: '#000', zIndex: 100 }}/>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px 0', zIndex: 50, fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: '#F4F1F3' }}>
+          <span>9:41</span>
+          <span style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <svg width="18" height="10" viewBox="0 0 18 10"><rect x="0" y="6" width="3" height="4" rx="0.5" fill="#F4F1F3"/><rect x="5" y="4" width="3" height="6" rx="0.5" fill="#F4F1F3"/><rect x="10" y="2" width="3" height="8" rx="0.5" fill="#F4F1F3"/><rect x="15" y="0" width="3" height="10" rx="0.5" fill="#F4F1F3"/></svg>
+            <svg width="24" height="12" viewBox="0 0 24 12"><rect x="0" y="0" width="22" height="12" rx="3" stroke="#F4F1F3" strokeOpacity="0.4" fill="none"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="#F4F1F3"/></svg>
+          </span>
+        </div>
+
+        <div className="screen" data-screen-label={screen}>
+          <div className="phone-content" style={{ padding: 0 }}>
+            {renderScreen()}
+          </div>
+        </div>
+
+        <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', width: 134, height: 5, background: 'rgba(255,255,255,0.5)', borderRadius: 100, zIndex: 100 }}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

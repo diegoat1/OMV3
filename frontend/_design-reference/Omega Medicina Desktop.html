@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Omega Medicina — Escritorio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="desktop.css">
+<style>
+  .mode-switch { position: fixed; bottom: 20px; right: 24px; z-index: 9999; display: flex; gap: 2px; background: rgba(19,18,21,0.9); padding: 4px; border-radius: 10px; border: 1px solid var(--line); backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .mode-switch a { padding: 6px 12px; font-size: 11px; color: var(--text-2); text-decoration: none; border-radius: 7px; font-family: 'Geist', sans-serif; font-weight: 500; }
+  .mode-switch a.active { background: rgba(226,62,74,0.15); color: #F05262; }
+  .mode-switch a:hover:not(.active) { color: var(--text-1); }
+</style>
+</head>
+<body>
+<div class="mode-switch">
+  <a href="Omega Medicina.html">Móvil</a>
+  <a href="Omega Medicina Landscape.html">Landscape</a>
+  <a href="Omega Medicina Desktop.html" class="active">Escritorio</a>
+</div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="desktop-shell.jsx"></script>
+<script type="text/babel" src="desktop-patient.jsx"></script>
+<script type="text/babel" src="desktop-other.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function DesktopApp() {
+  const [role, setRole] = useState(() => localStorage.getItem('omd.role') || 'doctor');
+  const [screen, setScreen] = useState(() => localStorage.getItem('omd.screen') || 'home');
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => { localStorage.setItem('omd.role', role); }, [role]);
+  useEffect(() => { localStorage.setItem('omd.screen', screen); }, [screen]);
+
+  const isAuth = ['login', 'role-select', 'create-profile'].includes(screen);
+
+  // Screen + breadcrumb resolver per role
+  const screensByRole = {
+    patient: {
+      home: { c: <PatientHome/>, crumbs: ['Omega Medicina', 'Inicio'] },
+      'p-home': { c: <PatientHome/>, crumbs: ['Omega Medicina', 'Inicio'] },
+      'p-training': { c: <PatientTraining/>, crumbs: ['Omega Medicina', 'Entrenamiento'] },
+      'p-nutrition': { c: <PatientNutrition/>, crumbs: ['Omega Medicina', 'Nutrición'] },
+      'p-progress': { c: <PatientProgress/>, crumbs: ['Omega Medicina', 'Progreso'] },
+      'p-medicine': { c: <PatientMedicine/>, crumbs: ['Omega Medicina', 'Medicina'] },
+      'p-appointments': { c: <PatientAppointments/>, crumbs: ['Omega Medicina', 'Consultas'] },
+    },
+    doctor: {
+      home: { c: <DoctorHome/>, crumbs: ['Omega Medicina', 'Panel'] },
+      'd-home': { c: <DoctorHome/>, crumbs: ['Omega Medicina', 'Panel'] },
+      'd-patients': { c: <DoctorPatients/>, crumbs: ['Omega Medicina', 'Pacientes'] },
+      'd-patient-detail': { c: <DoctorPatientDetail/>, crumbs: ['Omega Medicina', 'Pacientes', 'Juan Martínez'] },
+      'd-agenda': { c: <PatientAppointments/>, crumbs: ['Omega Medicina', 'Agenda'] },
+      'd-files': { c: <DoctorPatientDetail/>, crumbs: ['Omega Medicina', 'Archivos'] },
+      'd-templates': { c: <DoctorPatientDetail/>, crumbs: ['Omega Medicina', 'Plantillas'] },
+    },
+    nutritionist: {
+      home: { c: <NutriHome/>, crumbs: ['Omega Medicina', 'Panel nutrición'] },
+      'd-home': { c: <NutriHome/>, crumbs: ['Omega Medicina', 'Panel'] },
+      'd-patients': { c: <NutriPatients/>, crumbs: ['Omega Medicina', 'Pacientes'] },
+      'd-patient-detail': { c: <DoctorPatientDetail/>, crumbs: ['Omega Medicina', 'Pacientes'] },
+      'd-agenda': { c: <PatientAppointments/>, crumbs: ['Omega Medicina', 'Agenda'] },
+      'd-files': { c: <NutriHome/>, crumbs: ['Omega Medicina', 'Plan builder'] },
+      'd-templates': { c: <NutriHome/>, crumbs: ['Omega Medicina', 'Recetas'] },
+    },
+    trainer: {
+      home: { c: <TrainerHome/>, crumbs: ['Omega Medicina', 'Panel entreno'] },
+      'd-home': { c: <TrainerHome/>, crumbs: ['Omega Medicina', 'Panel'] },
+      'd-patients': { c: <TrainerAthletes/>, crumbs: ['Omega Medicina', 'Atletas'] },
+      'd-patient-detail': { c: <DoctorPatientDetail/>, crumbs: ['Omega Medicina', 'Atletas'] },
+      'd-agenda': { c: <PatientAppointments/>, crumbs: ['Omega Medicina', 'Agenda'] },
+      'd-files': { c: <TrainerHome/>, crumbs: ['Omega Medicina', 'Rutinas'] },
+      'd-templates': { c: <TrainerHome/>, crumbs: ['Omega Medicina', 'Ejercicios'] },
+    },
+    admin: {
+      home: { c: <AdminHome/>, crumbs: ['Omega Medicina', 'Sistema'] },
+      'a-home': { c: <AdminHome/>, crumbs: ['Omega Medicina', 'Sistema'] },
+      'a-users': { c: <AdminUsers/>, crumbs: ['Omega Medicina', 'Usuarios'] },
+      'a-audit': { c: <AdminAudit/>, crumbs: ['Omega Medicina', 'Auditoría'] },
+      'a-db': { c: <AdminDB/>, crumbs: ['Omega Medicina', 'Base de datos'] },
+    },
+  };
+
+  const pool = screensByRole[role] || screensByRole.doctor;
+  const current = pool[screen] || pool.home || Object.values(pool)[0];
+
+  if (isAuth) {
+    if (screen === 'login') return <AuthLogin setScreen={setScreen}/>;
+    if (screen === 'role-select') return <AuthRoleSelect setRole={setRole} setScreen={setScreen}/>;
+    if (screen === 'create-profile') return <AuthCreateProfile setScreen={setScreen}/>;
+  }
+
+  return (
+    <div className={'app' + (collapsed ? ' collapsed' : '')}>
+      <Sidebar role={role} screen={screen} setScreen={setScreen} collapsed={collapsed}/>
+      <Topbar
+        crumbs={current.crumbs}
+        role={role}
+        setRole={(r) => { setRole(r); setScreen('home'); }}
+        toggleCollapsed={() => setCollapsed(!collapsed)}
+        onLogout={() => setScreen('login')}
+      />
+      <main className="main">{current.c}</main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<DesktopApp/>);
+</script>
+</body>
+</html>

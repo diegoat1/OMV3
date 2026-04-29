@@ -1,0 +1,54 @@
+/* Responsive overrides for the desktop shell.
+   Desktop styles live in desktop.css. These rules collapse the layout
+   on tablets and phones (portrait + landscape). */
+
+/* Tablet — sidebar narrows automatically */
+@media (max-width: 1024px) {
+  .app { grid-template-columns: 64px 1fr; }
+  .sidebar-head .wordmark { display: none; }
+  .nav-section-title { display: none; }
+  .nav button span { display: none; }
+  .nav button { justify-content: center; padding: 10px 0; }
+  .sidebar-foot .info, .sidebar-foot svg { display: none; }
+  .sidebar-foot { justify-content: center; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Phone — sidebar becomes a bottom tab bar */
+@media (max-width: 640px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr 64px;
+    grid-template-areas: "topbar" "main" "sidebar";
+  }
+  .sidebar {
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+    padding: 0 8px;
+  }
+  .sidebar-head, .sidebar-foot, .nav-section-title { display: none; }
+  .nav { flex-direction: row; padding: 0; gap: 0; flex: 1; justify-content: space-around; }
+  .nav button { padding: 10px 12px; flex-shrink: 0; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar .crumb { display: none; }
+  .topbar .search { max-width: none; }
+  .topbar .search input { font-size: 13px; }
+  .main { padding: 16px; }
+  .page-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .page-head .actions { flex-wrap: wrap; }
+  .page-head h1 { font-size: 22px; }
+  .page-head h1 em { font-size: 24px; }
+  .grid-4, .grid-3, .grid-2, .grid-2-equal { grid-template-columns: 1fr; }
+  .card { padding: 14px; }
+}
+
+/* Landscape phones — keep sidebar at bottom but compact main */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .app { grid-template-rows: 48px 1fr 56px; }
+  .topbar { height: 48px; }
+  .main { padding: 12px 16px; }
+}
