@@ -4,12 +4,12 @@ WSGI entrypoint for PythonAnywhere.
 Serves the API at /api/v3/* and (if frontend/dist/index.html is present) the
 built React SPA at the root with a path-fallback for client-side routes.
 
-Usage in PythonAnywhere WSGI config (account: megamedicina):
+Usage in PythonAnywhere WSGI config (account: omegamedicina):
     import sys, os
-    path = '/home/megamedicina/OMV3/src'
+    path = '/home/omegamedicina/OMV3/src'
     if path not in sys.path:
         sys.path.insert(0, path)
-    os.environ['DATABASE_DIR'] = '/home/megamedicina/omv3-data'
+    os.environ['DATABASE_DIR'] = '/home/omegamedicina/omv3-data'
     os.environ['JWT_SECRET'] = 'your_secret_here'
     from wsgi import app as application
 """

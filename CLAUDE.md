@@ -167,7 +167,7 @@ export const someService = {
 
 API base URL:
 - **Dev:** empty string — Vite proxies `/api/*` to `http://localhost:8000` (configured in `vite.config.ts`)
-- **Prod:** `VITE_API_URL` env var (empty string by default → same-origin). PA deploy is at `https://megamedicina.pythonanywhere.com` and serves the built frontend itself, so no override is needed there.
+- **Prod:** `VITE_API_URL` env var (empty string by default → same-origin). PA deploy is at `https://omegamedicina.pythonanywhere.com` and serves the built frontend itself, so no override is needed there.
 
 All API responses follow the v3 envelope (`{ success, data, meta }` or `{ success: false, error, meta }`); the client unwraps `data` on success and throws `ApiError` on failure.
 
