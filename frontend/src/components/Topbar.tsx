@@ -43,6 +43,7 @@ export function Topbar({ crumbs, role, setRole, toggleCollapsed, onLogout }: Top
 
 function RoleSwitcher({ role, setRole }: { role: Role; setRole: (r: Role) => void }) {
   const [open, setOpen] = useState(false)
+  const safeRole: Role = role in RoleColors ? role : 'patient'
   return (
     <div style={{ position: 'relative' }}>
       <button
@@ -52,11 +53,11 @@ function RoleSwitcher({ role, setRole }: { role: Role; setRole: (r: Role) => voi
       >
         <span
           className="av"
-          style={{ width: 20, height: 20, fontSize: 10, background: RoleColors[role].bg }}
+          style={{ width: 20, height: 20, fontSize: 10, background: RoleColors[safeRole].bg }}
         >
-          {RoleLabels[role][0]}
+          {RoleLabels[safeRole][0]}
         </span>
-        <span style={{ fontSize: 12 }}>{RoleLabels[role]}</span>
+        <span style={{ fontSize: 12 }}>{RoleLabels[safeRole]}</span>
         <Icon name="chevD" size={12} />
       </button>
       {open && (

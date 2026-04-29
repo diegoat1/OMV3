@@ -13,8 +13,12 @@ export const tokenStore = {
 }
 
 class ApiError extends Error {
-  constructor(public code: string, message: string, public status: number) {
+  code: string
+  status: number
+  constructor(code: string, message: string, status: number) {
     super(message)
+    this.code = code
+    this.status = status
   }
 }
 

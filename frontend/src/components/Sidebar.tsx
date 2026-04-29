@@ -74,7 +74,8 @@ const initialsFor: Record<Role, string> = {
 }
 
 export function Sidebar({ role, screen, setScreen, userName }: SidebarProps) {
-  const groups = NAV[role] ?? NAV.patient
+  const safeRole: Role = role in NAV ? role : 'patient'
+  const groups = (NAV as Record<string, NavGroup[]>)[safeRole]
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
@@ -99,12 +100,12 @@ export function Sidebar({ role, screen, setScreen, userName }: SidebarProps) {
         </div>
       ))}
       <div className="sidebar-foot" onClick={() => setScreen('settings')}>
-        <div className="avatar" style={{ background: RoleColors[role].bg }}>
-          {initialsFor[role]}
+        <div className="avatar" style={{ background: RoleColors[safeRole].bg }}>
+          {initialsFor[safeRole]}
         </div>
         <div className="info">
           <div className="n">{userName}</div>
-          <div className="r">{RoleLabels[role]}</div>
+          <div className="r">{RoleLabels[safeRole]}</div>
         </div>
         <Icon name="settings" size={14} />
       </div>
