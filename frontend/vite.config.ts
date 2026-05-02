@@ -7,9 +7,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://omegamedicina.pythonanywhere.com',
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: true,
       },
     },
   },

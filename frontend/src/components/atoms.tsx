@@ -45,13 +45,24 @@ interface AvatarProps {
   size?: number
 }
 
+// Returns "DT" for "Toffaletti, Diego Alejandro" or "Diego Toffaletti".
+// Falls back to a single initial when the name has only one word.
+export function initialsOf(name: string): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  if (trimmed.includes(',')) {
+    const [last, first] = trimmed.split(',').map((s) => s.trim())
+    const fi = first?.charAt(0) ?? ''
+    const li = last?.charAt(0) ?? ''
+    return (fi + li).toUpperCase()
+  }
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return (parts[0]?.charAt(0) ?? '').toUpperCase()
+}
+
 export function Avatar({ name, color, size = 30 }: AvatarProps) {
-  const initials = name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
+  const initials = initialsOf(name)
   return (
     <span
       className="av"

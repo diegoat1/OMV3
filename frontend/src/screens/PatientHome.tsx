@@ -1,73 +1,113 @@
 import { Icon } from '../components/Icon'
-import { Avatar, KPI, Progress } from '../components/atoms'
+import type { IconName } from '../components/Icon'
+import { Progress } from '../components/atoms'
 
-export function PatientHome({ userName }: { userName: string }) {
-  const firstName = (userName || '').split(' ')[0] || 'usuario'
+interface ModuleTile {
+  label: string
+  sub: string
+  icon: IconName
+  color: string
+}
+
+const MODULES: ModuleTile[] = [
+  { label: 'Entrenamiento', sub: 'Sin plan activo', icon: 'training', color: 'var(--omega)' },
+  { label: 'Nutrición', sub: 'Sin plan alimentario', icon: 'nutrition', color: 'var(--nutri)' },
+  { label: 'Medicina', sub: 'Sin médico vinculado', icon: 'medicine', color: 'var(--medic)' },
+  { label: 'Performance', sub: 'Clock semanal', icon: 'target', color: 'var(--analytic)' },
+]
+
+const HEALTH_STATS: { k: string; v: number; c: string }[] = [
+  { k: 'Sueño', v: 0, c: 'var(--analytic)' },
+  { k: 'Nutri', v: 0, c: 'var(--nutri)' },
+  { k: 'Entreno', v: 0, c: 'var(--omega)' },
+  { k: 'Ánimo', v: 0, c: 'var(--medic)' },
+]
+
+interface Props {
+  userName?: string
+  onCheckIn?: () => void
+}
+
+export function PatientHome({ onCheckIn }: Props = {}) {
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1><em>Hola,</em> {firstName}</h1>
-          <div className="sub">Tu salud en un vistazo</div>
+    <div className="patient-home">
+      {/* Health Index hero */}
+      <div className="card ph-health">
+        <div className="row-between">
+          <div className="mono">Health Index · hoy</div>
+          <Icon name="chevR" size={16} />
         </div>
-        <div className="actions">
-          <button className="btn btn-ghost"><Icon name="calendar" size={14} /> Agendar consulta</button>
-          <button className="btn btn-primary"><Icon name="plus" size={14} /> Check-in diario</button>
-        </div>
-      </div>
-
-      <div className="grid-4" style={{ marginBottom: 14 }}>
-        <KPI k="Adherencia" v="—" delta="Sin datos aún" mod="analytics" />
-        <KPI k="Peso" v="—" delta="Sin datos aún" mod="medicine" />
-        <KPI k="Sueño" v="—" delta="Sin datos aún" mod="medicine" />
-        <KPI k="Sesiones" v="—" delta="Esta semana" mod="training" />
-      </div>
-
-      <div className="grid-2" style={{ marginBottom: 14 }}>
-        <div className="card" data-mod="analytics">
-          <div className="card-head">
-            <h3>Progreso</h3>
-            <div className="mono">12 semanas</div>
+        <div className="ph-health-score">
+          <div className="ph-score-num">—</div>
+          <div className="ph-score-delta">
+            <Icon name="arrowUp" size={12} /> Sin datos
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
-            Tus mediciones aparecerán acá cuando tengas registros guardados.
-          </p>
         </div>
+        <div className="ph-stats">
+          {HEALTH_STATS.map((s) => (
+            <div key={s.k}>
+              <div className="mono ph-stat-k">{s.k}</div>
+              <div className="ph-stat-v" style={{ color: s.c }}>—</div>
+              <Progress value={s.v} color={s.c} />
+            </div>
+          ))}
+        </div>
+      </div>
 
+      {/* Modules quick-access */}
+      <div className="ph-section">
+        <div className="section-label">Módulos</div>
+        <div className="ph-modules">
+          {MODULES.map((m) => (
+            <button key={m.label} className="ph-module-card" type="button">
+              <div className="ph-module-ic" style={{ background: `${m.color}22`, color: m.color }}>
+                <Icon name={m.icon} size={18} />
+              </div>
+              <div className="ph-module-label">{m.label}</div>
+              <div className="ph-module-sub">{m.sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Today agenda — empty state with check-in CTA */}
+      <div className="ph-section">
+        <div className="row-between" style={{ marginBottom: 10 }}>
+          <div className="section-label">Hoy</div>
+          <div className="mono" style={{ color: 'var(--text-3)' }}>Sin eventos</div>
+        </div>
         <div className="card">
-          <div className="card-head">
-            <h3>Hoy</h3>
-            <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }}>Ver semana</button>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Sin actividades programadas.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+            Sin actividades programadas para hoy.
+          </p>
+          {onCheckIn && (
+            <button
+              type="button"
+              className="ph-cta"
+              onClick={onCheckIn}
+            >
+              <Icon name="heart" size={14} /> Hacer check-in diario
+              <Icon name="chevR" size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid-3">
-        <div className="card" data-mod="training">
-          <div className="card-head"><h3>Entrenamiento</h3><span className="mono">—</span></div>
-          <div style={{ fontSize: 26, fontWeight: 500, letterSpacing: '-0.02em' }}>Sin plan activo</div>
-          <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 14 }}>
-            Tu plan de entrenamiento aparecerá acá
-          </div>
-          <Progress value={0} color="var(--omega)" />
-        </div>
-        <div className="card" data-mod="nutrition">
-          <div className="card-head"><h3>Nutrición</h3><span className="mono">Hoy</span></div>
-          <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Sin plan alimentario.</p>
-        </div>
-        <div className="card" data-mod="medicine">
-          <div className="card-head"><h3>Próxima consulta</h3><span className="mono">—</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <Avatar name="Sin asignar" color="linear-gradient(135deg, #4FB8A8, #1c5a52)" size={40} />
+      {/* Current phase — empty state */}
+      <div className="ph-section">
+        <div className="card">
+          <div className="row-between">
             <div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Sin asignar</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Sin médico vinculado</div>
+              <div className="mono" style={{ color: 'var(--text-2)' }}>Fase actual</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>Sin fase activa</div>
             </div>
           </div>
-          <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>Ver consultas</button>
+          <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 10, marginBottom: 10 }}>
+            Tu fase aparecerá acá cuando tu profesional la asigne.
+          </p>
+          <Progress value={0} color="var(--text-3)" />
         </div>
       </div>
-    </>
+    </div>
   )
 }

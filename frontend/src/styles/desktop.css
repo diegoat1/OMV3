@@ -82,6 +82,7 @@ button { font-family: inherit; }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-ghost { background: var(--bg-1); color: var(--text-1); border-color: var(--line); }
 .btn-ghost:hover { background: var(--bg-2); }
+.btn-full { width: 100%; justify-content: center; padding: 14px; font-size: 14px; font-weight: 600; }
 
 /* Cards */
 .card { background: var(--bg-1); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
@@ -163,6 +164,691 @@ button { font-family: inherit; }
 [data-mod="medicine"] { --mod: var(--medic); --mod-soft: var(--medic-soft); }
 [data-mod="analytics"] { --mod: var(--analytic); --mod-soft: var(--analytic-soft); }
 [data-mod="admin"] { --mod: var(--admin); --mod-soft: rgba(201,195,186,0.14); }
+
+/* Reusable utility classes from the mockup (_design-reference/) */
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.section-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.module-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--mod-soft, var(--bg-2)); color: var(--mod, var(--text-2)); border-radius: 100px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+.display { font-size: 40px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: var(--text-1); }
+.display em { font-family: var(--font-serif); font-style: italic; font-weight: 400; }
+.stat { background: var(--bg-1); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.stat .k { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.stat .v { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; margin-top: 4px; color: var(--text-1); }
+.stat .d { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.list-item { display: flex; align-items: center; gap: 12px; padding: 14px; border-top: 1px solid var(--line); }
+.list-item:first-child { border-top: 0; }
+.chip.accent { background: var(--mod-soft, rgba(255,255,255,0.06)); color: var(--mod, var(--text-2)); border-color: rgba(255,255,255,0.08); }
+
+/* Patient home — matches _design-reference/screens-patient.jsx PatientHome */
+.patient-home { display: flex; flex-direction: column; gap: 20px; }
+.ph-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.ph-header-text { min-width: 0; flex: 1; }
+.ph-avatar { background: transparent; border: 0; padding: 0; cursor: pointer; flex-shrink: 0; }
+.ph-avatar:active { transform: scale(0.96); }
+.ph-avatar { transition: transform 0.1s; }
+.ph-date { color: var(--text-3); }
+.ph-hello { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; margin-top: 4px; color: var(--text-1); }
+.ph-hello em { font-family: var(--font-serif); font-style: italic; font-weight: 400; }
+.ph-section { display: flex; flex-direction: column; gap: 10px; }
+.ph-health { background: linear-gradient(160deg, rgba(226,62,74,0.14), rgba(79,184,168,0.08)), var(--bg-1); padding: 18px; }
+.ph-health .mono { color: var(--text-2); }
+.ph-health-score { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; }
+.ph-score-num { font-size: 54px; font-weight: 500; letter-spacing: -0.04em; line-height: 1; color: var(--text-1); }
+.ph-score-delta { color: var(--ok); font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.ph-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.ph-stat-k { color: var(--text-3); }
+.ph-stat-v { font-size: 18px; font-weight: 500; margin-top: 2px; }
+.ph-stats .bar { margin-top: 4px; }
+.ph-modules { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ph-module-card { background: var(--bg-1); border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: left; cursor: pointer; color: var(--text-1); font-family: var(--font-sans); transition: background 0.12s, transform 0.1s; }
+.ph-module-card:hover { background: var(--bg-2); }
+.ph-module-ic { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.ph-module-label { font-size: 13px; font-weight: 600; margin-top: 10px; }
+.ph-module-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+/* On wider screens give the modules grid more breathing room */
+@media (min-width: 900px) {
+  .ph-modules { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Admin home — matches _design-reference/screens-doctor.jsx AdminHome */
+.admin-home { display: flex; flex-direction: column; gap: 22px; }
+.ah-title-block { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ah-title { font-size: 28px; }
+.ah-subtitle { font-size: 12px; color: var(--text-2); margin-top: -4px; }
+.ah-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ah-section { display: flex; flex-direction: column; gap: 10px; }
+.ah-system-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ah-system-card { background: var(--bg-1); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: left; cursor: pointer; color: var(--text-1); font-family: var(--font-sans); transition: background 0.12s, transform 0.1s; }
+.ah-system-card:hover { background: var(--bg-2); }
+.ah-system-card svg { color: var(--admin); }
+.ah-system-title { font-size: 13px; font-weight: 500; margin-top: 10px; }
+.ah-system-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+/* Wider screens: 4-up stats and system grid */
+@media (min-width: 900px) {
+  .ah-stats { grid-template-columns: repeat(4, 1fr); }
+  .ah-system-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Patient home — check-in CTA inside the "Hoy" empty card */
+.ph-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--medic-soft);
+  color: var(--medic);
+  border: 1px solid rgba(79, 184, 168, 0.3);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.12s, transform 0.1s;
+}
+.ph-cta:hover { background: rgba(79, 184, 168, 0.18); }
+.ph-cta:active { transform: scale(0.98); }
+.ph-cta > svg:last-child { margin-left: auto; }
+
+/* Check-in screen — daily wellness form (matches mockup screens-patient.jsx CheckIn).
+   Reads as a "modal sub-screen" — its top bar (X + label) sits over a divider
+   line that visually separates the form from the parent shell. */
+.checkin { display: flex; flex-direction: column; gap: 22px; }
+.checkin-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  /* Pull it slightly above the gap so the divider visually crosses the
+     full content width (the .main padding handles horizontal). */
+  margin-bottom: -8px;
+}
+.checkin-close {
+  background: transparent; border: 0; color: var(--text-1); cursor: pointer;
+  padding: 4px; display: grid; place-items: center;
+  transition: transform 0.1s;
+}
+.checkin-close:active { transform: scale(0.92); }
+.checkin-top-spacer { width: 30px; }
+.checkin-hero { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.checkin-title { font-size: 32px; }
+.checkin-sub { font-size: 13px; color: var(--text-2); }
+.checkin-section { display: flex; flex-direction: column; gap: 10px; }
+
+/* Mood — 5 squares */
+.mood-row { display: flex; gap: 6px; }
+.mood-btn {
+  flex: 1; aspect-ratio: 1;
+  border: 0; border-radius: 14px; cursor: pointer;
+  background: var(--bg-1); color: var(--text-2);
+  font-size: 24px; line-height: 1;
+  display: grid; place-items: center;
+  transition: background 0.12s, transform 0.1s;
+}
+.mood-btn:active { transform: scale(0.95); }
+.mood-btn.is-active { background: var(--medic); color: #0b2523; }
+
+/* Sleep range slider */
+.checkin-range {
+  width: 100%;
+  margin-top: 6px;
+  accent-color: var(--medic);
+}
+.checkin-range-ticks {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--text-3);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* Energy — incremental fill (1..N filled) */
+.energy-row { display: flex; gap: 4px; }
+.energy-btn {
+  flex: 1; padding: 12px 0;
+  border: 0; border-radius: 10px; cursor: pointer;
+  background: var(--bg-2); color: var(--text-3);
+  font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+}
+.energy-btn:active { transform: scale(0.95); }
+.energy-btn.is-filled { background: var(--medic); color: #0b2523; }
+
+/* Pain — segmented control */
+.pain-row { display: flex; gap: 8px; }
+.pain-btn {
+  flex: 1; padding: 12px 6px;
+  border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+  background: var(--bg-1); color: var(--text-2);
+  font-size: 12px; font-weight: 500; font-family: var(--font-sans);
+  transition: all 0.12s, transform 0.1s;
+}
+.pain-btn:active { transform: scale(0.96); }
+.pain-btn.is-active {
+  border-color: var(--medic);
+  background: var(--medic-soft);
+  color: var(--medic);
+}
+
+/* Submit — themed primary using --medic */
+.checkin-submit {
+  margin-top: 6px;
+  background: var(--medic);
+  color: #0b2523;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.checkin-submit:active { transform: scale(0.98); }
+
+/* Appointments screen — citas y situaciones clínicas (matches mockup screens-patient.jsx Appointments) */
+.ap-screen { display: flex; flex-direction: column; gap: 22px; }
+.ap-title-block { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ap-title { font-size: 28px; }
+.ap-section { display: flex; flex-direction: column; gap: 10px; }
+
+/* Hero "Próxima" card with subtle medic gradient (mockup uses linear-gradient(160deg, rgba(79,184,168,0.14), transparent)) */
+.ap-next-card {
+  background: linear-gradient(160deg, rgba(79, 184, 168, 0.14), transparent), var(--bg-1);
+  border: 1px solid rgba(79, 184, 168, 0.25);
+  padding: 16px;
+}
+.ap-next-title { font-size: 18px; font-weight: 600; margin-top: 6px; color: var(--text-1); }
+.ap-next-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+
+/* Clinical situation rows */
+.ap-situation { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.ap-situation-ic {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--medic-soft);
+  color: var(--medic);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.ap-situation-title { font-size: 13px; font-weight: 500; }
+.ap-situation-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+/* Training plan screen — matches mockup screens-patient.jsx TrainingPlan */
+.tp-screen { display: flex; flex-direction: column; gap: 22px; }
+.tp-toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tp-myplan {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; border: 0; padding: 0;
+  color: var(--text-1); cursor: pointer; font-family: var(--font-sans);
+}
+.tp-myplan:disabled { cursor: default; opacity: 0.85; }
+.tp-myplan-label { font-size: 15px; font-weight: 600; }
+.tp-myplan svg { color: var(--omega); }
+
+/* "Siguiente" hero card with omega-tinted radial glow on top-right */
+.tp-next-card {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+}
+.tp-next-glow {
+  position: absolute;
+  top: 0; right: 0;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle at top right, rgba(226, 62, 74, 0.2), transparent);
+  pointer-events: none;
+}
+.tp-next-title { font-size: 30px; }
+.tp-next-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.tp-chips {
+  display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;
+}
+
+/* Stats grid (3-up) */
+.tp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Benchmarks card — clickable row */
+.tp-benchmarks {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 4px;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.tp-benchmarks:disabled { cursor: default; opacity: 0.85; }
+.tp-benchmarks > svg:first-child { color: var(--omega); flex-shrink: 0; }
+.tp-benchmarks > svg:last-child { color: var(--text-3); flex-shrink: 0; }
+
+/* Nutrition screen — daily plan + macros + meals (matches mockup screens-patient.jsx Nutrition) */
+.nu-screen { display: flex; flex-direction: column; gap: 18px; }
+.nu-search-btn {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--nutri);
+  padding: 4px;
+  display: grid; place-items: center;
+  transition: transform 0.1s;
+}
+.nu-search-btn:active { transform: scale(0.92); }
+
+/* Day selector — 7 buttons, today highlighted */
+.nu-week { display: flex; gap: 4px; }
+.nu-day {
+  flex: 1; padding: 8px 0;
+  border: 0; border-radius: 10px;
+  background: var(--bg-2); color: var(--text-2);
+  display: flex; flex-direction: column; gap: 2px; align-items: center;
+  cursor: pointer; font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+}
+.nu-day:active { transform: scale(0.95); }
+.nu-day.is-active { background: var(--nutri); color: #1a1304; }
+.nu-day-letter { font-size: 10px; opacity: 0.8; }
+.nu-day-num { font-size: 13px; font-weight: 600; }
+
+/* Totals card — kcal hero + macros bars */
+.nu-totals { padding: 16px; }
+.nu-totals-num {
+  text-align: center;
+  font-size: 32px; font-weight: 500; letter-spacing: -0.03em;
+}
+.nu-totals-unit { text-align: center; margin-top: 2px; }
+.nu-totals-bar {
+  position: relative;
+  height: 8px; background: var(--bg-2);
+  border-radius: 100px; margin-top: 12px;
+  overflow: hidden;
+}
+.nu-totals-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--nutri); border-radius: 100px;
+}
+.nu-totals-range {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--text-3);
+  margin-top: 4px; font-family: var(--font-mono);
+}
+
+.nu-macros {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-top: 16px;
+}
+.nu-macro-label { font-size: 11px; color: var(--text-2); }
+.nu-macro-num { font-size: 13px; font-weight: 600; margin-top: 2px; color: var(--text-1); }
+.nu-macro-bar { margin-top: 6px; }
+
+/* Meals list */
+.nu-meals { display: flex; flex-direction: column; gap: 12px; }
+.nu-meal { padding: 14px; }
+.nu-meal-name { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.nu-meal-macros {
+  font-size: 11px; color: var(--text-2);
+  margin-top: 3px; font-family: var(--font-mono);
+}
+.nu-meal-add {
+  width: 100%; margin-top: 10px;
+  padding: 12px;
+  border: 0; border-radius: 10px;
+  background: var(--bg-2); color: var(--text-2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  transition: background 0.12s, transform 0.1s;
+}
+.nu-meal-add:hover { background: var(--bg-3, rgba(255,255,255,0.04)); }
+.nu-meal-add:active { transform: scale(0.98); }
+
+/* Progress screen — body composition trends (matches mockup screens-patient.jsx Progress) */
+.pr-screen { display: flex; flex-direction: column; gap: 14px; }
+.pr-perf-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--analytic);
+  font-size: 12px; font-weight: 500;
+}
+.pr-title { font-size: 26px; }
+
+/* Metric selector — horizontal scroll */
+.pr-metrics {
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  /* Negative margins so cards bleed to viewport edges; padding to restore
+     starting offset and let the last card breathe at the right edge. */
+  margin: 4px -20px 0;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.pr-metrics::-webkit-scrollbar { display: none; }
+.pr-metric {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+  min-width: 140px;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  transition: transform 0.1s, border-color 0.12s, background 0.12s;
+}
+.pr-metric:active { transform: scale(0.98); }
+.pr-metric-label { color: var(--text-2); }
+.pr-metric-num {
+  font-size: 22px; font-weight: 500; letter-spacing: -0.02em;
+  margin-top: 4px; color: var(--text-1);
+}
+.pr-metric-unit { font-size: 11px; color: var(--text-2); margin-left: 2px; }
+.pr-metric-delta { font-size: 10px; margin-top: 2px; }
+
+/* Period segmented tabs */
+.pr-periods {
+  display: flex; gap: 4px;
+  padding: 3px;
+  background: var(--bg-2);
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.pr-period {
+  flex: 1; padding: 7px 0;
+  border: 0; border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 11px; font-weight: 500;
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s;
+}
+.pr-period.is-active { background: var(--bg-3, rgba(255,255,255,0.06)); color: var(--text-1); }
+
+/* Chart card */
+.pr-chart { padding: 16px; }
+.pr-chart-label { font-size: 12px; color: var(--text-2); }
+.pr-chart-num {
+  font-size: 24px; font-weight: 500; letter-spacing: -0.02em;
+  margin-top: 4px; color: var(--text-1);
+}
+.pr-chart-unit { font-size: 12px; color: var(--text-2); }
+.pr-chart-empty { position: relative; margin-top: 10px; }
+.pr-chart-svg { width: 100%; height: 140px; display: block; }
+.pr-chart-empty-msg {
+  position: absolute;
+  inset: 0;
+  display: grid; place-items: center;
+  font-size: 12px; color: var(--text-3);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Add measurement CTA */
+.pr-add {
+  margin-top: 4px;
+  background: var(--analytic-soft);
+  color: var(--analytic);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid rgba(125, 140, 255, 0.25);
+}
+.pr-add:hover { background: rgba(125, 140, 255, 0.18); }
+
+/* Admin audit screen — events timeline (matches mockup screens-doctor.jsx AdminAudit) */
+.aa-screen { display: flex; flex-direction: column; gap: 18px; }
+
+/* Filter chips — horizontal scrollable, "Todo" gets admin-tinted active state */
+.aa-filters {
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.aa-filters::-webkit-scrollbar { display: none; }
+.aa-chip {
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  transition: all 0.12s, transform 0.1s;
+}
+.aa-chip:active { transform: scale(0.96); }
+.aa-chip.is-active {
+  background: rgba(201, 195, 186, 0.14);
+  color: var(--admin);
+  border-color: rgba(201, 195, 186, 0.3);
+}
+
+/* Empty state with a single neutral timeline dot to hint at the future
+   timeline view that will appear when events arrive. */
+.aa-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+}
+.aa-empty-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-3);
+  border: 2px solid var(--bg-0);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+/* Doctor home — panel for medical professionals (matches mockup screens-doctor.jsx DoctorHome) */
+.dh-screen { display: flex; flex-direction: column; gap: 22px; }
+.dh-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Wider screens: stats can breathe more */
+@media (min-width: 900px) {
+  .dh-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Doctor patients screen — list with search + filters (matches mockup screens-doctor.jsx DoctorPatients) */
+.dp-screen { display: flex; flex-direction: column; gap: 14px; }
+.dp-add {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--mod, var(--medic));
+  padding: 4px;
+  display: grid; place-items: center;
+  transition: transform 0.1s;
+}
+.dp-add:active { transform: scale(0.92); }
+
+/* Search input with leading icon */
+.dp-search { position: relative; }
+.dp-search-icon {
+  position: absolute; left: 12px; top: 12px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+.dp-search-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.12s;
+}
+.dp-search-input:focus { border-color: var(--mod, var(--medic)); }
+.dp-search-input::placeholder { color: var(--text-3); }
+
+/* Filter chips — horizontal scroll, active uses module accent */
+.dp-filters {
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.dp-filters::-webkit-scrollbar { display: none; }
+.dp-chip {
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  transition: all 0.12s, transform 0.1s;
+}
+.dp-chip:active { transform: scale(0.96); }
+.dp-chip.is-active {
+  background: var(--mod-soft, var(--medic-soft));
+  color: var(--mod, var(--medic));
+  border-color: rgba(79, 184, 168, 0.3);
+}
+
+/* Temporary demo affordance inside DoctorPatients empty state */
+.dp-demo-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--mod, var(--medic));
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  transition: opacity 0.12s;
+}
+.dp-demo-link:hover { opacity: 0.85; }
+
+/* Doctor patient detail — focused sub-screen (matches mockup screens-doctor.jsx DoctorPatientDetail).
+   Hidden global header (FOCUSED_SCREENS) + own top bar with back chevron. */
+.dpd-screen { display: flex; flex-direction: column; gap: 18px; }
+
+/* Top bar — back / title / more (mirrors CheckIn modal pattern) */
+.dpd-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: -8px;
+}
+.dpd-close, .dpd-more {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--text-1);
+  padding: 4px;
+  display: grid; place-items: center;
+  transition: transform 0.1s;
+}
+.dpd-close:active, .dpd-more:active { transform: scale(0.92); }
+
+/* Patient header */
+.dpd-patient {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 10px;
+}
+.dpd-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  color: var(--text-3);
+  font-weight: 600; font-size: 18px;
+  flex-shrink: 0;
+}
+.dpd-patient-info { flex: 1; min-width: 0; }
+.dpd-patient-name { font-size: 17px; font-weight: 600; color: var(--text-1); }
+.dpd-patient-bio { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.dpd-video-btn {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: var(--medic);
+  color: #0b2523;
+  border: 0;
+  cursor: pointer;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: filter 0.12s, transform 0.1s;
+}
+.dpd-video-btn:hover { filter: brightness(1.05); }
+.dpd-video-btn:active { transform: scale(0.95); }
+
+/* Quick stats — 4-up compact tiles */
+.dpd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.dpd-stat {
+  padding: 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.dpd-stat-k {
+  font-size: 9px; font-family: var(--font-mono);
+  color: var(--text-3); text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.dpd-stat-v {
+  font-size: 16px; font-weight: 500; margin-top: 2px;
+  letter-spacing: -0.02em;
+}
+.dpd-stat-u { font-size: 9px; color: var(--text-3); }
+
+/* Tabs — segmented underline */
+.dpd-tabs {
+  display: flex; gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin: 0 -20px;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.dpd-tabs::-webkit-scrollbar { display: none; }
+.dpd-tab {
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  font-family: var(--font-sans);
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+.dpd-tab.is-active {
+  color: var(--medic);
+  border-bottom-color: var(--medic);
+}
+
+/* Planes activos cards with colored side bar */
+.dpd-plans { display: flex; flex-direction: column; gap: 8px; }
+.dpd-plan {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+}
+.dpd-plan-bar {
+  width: 4px; height: 36px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dpd-plan-label { font-size: 13px; font-weight: 500; color: var(--text-1); }
+.dpd-plan-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+/* New clinical note CTA */
+.dpd-new-note {
+  margin-top: 4px;
+  background: var(--medic);
+  color: #0b2523;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.dpd-new-note:hover { filter: brightness(1.05); }
+.dpd-new-note:active { transform: scale(0.98); }
 
 /* Responsive < 1024 */
 @media (max-width: 1024px) {

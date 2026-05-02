@@ -3,6 +3,10 @@ type IconName =
   | 'settings' | 'bell' | 'search' | 'plus' | 'chevL' | 'chevR' | 'chevD'
   | 'menu' | 'db' | 'shield' | 'dumbbell' | 'apple' | 'heart' | 'film'
   | 'check' | 'upload' | 'logout' | 'filter' | 'x'
+  // Mockup-aligned icon set (from _design-reference/components.jsx)
+  | 'dashboard' | 'training' | 'nutrition' | 'medicine' | 'data'
+  | 'history' | 'target' | 'timer' | 'flame' | 'arrowUp' | 'arrowDown'
+  | 'play' | 'more' | 'edit' | 'video' | 'mic' | 'phone'
 
 const PATHS: Record<IconName, string> = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5Z',
@@ -22,15 +26,33 @@ const PATHS: Record<IconName, string> = {
   menu: 'M3 12h18M3 6h18M3 18h18',
   db: 'M21 5c0 1.7-4 3-9 3s-9-1.3-9-3 4-3 9-3 9 1.3 9 3Zm0 0v14c0 1.7-4 3-9 3s-9-1.3-9-3V5m18 7c0 1.7-4 3-9 3s-9-1.3-9-3',
   shield: 'M12 2 4 5v7c0 5.5 3.8 8.5 8 10 4.2-1.5 8-4.5 8-10V5l-8-3Z',
-  dumbbell: 'M6 7v10m12-10v10M6 12h12M2 10v4m20-4v4',
-  apple: 'M12 20a6 6 0 0 1-6-6 6 6 0 0 1 6-6c1.5 0 2 .5 3 1.5M12 20a6 6 0 0 0 6-6 6 6 0 0 0-6-6M12 8V5a3 3 0 0 1 3-3',
-  heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8Z',
+  dumbbell: 'M6 9v6M18 9v6M3 11v2M21 11v2M8 7.5v9M16 7.5v9',
+  apple: 'M12 3c-3 2-5 5-5 9a5 5 0 0 0 10 0c0-4-2-7-5-9ZM12 9v4',
+  heart: 'M12 20s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.7-7 10-7 10Z',
   film: 'M2 4h20v16H2zM2 8h4m12 0h4M2 16h4m12 0h4M6 4v16m12-16v16',
   check: 'M5 12l5 5L20 7',
   upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5M21 12H9',
   filter: 'M3 4h18l-7 9v7l-4-2v-5L3 4Z',
   x: 'M18 6 6 18M6 6l12 12',
+  // Mockup-aligned set
+  dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  training: 'M6 9v6M18 9v6M3 11v2M21 11v2M8 7.5v9M16 7.5v9',
+  nutrition: 'M12 3c-3 2-5 5-5 9a5 5 0 0 0 10 0c0-4-2-7-5-9ZM12 9v4',
+  medicine: 'M12 2v20M2 12h20',
+  data: 'M3 20V10M9 20V4M15 20v-8M21 20v-4',
+  history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2',
+  target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
+  timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM12 9v4l2 2M9 2h6',
+  flame: 'M12 3s5 4 5 9a5 5 0 0 1-10 0c0-3 2-5 2-7 0 1 1 2 3 2 0-2 0-4 0-4Z',
+  arrowUp: 'M12 19V5M5 12l7-7 7 7',
+  arrowDown: 'M12 5v14M5 12l7 7 7-7',
+  play: 'M6 4l14 8-14 8V4z',
+  more: 'M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+  edit: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+  video: 'M2 6h14v12H2zM22 8l-6 4 6 4V8Z',
+  mic: 'M9 3h6v12H9zM5 11a7 7 0 0 0 14 0M12 18v4',
+  phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z',
 }
 
 interface IconProps {
