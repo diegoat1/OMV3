@@ -1,139 +1,175 @@
-﻿# ONV2 â€” Plataforma de Salud, NutriciÃ³n y Entrenamiento
+# OMV3 — Plataforma de Salud, Nutrición y Entrenamiento
 
-AplicaciÃ³n web (Flask + SQLite + Jinja + Bootstrap) para planificar alimentaciÃ³n por bloques, registrar mÃ©tricas de salud y ofrecer flujos de coaching/telemedicina y dashboards. Incluye un sistema de bloques nutricionales (P/G/C), un constructor de combinaciones, sugerencias inteligentes basadas en catÃ¡logo de alimentos y una biblioteca con favoritos.
+Plataforma de planificación nutricional por bloques (P/G/C), seguimiento de salud, entrenamiento de fuerza y telemedicina.
 
-## CaracterÃ­sticas
+> **Estado:** migración activa desde la web Flask/Jinja original hacia un frontend SPA (Vite + React + TypeScript) que se sirve en escritorio, web móvil y Android nativo (vía Capacitor), consumiendo una API REST `v3`.
 
-- Plan alimentario por bloques (P, G, C) con objetivos por comida y equivalencias visuales.
-- Constructor de combinaciones (modal) con cÃ¡lculo en tiempo real y validaciÃ³n de objetivos.
-- Sugerencias inteligentes a partir de `GRUPOSALIMENTOS` con tolerancias por macro y filtro por momento del dÃ­a.
-- Biblioteca y favoritos de combinaciones (presets pÃºblicos del staff y combinaciones guardadas por usuarios).
-- MÃ³dulos de salud: medidas corporales, signos vitales, historia clÃ­nica, citas mÃ©dicas, documentos, etc.
-- Dashboards y vistas analÃ­ticas (fuerza, rendimiento, resÃºmenes).
-- Bot de WhatsApp (enviar/recibir) con tablas de soporte.
+## Arquitectura
 
-## TecnologÃ­as
+```
+┌──────────────────────────┐        ┌──────────────────────────┐
+│  frontend/  (Vite + React)│ ─────▶ │  src/api/v3/  (Flask API) │ ─────▶ SQLite (×4)
+│  desktop · web móvil      │  /api  │  JWT · CORS · v3 envelope │
+│  Android (Capacitor)      │        └──────────────────────────┘
+└──────────────────────────┘
+                                     ┌─ src/main.py + templates/  (legacy Jinja, solo lectura)
+```
 
-- Backend: Python 3.x, Flask, SQLite (archivo `src/Basededatos`)
-- Frontend: Jinja2, Bootstrap, Font Awesome, JS nativo (Fetch)
-- Datos: SQLite (tablas clÃ­nicas + nutriciÃ³n + biblioteca/favoritos)
-
-## Estructura del repositorio
-
-- `src/main.py` â€” App Flask, rutas y APIs principales
-- `src/functions.py` â€” LÃ³gica de negocio (catÃ¡logo de alimentos, combinador, utilidades)
-- `src/templates/` â€” Vistas Jinja (por ejemplo `plan_alimentario.html`, `base.html`)
-- `src/static/` â€” CSS/JS/imagenes (Bootstrap, scripts de pÃ¡ginas, gauges, etc.)
-- `migrations/` â€” Scripts de migraciÃ³n (SQL/PowerShell)
-- `docs/` â€” DocumentaciÃ³n funcional y guÃ­as
-- `requirements.txt` â€” Dependencias Python
-- `src/Basededatos` â€” Base de datos SQLite usada por la app
+- **Backend activo:** `src/api/v3/` — API REST con JWT, CORS y envelope estándar `{ success, data, meta }`.
+- **Frontend activo:** `frontend/` — Vite + React 19 + TypeScript. Capacitor para empaquetar Android.
+- **Legacy (referencia):** `src/main.py`, `src/functions.py`, `src/templates/`, `src/static/` — la web Jinja original. Se consulta para entender la lógica de negocio que se está migrando, **no se extiende**.
 
 ## Puesta en marcha
 
-1) Requisitos
-- Python 3.9+ (recomendado)
-- `pip` y (opcional) `virtualenv`
+### Backend (Flask, puerto 8000)
 
-2) InstalaciÃ³n
-```
+```bash
 python -m venv .venv
-# Windows
-.\.venv\Scripts\activate
-# Linux/MacOS
-source .venv/bin/activate
+source .venv/bin/activate            # macOS/Linux
+# .\.venv\Scripts\activate           # Windows
 
 pip install -r requirements.txt
+python src/main.py                   # http://127.0.0.1:8000
 ```
 
-3) Ejecutar la app
-```
-python src/main.py
-# ServirÃ¡ en http://127.0.0.1:8000
-```
-La base de datos se ubica en `src/Basededatos`. El arranque crea/actualiza tablas auxiliares de sugerencias si faltan.
+Health check: `GET http://127.0.0.1:8000/api/v3/health`.
 
-## DocumentaciÃ³n
+### Frontend (Vite, puerto 5173)
 
-- Ãndice: `docs/README.md`
-- GuÃ­a completa: `docs/guia/guia_completa.md`
-- Planner automÃ¡tico: `docs/nutricion/planner_automatico_implementacion.md`
-- Biblioteca/favoritos: `docs/biblioteca/implementacion_biblioteca_completa.md`
-- Tests/VerificaciÃ³n: `docs/testing/constructor.md`, `docs/testing/verificacion_bloques.md`
-- Migraciones: `docs/migraciones/recuperacion_urgente.md`
-- Cambios: `CHANGELOG.md`
-
-## Endpoints clave
-
-- `GET /api/plan-alimentario/info`: Plan del usuario (bloques por comida, gramos objetivo y metadatos).
-- `GET /api/grupos-alimentos?macro=P|G|C&momento=desayuno|almuerzo|...`: CatÃ¡logo `GRUPOSALIMENTOS` con bloques por porciÃ³n y filtros.
-- `GET /api/plan-alimentario/bloques/sugerencias`: Sugerencias inteligentes, favoritos y presets globales.
-- `POST /api/plan-alimentario/bloques/sugerencias`: Crear favorito.
-- `PATCH /api/plan-alimentario/bloques/sugerencias/<id>`: Actualizar alias/estado; marcar como usada.
-- `DELETE /api/plan-alimentario/bloques/sugerencias/<id>`: Eliminar favorito.
-- `POST /api/plan-alimentario/bloques/constructor`: Guardar combinaciÃ³n (detalle de alimentos).
-- `GET /api/plan-alimentario/biblioteca`: Listar combinaciones pÃºblicas (autor + favoritos).
-- `POST/DELETE /api/plan-alimentario/favoritos/<preset_id>`: Toggle de favoritos y contador.
-
-## Base de datos (SQLite)
-
-Archivo: `src/Basededatos`
-
-Tablas relevantes:
-- NutriciÃ³n: `DIETA`, `GRUPOSALIMENTOS`, `PLANES_ALIMENTARIOS`
-- Sugerencias/biblioteca: `PLAN_BLOQUES_PRESETS`, `PLAN_BLOQUES_FAVORITOS`, `PLAN_BLOQUES_AJUSTES_LOG`
-- Salud: `MEDIDAS_CORPORALES`, `SIGNOS_VITALES`, `HISTORIA_MEDICA`, `CITAS_MEDICAS`, `DOCUMENTOS_MEDICOS`
-- Usuarios/otros: `USUARIOS`, `MATRIZ_ENTRENAMIENTO`, `PLANES_ENTRENAMIENTO`, etc.
-
-Operaciones comunes (PowerShell + sqlite3):
-```
-# Backup
-Copy-Item src\Basededatos src\Basededatos_backup -Force
-# Adjuntar otra base y copiar una tabla
-sqlite3 src\Basededatos "ATTACH 'src/Basededatos (3)' AS old; \
-  INSERT OR REPLACE INTO DIETA SELECT * FROM old.DIETA; DETACH old;"
+```bash
+cd frontend
+npm install                          # primera vez
+npm run dev                          # http://localhost:5173 (proxy /api → :8000)
 ```
 
-## Migraciones
+Otros comandos en `frontend/`:
 
-- Script automatizado: `migrations/ejecutar_migracion_004.ps1`
-- SQL corregido: `migrations/004_biblioteca_favoritos_FIXED.sql`
+| Comando | Uso |
+|---|---|
+| `npm run build` | Build de producción a `frontend/dist/` |
+| `npm run preview` | Servir el build localmente |
+| `npx tsc --noEmit` | Type-check |
+| `npm run lint` | ESLint |
 
-En PowerShell, para ejecutar `.sql`:
-```
-sqlite3 src\Basededatos ".read migrations/NNN_script.sql"
-# o bien
-Get-Content migrations\NNN_script.sql | sqlite3 src\Basededatos
-```
+### Android (Capacitor)
 
-## Desarrollo
+El proyecto Android vive en `frontend/android/`. Tras un `npm run build`:
 
-- Servidor en modo debug con recarga de plantillas.
-- JS simple (vanilla), sin bundlers. MantÃ©n funciones usadas desde HTML en `window`.
-- Limpiar cachÃ© del catÃ¡logo de alimentos:
-```
-from src import functions
-functions.limpiar_cache_alimentos()
+```bash
+cd frontend
+npx cap sync android
+npx cap open android                 # abre Android Studio
 ```
 
-## Pruebas
+## API v3
 
-- No se incluyen tests automatizados en el repo por ahora. Usa los pasos de `docs/testing/` y los endpoints anteriores para pruebas manuales.
+Montada en `/api/v3/*`. Todos los endpoints usan helpers de `src/api/v3/common/` y devuelven el envelope estándar.
 
-## Problemas frecuentes
+| Blueprint | Prefijo | Contenido |
+|---|---|---|
+| `auth/` | `/api/v3/auth/` | Login, registro, validación JWT |
+| `users/` | `/api/v3/users/` | Perfiles |
+| `nutrition/` | `/api/v3/nutrition/` | Planes alimentarios, bloques, biblioteca |
+| `training/` | `/api/v3/training/` | Sesiones, fuerza |
+| `telemedicine/` | `/api/v3/telemedicine/` | Gestión clínica |
+| `analytics/` | `/api/v3/analytics/` | Dashboards, calculadoras |
+| `admin/` | `/api/v3/admin/` | Administración |
+| `assignments/` | `/api/v3/assignments/` | Asignaciones paciente↔profesional |
+| `engagement/` | `/api/v3/engagement/` | Tracking de adherencia |
+| `checkin/` | `/api/v3/checkin/` | Flujos de check-in |
 
-- PowerShell no soporta redirecciÃ³n `<` como bash. Usa `.read` o `Get-Content | sqlite3`.
-- Para Bootstrap 5, usa `getOrCreateInstance` para modales.
-- Si no aparecen sugerencias inteligentes, revisa que `GRUPOSALIMENTOS` tenga datos y que `GET /api/plan-alimentario/info` devuelva bloques para la comida elegida.
+**Formato de respuesta:**
 
-## Roadmap breve
+```json
+// Éxito
+{ "success": true, "data": { ... }, "meta": { "timestamp": "...", "version": "v3" } }
 
-- Afinar biblioteca (paginaciÃ³n/filtros y conteo de favoritos en vivo)
-- Afinar tolerancias/heurÃ­sticas del combinador para todas las comidas
-- Exportar/Importar presets (JSON) y compartir por usuario
+// Error
+{ "success": false, "error": { "code": "VALIDATION_ERROR", "message": "..." }, "meta": { ... } }
+```
 
-â€”
+**Decoradores de auth:** `@require_auth`, `@require_admin`, `@require_owner_or_admin`. CSRF está desactivado para todas las rutas bajo `/api/`.
 
-Â¿Dudas o mejoras? AbrÃ­ un issue o comentÃ¡ en `src/templates/plan_alimentario.html` y `src/main.py`.
+## Base de datos
 
+Cuatro SQLite conviven mientras dura la migración:
 
+| Archivo | Propósito |
+|---|---|
+| `src/Basededatos` | Base principal legacy (usuarios, nutrición, entrenamiento) |
+| `src/auth.db` | Autenticación v3 (`users`, `patient_user_link`, `audit_log`) |
+| `src/telemedicina.db` | Datos clínicos legacy |
+| `src/db/clinical.db` | Esquema clínico nuevo (snake_case, `patient_id` como FK) — `src/db/schema.sql` |
+
+Helpers en `src/api/v3/common/database.py`: `get_db_connection()`, `get_auth_connection()`, `get_telemed_connection()`, `get_clinical_connection()`, más `resolve_patient_id()` y `resolve_user_identity()` para puentear DNI ↔ user_id.
+
+```bash
+# Backup rápido
+cp src/Basededatos src/Basededatos_backup
+
+# Ejecutar una migración
+sqlite3 src/Basededatos ".read migrations/NNN_script.sql"
+```
+
+## Estructura del repositorio
+
+```
+src/
+├── api/v3/              # API REST activa
+│   ├── common/          # auth.py, responses.py, database.py
+│   └── <blueprint>/     # routes.py por módulo
+├── db/                  # Esquema nuevo (clinical.db)
+├── main.py              # App Flask + rutas legacy (Jinja)
+├── functions.py         # Lógica legacy (referencia para migración)
+├── templates/           # Vistas Jinja (legacy)
+├── static/              # CSS/JS legacy
+├── Basededatos          # SQLite principal
+└── auth.db, telemedicina.db
+
+frontend/
+├── src/
+│   ├── components/      # Sidebar, Topbar, Icon, atoms.tsx
+│   ├── screens/         # Login, PatientHome, Placeholder
+│   ├── services/        # apiClient.ts (token + envelope), authService.ts
+│   ├── types/           # api.ts (Role, AuthUser, ApiResponse<T>)
+│   └── styles/          # desktop.css, responsive.css
+├── _design-reference/   # Mockups originales (no se compilan)
+├── android/             # Proyecto Android (Capacitor)
+└── public/
+
+migrations/              # Scripts SQL de migración
+docs/                    # Documentación funcional y guías
+scripts/                 # Utilidades ad-hoc
+```
+
+## Variables de entorno
+
+| Variable | Usada en | Default |
+|---|---|---|
+| `JWT_SECRET` | `src/api/v3/common/auth.py` | `omega_medicina_secret_key_2025` |
+| `VITE_API_URL` | `frontend/` (build de producción) | `""` (mismo origen) |
+
+En desarrollo el frontend deja `VITE_API_URL` vacío y Vite proxea `/api/*` al backend (ver `frontend/vite.config.ts`).
+
+## Despliegue
+
+PythonAnywhere (cuenta `omegamedicina`): `wsgi.py` sirve la API y el SPA buildeado desde el mismo origen, así que `VITE_API_URL` no necesita override en producción.
+
+## Documentación
+
+- Arquitectura: [`docs/arquitectura.md`](docs/arquitectura.md)
+- Modelo de datos: [`docs/modelo_datos.md`](docs/modelo_datos.md)
+- Bloques nutricionales: [`docs/nutricion/`](docs/nutricion/)
+- Migraciones: [`docs/migraciones/`](docs/migraciones/)
+- Guías por módulo: [`docs/modulo_nutricion.md`](docs/modulo_nutricion.md), [`docs/modulo_entrenamiento.md`](docs/modulo_entrenamiento.md), [`docs/modulo_salud.md`](docs/modulo_salud.md)
+- Cambios: [`CHANGELOG.md`](CHANGELOG.md)
+
+## Tests
+
+Aún no hay tests automatizados ni en backend ni en frontend. Para verificación manual: pasos en `docs/testing/` y scripts ad-hoc en `scripts/`.
+
+## Convenciones
+
+- **Nuevos endpoints** van siempre en `src/api/v3/<blueprint>/routes.py` y devuelven `success_response` / `error_response`.
+- **No extender** `src/main.py`, `src/functions.py` ni `src/templates/` — son legacy.
+- **Frontend:** todas las llamadas HTTP pasan por `frontend/src/services/apiClient.ts`. El token se guarda en `localStorage` bajo `omd.token`.
