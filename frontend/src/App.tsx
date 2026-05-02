@@ -1,9 +1,21 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
+import { UserMenuSheet } from './components/UserMenuSheet'
+import { MobilePageHeader } from './components/MobilePageHeader'
 import { Login } from './screens/Login'
 import { Placeholder } from './screens/Placeholder'
 import { PatientHome } from './screens/PatientHome'
+import { CheckIn } from './screens/patient/CheckIn'
+import { Appointments } from './screens/patient/Appointments'
+import { TrainingPlan } from './screens/patient/TrainingPlan'
+import { Nutrition } from './screens/patient/Nutrition'
+import { Progress as PatientProgress } from './screens/patient/Progress'
+import { AdminHome } from './screens/AdminHome'
+import { AdminAudit } from './screens/admin/AdminAudit'
+import { DoctorHome } from './screens/doctor/DoctorHome'
+import { DoctorPatients } from './screens/doctor/DoctorPatients'
+import { DoctorPatientDetail } from './screens/doctor/DoctorPatientDetail'
 import { authService } from './services/authService'
 import { tokenStore } from './services/apiClient'
 import { backendRoleToUIRole, type AuthUser, type Role } from './types/api'
@@ -16,29 +28,42 @@ const DEFAULT_SCREEN: Record<Role, string> = {
   admin: 'a-home',
 }
 
+// Screens that present as a modal sub-window — they hide the global mobile
+// page header (date + greeting + avatar) and render their own top bar.
+const FOCUSED_SCREENS = new Set<string>(['p-checkin', 'd-patient-detail'])
+
 interface ScreenDef {
   node: ReactNode
   crumbs: string[]
 }
 
-function resolveScreen(screen: string, role: Role, userName: string): ScreenDef {
+function resolveScreen(
+  screen: string,
+  role: Role,
+  userName: string,
+  setScreen: (s: string) => void,
+): ScreenDef {
   switch (screen) {
     case 'p-home':
-      return { node: <PatientHome userName={userName} />, crumbs: ['Omega Medicina', 'Inicio'] }
+      return { node: <PatientHome userName={userName} onCheckIn={() => setScreen('p-checkin')} />, crumbs: ['Omega Medicina', 'Inicio'] }
+    case 'p-checkin':
+      return { node: <CheckIn onClose={() => setScreen('p-home')} />, crumbs: ['Omega Medicina', 'Inicio', 'Check-in'] }
     case 'p-progress':
-      return { node: <Placeholder title="Progreso" hint="Tendencias y composición corporal" />, crumbs: ['Omega Medicina', 'Progreso'] }
+      return { node: <PatientProgress />, crumbs: ['Omega Medicina', 'Progreso'] }
     case 'p-appointments':
-      return { node: <Placeholder title="Consultas" hint="Tus citas programadas" />, crumbs: ['Omega Medicina', 'Consultas'] }
+      return { node: <Appointments />, crumbs: ['Omega Medicina', 'Consultas'] }
     case 'p-training':
-      return { node: <Placeholder title="Entrenamiento" hint="Tu plan activo y registros" />, crumbs: ['Omega Medicina', 'Entrenamiento'] }
+      return { node: <TrainingPlan userName={userName} />, crumbs: ['Omega Medicina', 'Entrenamiento'] }
     case 'p-nutrition':
-      return { node: <Placeholder title="Nutrición" hint="Plan alimentario" />, crumbs: ['Omega Medicina', 'Nutrición'] }
+      return { node: <Nutrition />, crumbs: ['Omega Medicina', 'Nutrición'] }
     case 'p-medicine':
-      return { node: <Placeholder title="Medicina" hint="Historial clínico" />, crumbs: ['Omega Medicina', 'Medicina'] }
+      return { node: <Appointments />, crumbs: ['Omega Medicina', 'Medicina'] }
     case 'd-home':
-      return { node: <Placeholder title="Panel" hint={role === 'nutritionist' ? 'Panel nutrición' : role === 'trainer' ? 'Panel entreno' : 'Panel clínico'} />, crumbs: ['Omega Medicina', 'Panel'] }
+      return { node: <DoctorHome role={role} />, crumbs: ['Omega Medicina', 'Panel'] }
     case 'd-patients':
-      return { node: <Placeholder title={role === 'trainer' ? 'Atletas' : 'Pacientes'} />, crumbs: ['Omega Medicina', role === 'trainer' ? 'Atletas' : 'Pacientes'] }
+      return { node: <DoctorPatients role={role} onOpenDemoPatient={() => setScreen('d-patient-detail')} />, crumbs: ['Omega Medicina', role === 'trainer' ? 'Atletas' : 'Pacientes'] }
+    case 'd-patient-detail':
+      return { node: <DoctorPatientDetail onClose={() => setScreen('d-patients')} />, crumbs: ['Omega Medicina', 'Paciente'] }
     case 'd-agenda':
       return { node: <Placeholder title="Agenda" />, crumbs: ['Omega Medicina', 'Agenda'] }
     case 'd-files':
@@ -46,11 +71,11 @@ function resolveScreen(screen: string, role: Role, userName: string): ScreenDef 
     case 'd-templates':
       return { node: <Placeholder title="Plantillas" />, crumbs: ['Omega Medicina', 'Plantillas'] }
     case 'a-home':
-      return { node: <Placeholder title="Sistema" />, crumbs: ['Omega Medicina', 'Sistema'] }
+      return { node: <AdminHome />, crumbs: ['Omega Medicina', 'Sistema'] }
     case 'a-users':
       return { node: <Placeholder title="Usuarios" />, crumbs: ['Omega Medicina', 'Usuarios'] }
     case 'a-audit':
-      return { node: <Placeholder title="Auditoría" />, crumbs: ['Omega Medicina', 'Auditoría'] }
+      return { node: <AdminAudit />, crumbs: ['Omega Medicina', 'Auditoría'] }
     case 'a-db':
       return { node: <Placeholder title="Base de datos" />, crumbs: ['Omega Medicina', 'Base de datos'] }
     default:
@@ -72,6 +97,7 @@ export default function App() {
   const [role, setRole] = useState<Role>('patient')
   const [screen, setScreen] = useState<string>('p-home')
   const [collapsed, setCollapsed] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   useEffect(() => {
     const token = tokenStore.get()
@@ -114,7 +140,11 @@ export default function App() {
   }
 
   const userName = userDisplayName(user)
-  const def = resolveScreen(screen, role, userName)
+  const handleLogout = async () => {
+    await authService.logout()
+    setUser(null)
+  }
+  const def = resolveScreen(screen, role, userName, setScreen)
 
   return (
     <div className={'app' + (collapsed ? ' collapsed' : '')}>
@@ -124,12 +154,22 @@ export default function App() {
         role={role}
         setRole={(r) => { setRole(r); setScreen(DEFAULT_SCREEN[r]) }}
         toggleCollapsed={() => setCollapsed(!collapsed)}
-        onLogout={async () => {
-          await authService.logout()
-          setUser(null)
-        }}
+        onLogout={handleLogout}
       />
-      <main className="main">{def.node}</main>
+      <main className="main">
+        {!FOCUSED_SCREENS.has(screen) && (
+          <MobilePageHeader userName={userName} onAvatarTap={() => setUserMenuOpen(true)} />
+        )}
+        {def.node}
+      </main>
+      <UserMenuSheet
+        open={userMenuOpen}
+        onClose={() => setUserMenuOpen(false)}
+        role={role}
+        setRole={(r) => { setRole(r); setScreen(DEFAULT_SCREEN[r]) }}
+        onLogout={handleLogout}
+        userName={userName}
+      />
     </div>
   )
 }
