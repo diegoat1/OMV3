@@ -25,7 +25,9 @@ const HEALTH_STATS: { k: string; v: number; c: string }[] = [
 
 interface Props {
   userName?: string
+  userId?: string | null
   onCheckIn?: () => void
+  onBrowseSpecialists?: () => void
 }
 
 export function PatientHome({ onCheckIn }: Props = {}) {

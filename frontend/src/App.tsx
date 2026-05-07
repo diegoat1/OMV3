@@ -4,10 +4,13 @@ import { Topbar } from './components/Topbar'
 import { UserMenuSheet } from './components/UserMenuSheet'
 import { MobilePageHeader } from './components/MobilePageHeader'
 import { Login } from './screens/Login'
+import { Register } from './screens/Register'
+import { RegisterSuccess } from './screens/RegisterSuccess'
 import { Placeholder } from './screens/Placeholder'
 import { PatientHome } from './screens/PatientHome'
 import { CheckIn } from './screens/patient/CheckIn'
 import { Appointments } from './screens/patient/Appointments'
+import { BrowseSpecialists } from './screens/patient/BrowseSpecialists'
 import { TrainingPlan } from './screens/patient/TrainingPlan'
 import { Nutrition } from './screens/patient/Nutrition'
 import { Progress as PatientProgress } from './screens/patient/Progress'
@@ -30,7 +33,7 @@ const DEFAULT_SCREEN: Record<Role, string> = {
 
 // Screens that present as a modal sub-window — they hide the global mobile
 // page header (date + greeting + avatar) and render their own top bar.
-const FOCUSED_SCREENS = new Set<string>(['p-checkin', 'd-patient-detail'])
+const FOCUSED_SCREENS = new Set<string>(['p-checkin', 'd-patient-detail', 'p-browse-specialists'])
 
 interface ScreenDef {
   node: ReactNode
@@ -41,13 +44,28 @@ function resolveScreen(
   screen: string,
   role: Role,
   userName: string,
+  userId: string | null,
   setScreen: (s: string) => void,
+  selectedPatientId: number | null,
+  setSelectedPatientId: (id: number | null) => void,
 ): ScreenDef {
   switch (screen) {
     case 'p-home':
-      return { node: <PatientHome userName={userName} onCheckIn={() => setScreen('p-checkin')} />, crumbs: ['Omega Medicina', 'Inicio'] }
+      return {
+        node: (
+          <PatientHome
+            userName={userName}
+            userId={userId}
+            onCheckIn={() => setScreen('p-checkin')}
+            onBrowseSpecialists={() => setScreen('p-browse-specialists')}
+          />
+        ),
+        crumbs: ['Omega Medicina', 'Inicio'],
+      }
     case 'p-checkin':
       return { node: <CheckIn onClose={() => setScreen('p-home')} />, crumbs: ['Omega Medicina', 'Inicio', 'Check-in'] }
+    case 'p-browse-specialists':
+      return { node: <BrowseSpecialists onClose={() => setScreen('p-home')} />, crumbs: ['Omega Medicina', 'Inicio', 'Buscar profesional'] }
     case 'p-progress':
       return { node: <PatientProgress />, crumbs: ['Omega Medicina', 'Progreso'] }
     case 'p-appointments':
@@ -61,9 +79,28 @@ function resolveScreen(
     case 'd-home':
       return { node: <DoctorHome role={role} />, crumbs: ['Omega Medicina', 'Panel'] }
     case 'd-patients':
-      return { node: <DoctorPatients role={role} onOpenDemoPatient={() => setScreen('d-patient-detail')} />, crumbs: ['Omega Medicina', role === 'trainer' ? 'Atletas' : 'Pacientes'] }
+      return {
+        node: (
+          <DoctorPatients
+            role={role}
+            onOpenPatient={(pid) => {
+              setSelectedPatientId(pid)
+              setScreen('d-patient-detail')
+            }}
+          />
+        ),
+        crumbs: ['Omega Medicina', role === 'trainer' ? 'Atletas' : 'Pacientes'],
+      }
     case 'd-patient-detail':
-      return { node: <DoctorPatientDetail onClose={() => setScreen('d-patients')} />, crumbs: ['Omega Medicina', 'Paciente'] }
+      return {
+        node: (
+          <DoctorPatientDetail
+            patientId={selectedPatientId}
+            onClose={() => setScreen('d-patients')}
+          />
+        ),
+        crumbs: ['Omega Medicina', 'Paciente'],
+      }
     case 'd-agenda':
       return { node: <Placeholder title="Agenda" />, crumbs: ['Omega Medicina', 'Agenda'] }
     case 'd-files':
@@ -98,6 +135,12 @@ export default function App() {
   const [screen, setScreen] = useState<string>('p-home')
   const [collapsed, setCollapsed] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  // Auth flow state when there's no logged-in user
+  const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'register-success'>('login')
+  const [registeredEmail, setRegisteredEmail] = useState<string>('')
+  // ID of the patient whose detail screen is open (set when navigating to
+  // d-patient-detail). null while no patient is selected.
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null)
 
   useEffect(() => {
     const token = tokenStore.get()
@@ -127,6 +170,23 @@ export default function App() {
   }
 
   if (!user) {
+    if (authScreen === 'register') {
+      return (
+        <Register
+          onCancel={() => setAuthScreen('login')}
+          onSuccess={() => setAuthScreen('register-success')}
+          onRegistered={(email) => setRegisteredEmail(email)}
+        />
+      )
+    }
+    if (authScreen === 'register-success') {
+      return (
+        <RegisterSuccess
+          email={registeredEmail}
+          onBackToLogin={() => setAuthScreen('login')}
+        />
+      )
+    }
     return (
       <Login
         onLogin={(u) => {
@@ -135,6 +195,7 @@ export default function App() {
           setRole(r)
           setScreen(DEFAULT_SCREEN[r])
         }}
+        onCreateAccount={() => setAuthScreen('register')}
       />
     )
   }
@@ -144,7 +205,15 @@ export default function App() {
     await authService.logout()
     setUser(null)
   }
-  const def = resolveScreen(screen, role, userName, setScreen)
+  const def = resolveScreen(
+    screen,
+    role,
+    userName,
+    user.id ?? null,
+    setScreen,
+    selectedPatientId,
+    setSelectedPatientId,
+  )
 
   return (
     <div className={'app' + (collapsed ? ' collapsed' : '')}>

@@ -5,8 +5,9 @@ NUTRITION Routes - Endpoints de nutrición y planes alimentarios
 from flask import request
 from . import nutrition_bp
 from ..common.responses import success_response, error_response, paginated_response, ErrorCodes
-from ..common.auth import require_auth, require_admin, require_owner_or_admin, get_current_user
+from ..common.auth import require_auth, require_admin, require_owner_or_admin, get_current_user, check_patient_access
 from ..common.database import get_db_connection, get_clinical_connection, resolve_patient_id
+from .solver import solve_meal as _v3_solve_meal
 import sqlite3
 import json
 import os
@@ -32,7 +33,13 @@ def list_plans():
     """
     user = get_current_user()
     show_all = request.args.get('all', 'false').lower() == 'true'
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
     
     try:
         conn = get_clinical_connection(sqlite3.Row)
@@ -100,8 +107,8 @@ def get_plan(plan_id):
         
         plan_dict = dict(plan)
         
-        # Verificar permisos
-        if not user['is_admin'] and plan_dict.get('NOMBRE_APELLIDO') != user['nombre_apellido']:
+        # Verificar permisos: owner, admin o especialista asignado
+        if not check_patient_access(user, plan_dict.get('NOMBRE_APELLIDO')):
             conn.close()
             return error_response(
                 'No tienes permisos para ver este plan',
@@ -142,11 +149,11 @@ def create_plan():
     user = get_current_user()
     data = request.get_json() or {}
     
-    # Si no es admin, solo puede crear para si mismo
+    # Owner, admin o especialista asignado puede crear el plan del paciente
     nombre_apellido = data.get('nombre_apellido', user['nombre_apellido'])
-    if not user['is_admin'] and nombre_apellido != user['nombre_apellido']:
+    if not check_patient_access(user, nombre_apellido):
         return error_response(
-            'No puedes crear planes para otros usuarios',
+            'No puedes crear planes para este paciente',
             code=ErrorCodes.FORBIDDEN,
             status_code=403
         )
@@ -226,96 +233,269 @@ def create_plan():
         )
 
 
+# Campos clasificados por nivel de permiso (Fix 18 — OMV-45)
+# MACROS: solo specialist asignado (nutricionista) o admin pueden tocar.
+# STRUCTURE: paciente también puede modificar (preferencias propias).
+_PLAN_MACROS_FIELDS = {
+    'calorias': 'calorias', 'proteina': 'proteina', 'grasa': 'grasa',
+    'ch': 'carbohidratos', 'carbohidratos': 'carbohidratos',
+    'factor_actividad': 'factor_actividad',
+    'velocidad_cambio': 'velocidad_cambio',
+    'deficit_calorico': 'deficit_calorico',
+    'disponibilidad_energetica': 'disponibilidad_energetica',
+}
+_PLAN_STRUCTURE_FIELDS = {
+    # `libertad` historicamente sirvió a dos cosas:
+    # 1) Margen porcentual permitido al ajustar bloques de macros (% sobre target).
+    # 2) Tolerancia del solver al asignar gramos por alimento.
+    # En la práctica conviven: el cliente pasa el mismo número y ambos lo usan
+    # como su "permisividad". Fix 18 — OMV-51: aceptamos alias `libertad_pct`
+    # apuntando al mismo campo, para que clientes nuevos usen un nombre más
+    # explícito. La doble semántica se documenta acá pero NO se separa todavía
+    # (separar requeriría coordinar cambios en /save-config, /blocks/adjust y
+    # functions.solve_meal — alcance de un fix futuro).
+    'libertad': 'libertad',
+    'libertad_pct': 'libertad',
+    'dp': 'desayuno_p', 'dg': 'desayuno_g', 'dc': 'desayuno_c',
+    'mmp': 'media_man_p', 'mmg': 'media_man_g', 'mmc': 'media_man_c',
+    'ap': 'almuerzo_p', 'ag': 'almuerzo_g', 'ac': 'almuerzo_c',
+    'mp': 'merienda_p', 'mg': 'merienda_g', 'mc': 'merienda_c',
+    'mtp': 'media_tar_p', 'mtg': 'media_tar_g', 'mtc': 'media_tar_c',
+    'cp': 'cena_p', 'cg': 'cena_g', 'cc': 'cena_c',
+    'entreno_meal_key': 'entreno_meal_key',
+    'entreno_intensidad': 'entreno_intensidad',
+}
+
+
+def _caller_can_edit_macros(user, plan_owner_name):
+    """True si el caller es admin o specialist asignado (no si es solo el paciente owner)."""
+    if not user:
+        return False
+    if user.get('is_admin'):
+        return True
+    # is_assigned_professional verifica que el caller sea specialist y tenga
+    # assignment 'accepted' al paciente. is_assigned_professional importado
+    # de common.auth en el bloque de imports del módulo.
+    from ..common.auth import is_assigned_professional
+    return is_assigned_professional(user.get('user_id'), plan_owner_name)
+
+
+def _apply_plan_update(conn, plan_id, allowed_fields, data, user):
+    """Helper: aplica UPDATE sobre nutrition_plans con tracking de updated_by/at."""
+    updates = []
+    values = []
+    for key, col in allowed_fields.items():
+        if key in data:
+            updates.append(f"{col} = ?")
+            values.append(data[key])
+    if not updates:
+        return (None, error_response(
+            'No hay campos válidos para actualizar',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400
+        ))
+    updates.append("updated_by_user_id = ?")
+    values.append(user.get('user_id') if user else None)
+    updates.append("updated_at = datetime('now', 'localtime')")
+    values.append(plan_id)
+    cursor = conn.cursor()
+    cursor.execute(
+        f"UPDATE nutrition_plans SET {', '.join(updates)} WHERE id = ?",
+        values
+    )
+    return (list(data.keys()), None)
+
+
 @nutrition_bp.route('/plans/<int:plan_id>', methods=['PUT'])
 @require_auth
 def update_plan(plan_id):
     """
     Actualiza un plan nutricional.
+
+    [Fix 18 — OMV-45] Si el body trae campos de macros (calorias, proteina,
+    grasa, ch, factor_actividad, velocidad_cambio, deficit_calorico,
+    disponibilidad_energetica), el caller debe ser admin o especialista
+    asignado. El paciente puro no puede modificarlos.
+
+    Para cambiar solo macros sin estructura: PUT /plans/<id>/macros
+    Para cambiar solo estructura sin macros: PUT /plans/<id>/structure
+    Este endpoint sigue siendo el "general" pero con check de permisos por campo.
     """
     user = get_current_user()
     data = request.get_json() or {}
-    
+
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        # Verificar que existe y permisos
+
         cursor.execute("""
             SELECT np.patient_id, p.nombre FROM nutrition_plans np
             JOIN patients p ON np.patient_id = p.id
             WHERE np.id = ?
         """, [plan_id])
         plan = cursor.fetchone()
-        
+
         if not plan:
             conn.close()
-            return error_response(
-                'Plan no encontrado',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
-            )
-        
-        if not user['is_admin'] and plan[1] != user['nombre_apellido']:
+            return error_response('Plan no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        owner_name = plan[1]
+        if not check_patient_access(user, owner_name):
             conn.close()
             return error_response(
                 'No tienes permisos para editar este plan',
-                code=ErrorCodes.FORBIDDEN,
-                status_code=403
+                code=ErrorCodes.FORBIDDEN, status_code=403
             )
-        
-        # Campos actualizables (clinical.db snake_case names)
-        allowed_fields = {
-            'calorias': 'calorias', 'proteina': 'proteina', 'grasa': 'grasa',
-            'ch': 'carbohidratos', 'carbohidratos': 'carbohidratos',
-            'factor_actividad': 'factor_actividad',
-            'velocidad_cambio': 'velocidad_cambio', 'deficit_calorico': 'deficit_calorico',
-            'disponibilidad_energetica': 'disponibilidad_energetica',
-            'dp': 'desayuno_p', 'dg': 'desayuno_g', 'dc': 'desayuno_c',
-            'mmp': 'media_man_p', 'mmg': 'media_man_g', 'mmc': 'media_man_c',
-            'ap': 'almuerzo_p', 'ag': 'almuerzo_g', 'ac': 'almuerzo_c',
-            'mp': 'merienda_p', 'mg': 'merienda_g', 'mc': 'merienda_c',
-            'mtp': 'media_tar_p', 'mtg': 'media_tar_g', 'mtc': 'media_tar_c',
-            'cp': 'cena_p', 'cg': 'cena_g', 'cc': 'cena_c',
-            'libertad': 'libertad',
-        }
-        
-        updates = []
-        values = []
-        
-        for key, col in allowed_fields.items():
-            if key in data:
-                updates.append(f"{col} = ?")
-                values.append(data[key])
-        
-        if not updates:
+
+        # Si vienen campos de macros, validar permiso elevado
+        macros_in_body = [k for k in data.keys() if k in _PLAN_MACROS_FIELDS]
+        if macros_in_body and not _caller_can_edit_macros(user, owner_name):
             conn.close()
             return error_response(
-                'No hay campos para actualizar',
-                code=ErrorCodes.VALIDATION_ERROR,
-                status_code=400
+                f'Solo el especialista asignado o admin pueden modificar macros: {", ".join(macros_in_body)}. '
+                f'El paciente puede usar PUT /plans/{plan_id}/structure para cambios sin macros.',
+                code=ErrorCodes.FORBIDDEN, status_code=403
             )
-        
-        values.append(plan_id)
-        
-        cursor.execute(f"""
-            UPDATE nutrition_plans 
-            SET {', '.join(updates)}
-            WHERE id = ?
-        """, values)
-        
+
+        allowed_fields = {**_PLAN_MACROS_FIELDS, **_PLAN_STRUCTURE_FIELDS}
+        updated, err = _apply_plan_update(conn, plan_id, allowed_fields, data, user)
+        if err:
+            conn.close()
+            return err
+
         conn.commit()
         conn.close()
-        
+
         return success_response(
-            {'id': plan_id, 'updated_fields': list(data.keys())},
+            {'id': plan_id, 'updated_fields': updated},
             message='Plan actualizado exitosamente'
         )
-        
+
     except Exception as e:
         return error_response(
             f'Error actualizando plan: {str(e)}',
-            code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
+        )
+
+
+@nutrition_bp.route('/plans/<int:plan_id>/macros', methods=['PUT'])
+@require_auth
+def update_plan_macros(plan_id):
+    """
+    Actualiza solo los campos de macros del plan. Restringido a admin o
+    especialista asignado (Fix 18 — OMV-45).
+
+    Body: subset de calorias, proteina, grasa, ch/carbohidratos,
+          factor_actividad, velocidad_cambio, deficit_calorico,
+          disponibilidad_energetica.
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT np.patient_id, p.nombre FROM nutrition_plans np
+            JOIN patients p ON np.patient_id = p.id
+            WHERE np.id = ?
+        """, [plan_id])
+        plan = cursor.fetchone()
+        if not plan:
+            conn.close()
+            return error_response('Plan no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        owner_name = plan[1]
+        if not _caller_can_edit_macros(user, owner_name):
+            conn.close()
+            return error_response(
+                'Solo admin o especialista asignado pueden modificar macros',
+                code=ErrorCodes.FORBIDDEN, status_code=403
+            )
+
+        # Solo permitir campos de macros
+        rejected = [k for k in data.keys() if k not in _PLAN_MACROS_FIELDS]
+        if rejected:
+            conn.close()
+            return error_response(
+                f'Campos no permitidos en /macros: {", ".join(rejected)}. Usá PUT /plans/{plan_id}/structure para esos.',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400
+            )
+
+        updated, err = _apply_plan_update(conn, plan_id, _PLAN_MACROS_FIELDS, data, user)
+        if err:
+            conn.close()
+            return err
+
+        conn.commit()
+        conn.close()
+        return success_response(
+            {'id': plan_id, 'updated_macros': updated},
+            message='Macros actualizados exitosamente'
+        )
+
+    except Exception as e:
+        return error_response(
+            f'Error actualizando macros: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
+        )
+
+
+@nutrition_bp.route('/plans/<int:plan_id>/structure', methods=['PUT'])
+@require_auth
+def update_plan_structure(plan_id):
+    """
+    Actualiza solo los campos de estructura del plan (distribuciones por comida,
+    libertad, entreno). El paciente owner también puede modificarlos (Fix 18 — OMV-45).
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT np.patient_id, p.nombre FROM nutrition_plans np
+            JOIN patients p ON np.patient_id = p.id
+            WHERE np.id = ?
+        """, [plan_id])
+        plan = cursor.fetchone()
+        if not plan:
+            conn.close()
+            return error_response('Plan no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        owner_name = plan[1]
+        if not check_patient_access(user, owner_name):
+            conn.close()
+            return error_response(
+                'No tienes permisos para editar este plan',
+                code=ErrorCodes.FORBIDDEN, status_code=403
+            )
+
+        # Solo permitir campos de estructura
+        rejected = [k for k in data.keys() if k not in _PLAN_STRUCTURE_FIELDS]
+        if rejected:
+            conn.close()
+            return error_response(
+                f'Campos no permitidos en /structure: {", ".join(rejected)}. Si son macros, usá PUT /plans/{plan_id}/macros (requiere specialist asignado).',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400
+            )
+
+        updated, err = _apply_plan_update(conn, plan_id, _PLAN_STRUCTURE_FIELDS, data, user)
+        if err:
+            conn.close()
+            return err
+
+        conn.commit()
+        conn.close()
+        return success_response(
+            {'id': plan_id, 'updated_structure': updated},
+            message='Estructura actualizada exitosamente'
+        )
+
+    except Exception as e:
+        return error_response(
+            f'Error actualizando estructura: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
         )
 
 
@@ -347,7 +527,7 @@ def delete_plan(plan_id):
                 status_code=404
             )
         
-        if not user['is_admin'] and plan[0] != user['nombre_apellido']:
+        if not check_patient_access(user, plan[0]):
             conn.close()
             return error_response(
                 'No tienes permisos para eliminar este plan',
@@ -418,8 +598,8 @@ def adjust_calories(plan_id):
         
         plan_dict = dict(plan)
         
-        # Verificar permisos
-        if not user['is_admin'] and plan_dict['nombre'] != user['nombre_apellido']:
+        # Verificar permisos: owner, admin o especialista asignado
+        if not check_patient_access(user, plan_dict['nombre']):
             conn.close()
             return error_response(
                 'No tienes permisos para modificar este plan',
@@ -431,7 +611,7 @@ def adjust_calories(plan_id):
         cursor.execute("""
             SELECT peso_magro FROM measurements
             WHERE patient_id = ?
-            ORDER BY fecha DESC LIMIT 1
+            ORDER BY id DESC LIMIT 1
         """, [plan_dict['patient_id']])
         
         pm_row = cursor.fetchone()
@@ -876,7 +1056,7 @@ def calculate_recipe(recipe_id):
                 cursor_cl.execute("""
                     SELECT proteina, grasa, carbohidratos, libertad
                     FROM nutrition_plans WHERE patient_id = ?
-                    ORDER BY created_at DESC LIMIT 1
+                    ORDER BY id DESC LIMIT 1
                 """, [patient['patient_id']])
                 dieta = cursor_cl.fetchone()
                 conn_cl.close()
@@ -964,8 +1144,8 @@ def calculate_recipe(recipe_id):
         conn_cl.close()
         conn_legacy.close()
 
-        import functions
-        resultado = functions.solve_meal(
+        # Fix 18 — OMV-52: usa wrapper local en vez de import functions inline
+        resultado = _v3_solve_meal(
             alimentos=all_alimentos,
             objetivo=objetivo,
             libertad=float(solve_data.get('libertad', 5)),
@@ -1041,7 +1221,7 @@ def solve_meal():
                     cur.execute(f"""
                         SELECT proteina, grasa, carbohidratos, {cols[0]}, {cols[1]}, {cols[2]}, libertad
                         FROM nutrition_plans WHERE patient_id = ?
-                        ORDER BY created_at DESC LIMIT 1
+                        ORDER BY id DESC LIMIT 1
                     """, [patient['patient_id']])
                     plan = cur.fetchone()
                     if plan:
@@ -1064,7 +1244,7 @@ def solve_meal():
                 cur.execute("""
                     SELECT proteina, grasa, carbohidratos, libertad
                     FROM nutrition_plans WHERE patient_id = ?
-                    ORDER BY created_at DESC LIMIT 1
+                    ORDER BY id DESC LIMIT 1
                 """, [patient['patient_id']])
                 plan = cur.fetchone()
                 if plan:
@@ -1186,9 +1366,8 @@ def solve_meal():
             code=ErrorCodes.VALIDATION_ERROR, status_code=400
         )
 
-    # Call solver
-    import functions
-    resultado = functions.solve_meal(
+    # Call solver — Fix 18 — OMV-52: wrapper local
+    resultado = _v3_solve_meal(
         alimentos=all_alimentos,
         objetivo=objetivo,
         libertad=libertad_val,
@@ -1420,10 +1599,16 @@ def delete_recipe(recipe_id):
 @require_auth
 def list_meal_plans():
     """
-    Lista los planes alimentarios del usuario.
+    Lista los planes alimentarios del usuario o paciente target (?patient=<dni>).
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
     
     try:
         conn = get_clinical_connection(sqlite3.Row)
@@ -1481,19 +1666,25 @@ def create_meal_plan():
     """
     user = get_current_user()
     data = request.get_json() or {}
-    patient = resolve_patient_id(user['nombre_apellido'])
-    
+    target_name = data.get('nombre_apellido') or data.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
+
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
-    
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-        
+
         # Desactivar planes anteriores del mismo tipo
         cursor.execute("""
-            UPDATE meal_plans 
-            SET activo = 0 
+            UPDATE meal_plans
+            SET activo = 0
             WHERE patient_id = ? AND tipo = ?
         """, [patient['patient_id'], data.get('tipo', 'recetas')])
         
@@ -1543,9 +1734,16 @@ def get_meal_blocks():
     """
     Obtiene la distribución de macros por comida desde nutrition_plans.
     Returns per-meal macro percentages and calculated grams.
+    Acepta ?patient=<dni> para que el especialista consulte un paciente asignado.
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
 
     try:
         conn = get_clinical_connection()
@@ -1565,7 +1763,7 @@ def get_meal_blocks():
                    cena_p, cena_g, cena_c,
                    libertad
             FROM nutrition_plans WHERE patient_id = ?
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY id DESC LIMIT 1
         """, [patient['patient_id']])
 
         row = cursor.fetchone()
@@ -1644,21 +1842,43 @@ def get_meal_blocks():
 def save_meal_config():
     """
     Guarda configuración de comidas y recalcula distribución de macros.
-    Body: {
-        "comidas": { "desayuno": { "enabled": true, "size": "medium" }, ... },
-        "entreno": "almuerzo" | null   // Comida después de la cual se entrena
-    }
+
+    Body:
+        comidas (object, requerido): { "desayuno": { "enabled": true, "size": "medium" }, ... }
+        plan_id (int, opcional): id del plan a configurar. Si no viene, usa el más
+                                 reciente del paciente. (Fix 18 — OMV-50)
+
+        Single-entreno (compat legacy):
+        entreno (str, opcional):  meal_key después del cual se entrena (ej "almuerzo")
+
+        Multi-entreno (Fix 18 — OMV-49):
+        entreno_meal_keys (array, opcional): lista de meal_keys con entreno cercano.
+                                              Si viene, gana sobre `entreno`.
+        entreno_intensidad ('baja'|'media'|'alta', default 'media'):
+                                              intensidad de cada entreno. Afecta
+                                              cuánto se multiplican los carbs.
+                                              baja=1.5x, media=2x, alta=3x.
+
+        nombre_apellido | patient (str, opcional): target paciente
+
     Sizes: extra_small (0.5x), small (0.75x), medium (1x), large (1.33x), extra_large (2x)
 
-    Training logic (from legacy):
-    - Training meal + next meal: carbs multiplied by 2
-    - All other meals: fats multiplied by 2
-    - Proteins: unaffected by training timing
-    - Then normalize each macro independently so proportions sum to 1.0
+    Training logic:
+    - Training meals (cada una en `entreno_meal_keys`) + comida siguiente:
+      carbs × FACTOR_INTENSIDAD
+    - Todas las otras comidas: fats × FACTOR_INTENSIDAD
+    - Proteínas: sin alteración por timing de entreno
+    - Normaliza cada macro independientemente (suma a 1.0)
+
+    Fix 18 — OMV-48: persiste `entreno_meal_keys_json`, `entreno_intensidad`,
+    `comidas_config_json` en `nutrition_plans` para que la config sobreviva.
     """
     SIZE_COEFF = {
         'extra_small': 0.5, 'small': 0.75, 'medium': 1.0,
         'large': 1.33, 'extra_large': 2.0
+    }
+    INTENSIDAD_FACTOR = {
+        'baja': 1.5, 'media': 2.0, 'alta': 3.0,
     }
     MEAL_COLS = {
         'desayuno':     ('desayuno_p', 'desayuno_g', 'desayuno_c'),
@@ -1673,12 +1893,37 @@ def save_meal_config():
     user = get_current_user()
     data = request.get_json() or {}
     comidas_config = data.get('comidas', {})
-    entreno = data.get('entreno', None)  # meal key after which training happens
+
+    # Multi-entreno (preferido) o single (compat legacy) — OMV-49
+    entreno_meal_keys = data.get('entreno_meal_keys')
+    if not entreno_meal_keys:
+        single_entreno = data.get('entreno', None)
+        entreno_meal_keys = [single_entreno] if single_entreno else []
+    if not isinstance(entreno_meal_keys, list):
+        return error_response(
+            'entreno_meal_keys debe ser array',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400
+        )
+    entreno_meal_keys = [m for m in entreno_meal_keys if m]  # filter falsy
+
+    entreno_intensidad = (data.get('entreno_intensidad') or 'media').strip().lower()
+    if entreno_intensidad not in INTENSIDAD_FACTOR:
+        return error_response(
+            f'entreno_intensidad inválida ({entreno_intensidad}). Opciones: baja, media, alta.',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400
+        )
+    factor_entreno = INTENSIDAD_FACTOR[entreno_intensidad]
 
     if not comidas_config:
         return error_response('Se requiere el campo "comidas"', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = data.get('nombre_apellido') or data.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
     if not patient:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
 
@@ -1686,13 +1931,27 @@ def save_meal_config():
         conn = get_clinical_connection()
         cursor = conn.cursor()
 
-        # Get current plan
-        cursor.execute("""
-            SELECT id, proteina, grasa, carbohidratos
-            FROM nutrition_plans WHERE patient_id = ?
-            ORDER BY created_at DESC LIMIT 1
-        """, [patient['patient_id']])
-        plan = cursor.fetchone()
+        # OMV-50: aceptar plan_id explícito; fallback al más reciente
+        explicit_plan_id = data.get('plan_id')
+        if explicit_plan_id:
+            cursor.execute("""
+                SELECT id, proteina, grasa, carbohidratos, patient_id
+                FROM nutrition_plans WHERE id = ?
+            """, [explicit_plan_id])
+            plan = cursor.fetchone()
+            if plan and plan[4] != patient['patient_id']:
+                conn.close()
+                return error_response(
+                    'El plan_id no pertenece al paciente target',
+                    code=ErrorCodes.FORBIDDEN, status_code=403
+                )
+        else:
+            cursor.execute("""
+                SELECT id, proteina, grasa, carbohidratos, patient_id
+                FROM nutrition_plans WHERE patient_id = ?
+                ORDER BY id DESC LIMIT 1
+            """, [patient['patient_id']])
+            plan = cursor.fetchone()
 
         if not plan:
             conn.close()
@@ -1717,29 +1976,32 @@ def save_meal_config():
             return error_response('Al menos una comida debe estar habilitada', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
         # Step 1: Apply size coefficients → per-meal multipliers for P, G, C
-        # Start with equal base multiplier = size coeff for each macro
         meal_multipliers = {}
         for meal_name, coeff in enabled_meals:
             meal_multipliers[meal_name] = {
-                'p': coeff,   # protein multiplier
-                'g': coeff,   # fat multiplier
-                'c': coeff,   # carb multiplier
+                'p': coeff,
+                'g': coeff,
+                'c': coeff,
             }
 
-        # Step 2: Apply training distribution (legacy algorithm)
-        # Training meal + next meal: carbs x2, all others: fats x2
-        if entreno and entreno in [m[0] for m in enabled_meals]:
-            enabled_keys = [m[0] for m in enabled_meals]
-            entreno_idx = enabled_keys.index(entreno)
-            next_idx = entreno_idx + 1 if entreno_idx + 1 < len(enabled_keys) else None
+        # Step 2: Apply training distribution (Fix 18 — multi-entreno + intensidad)
+        # Para cada entreno: esa comida + la siguiente reciben carbs × factor_entreno.
+        # Las que NO están cerca de ningún entreno reciben fats × factor_entreno.
+        enabled_keys = [m[0] for m in enabled_meals]
+        valid_entrenos = [k for k in entreno_meal_keys if k in enabled_keys]
+        meals_near_training = set()
+        for entr in valid_entrenos:
+            ent_idx = enabled_keys.index(entr)
+            meals_near_training.add(entr)
+            if ent_idx + 1 < len(enabled_keys):
+                meals_near_training.add(enabled_keys[ent_idx + 1])
 
-            for i, meal_name in enumerate(enabled_keys):
-                if i == entreno_idx or i == next_idx:
-                    # Near training: double carbs
-                    meal_multipliers[meal_name]['c'] *= 2
+        if meals_near_training:
+            for meal_name in enabled_keys:
+                if meal_name in meals_near_training:
+                    meal_multipliers[meal_name]['c'] *= factor_entreno
                 else:
-                    # Away from training: double fats
-                    meal_multipliers[meal_name]['g'] *= 2
+                    meal_multipliers[meal_name]['g'] *= factor_entreno
 
         # Step 3: Normalize each macro independently (sum to 1.0)
         total_p = sum(m['p'] for m in meal_multipliers.values())
@@ -1769,6 +2031,24 @@ def save_meal_config():
                 # Disabled meal → zero
                 update_parts.extend([f"{cols[0]}=0", f"{cols[1]}=0", f"{cols[2]}=0"])
 
+        # Fix 18 (OMV-48): persistir entreno_meal_keys, intensidad, y comidas_config
+        # Single legacy field (entreno_meal_key) recibe el primero del array para compat.
+        update_parts.extend([
+            "entreno_meal_keys_json = ?",
+            "entreno_meal_key = ?",
+            "entreno_intensidad = ?",
+            "comidas_config_json = ?",
+            "updated_by_user_id = ?",
+            "updated_at = datetime('now', 'localtime')",
+        ])
+        update_vals.extend([
+            json.dumps(valid_entrenos, ensure_ascii=False) if valid_entrenos else None,
+            valid_entrenos[0] if valid_entrenos else None,
+            entreno_intensidad,
+            json.dumps(comidas_config, ensure_ascii=False),
+            user.get('user_id') if user else None,
+        ])
+
         sql = f"UPDATE nutrition_plans SET {', '.join(update_parts)} WHERE id = ?"
         update_vals.append(plan_id)
         cursor.execute(sql, update_vals)
@@ -1777,7 +2057,10 @@ def save_meal_config():
 
         return success_response({
             'message': 'Configuración guardada',
-            'entreno': entreno,
+            'plan_id': plan_id,
+            'entreno_meal_keys': valid_entrenos,
+            'entreno_intensidad': entreno_intensidad,
+            'factor_aplicado': factor_entreno,
             'blocks': {
                 'calorias': proteina_total * 4 + grasa_total * 9 + ch_total * 4,
                 'proteina_total': proteina_total,
@@ -1801,9 +2084,16 @@ def calculate_meal_plan(plan_id):
     """
     Auto-calcula todas las recetas de un plan alimentario guardado.
     Uses the new solve_meal solver for each recipe.
+    Acepta ?patient=<dni> para especialista asignado.
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
 
     try:
         conn = get_clinical_connection(sqlite3.Row)
@@ -1835,7 +2125,7 @@ def calculate_meal_plan(plan_id):
                    media_tar_p, media_tar_g, media_tar_c,
                    cena_p, cena_g, cena_c, libertad
             FROM nutrition_plans WHERE patient_id = ?
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY id DESC LIMIT 1
         """, [patient['patient_id']])
         dieta = cursor.fetchone()
 
@@ -1952,7 +2242,8 @@ def calculate_meal_plan(plan_id):
                             break
 
                 try:
-                    calc = functions.solve_meal(
+                    # Fix 18 — OMV-52: wrapper local
+                    calc = _v3_solve_meal(
                         alimentos=all_alimentos,
                         objetivo={'proteina': p_per, 'grasa': g_per, 'carbohidratos': c_per},
                         libertad=libertad,
@@ -2003,9 +2294,16 @@ def get_shopping_list(plan_id):
     """
     Genera una lista de compras a partir de un plan alimentario.
     Aggregates ingredients from all selected recipes.
+    Acepta ?patient=<dni> para especialista asignado.
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
 
     try:
         conn = get_clinical_connection(sqlite3.Row)
@@ -2107,18 +2405,38 @@ def auto_calculate_plan():
     """
     Calcula un plan nutricional automático basado en datos actuales y objetivo.
     Migrado desde functions.calcular_plan_nutricional_automatico().
-    Body: {
-        factor_actividad?: float (default 1.55),
-        nombre_apellido?: str  -- admin/doctor puede calcular para otro paciente
-    }
+
+    Body:
+        factor_actividad (float, default 1.55)
+        nombre_apellido / patient (opcional): target paciente
+        parametros_macros (object, opcional, Fix 18 — OMV-47):
+            {
+                "proteina_g_per_kg_lm": 2.513244,   // default: 2.513244 g/kg lean mass
+                "grasa_pct_kcal_min": 0.30,         // default: 30% kcal mínimo
+                "grasa_g_per_kg_min": 0.6           // default: 0.6 g/kg peso mínimo
+            }
+            Permite al especialista ajustar la fórmula para casos especiales
+            (atleta low-fat, paciente con baja proteína por riñón, etc.).
+
+    Response NO persiste — solo calcula y devuelve `opciones_velocidad`. Para
+    persistir una opción elegida, usar `POST /plans/auto-calculate/accept`
+    (Fix 18 — OMV-46).
     """
     user = get_current_user()
     data = request.get_json() or {}
     factor_actividad = float(data.get('factor_actividad', 1.55))
 
-    # Admin/doctor puede especificar otro paciente
-    nombre_objetivo = data.get('nombre_apellido')
-    if nombre_objetivo and user['is_admin']:
+    # OMV-47: parámetros de macros configurables (con defaults históricos)
+    pm = data.get('parametros_macros') or {}
+    p_per_kg_lm = float(pm.get('proteina_g_per_kg_lm', 2.513244))
+    g_pct_kcal_min = float(pm.get('grasa_pct_kcal_min', 0.30))
+    g_per_kg_min = float(pm.get('grasa_g_per_kg_min', 0.6))
+
+    # Owner / admin / especialista asignado pueden auto-calcular para un paciente
+    nombre_objetivo = data.get('nombre_apellido') or data.get('patient')
+    if nombre_objetivo:
+        if not check_patient_access(user, nombre_objetivo):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(nombre_objetivo)
     else:
         patient = resolve_patient_id(user['nombre_apellido'])
@@ -2266,14 +2584,14 @@ def auto_calculate_plan():
                 "descripcion": "Mantener peso y composición corporal actual.",
             }]
 
-        # 7. Macros para cada opción
+        # 7. Macros para cada opción (Fix 18 — OMV-47: parámetros configurables)
         for opcion in opciones_velocidad:
             calorias = opcion["calorias"]
-            proteina_g = round(2.513244 * peso_magro, 2)
+            proteina_g = round(p_per_kg_lm * peso_magro, 2)
             proteina_kcal = proteina_g * 4
-            grasa_30pct = (calorias * 0.3) / 9
-            grasa_minima = peso_actual * 0.6
-            grasa_g = round(max(grasa_30pct, grasa_minima), 2)
+            grasa_pct_kcal = (calorias * g_pct_kcal_min) / 9
+            grasa_minima = peso_actual * g_per_kg_min
+            grasa_g = round(max(grasa_pct_kcal, grasa_minima), 2)
             grasa_kcal = grasa_g * 9
             ch_kcal = calorias - proteina_kcal - grasa_kcal
             ch_g = round(ch_kcal / 4, 2) if ch_kcal > 0 else 0
@@ -2291,7 +2609,7 @@ def auto_calculate_plan():
                 "grasa_g": grasa_g,
                 "carbohidratos_g": ch_g,
                 "proteina_porcentaje": round((proteina_kcal / calorias) * 100, 1) if calorias > 0 else 0,
-                "grasa_porcentaje": 30.0,
+                "grasa_porcentaje": round((grasa_kcal / calorias) * 100, 1) if calorias > 0 else 0,
                 "carbohidratos_porcentaje": round((ch_kcal / calorias) * 100, 1) if ch_kcal > 0 and calorias > 0 else 0,
             }
             opcion["disponibilidad_energetica"] = {
@@ -2316,6 +2634,11 @@ def auto_calculate_plan():
             "tmb": round(tmb),
             "factor_actividad": factor_actividad,
             "opciones_velocidad": opciones_velocidad,
+            "parametros_macros_usados": {
+                "proteina_g_per_kg_lm": p_per_kg_lm,
+                "grasa_pct_kcal_min": g_pct_kcal_min,
+                "grasa_g_per_kg_min": g_per_kg_min,
+            },
             "metadata": {
                 "sexo": sexo, "edad": edad, "altura": altura,
                 "fecha_calculo": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -2327,6 +2650,130 @@ def auto_calculate_plan():
             f'Error calculando plan automático: {str(e)}',
             code=ErrorCodes.INTERNAL_ERROR,
             status_code=500
+        )
+
+
+@nutrition_bp.route('/plans/auto-calculate/accept', methods=['POST'])
+@require_auth
+def accept_auto_calculate_option():
+    """
+    Persiste una opción del cálculo automático como nuevo plan nutricional
+    activo (Fix 18 — OMV-46).
+
+    Body:
+        nombre_apellido | patient (opcional): target paciente
+        opcion (object, requerido): la opción elegida del response de
+            POST /plans/auto-calculate. Debe incluir al menos:
+            { calorias, macros: { proteina_g, grasa_g, carbohidratos_g } }
+            Se acepta también el shape extendido con velocidad_semanal_kg,
+            deficit_diario / superavit_diario, etc., para auditoría.
+        factor_actividad (float, opcional, default 1.55): el usado al calcular
+        parametros_macros (object, opcional): snapshot de los parámetros usados
+        libertad (int, opcional, default 5): margen del solver
+
+    Comportamiento:
+    - Crea un nuevo `nutrition_plans` con los macros de la opción.
+    - Persiste `parametros_macros_json` con el snapshot para audit.
+    - NO archiva planes anteriores (el caller decide si querer pisar el viejo
+      via PUT). El más reciente es el "activo" según el orden por created_at.
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+
+    target_name = data.get('nombre_apellido') or data.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
+    if not patient:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    opcion = data.get('opcion') or {}
+    macros = opcion.get('macros') or {}
+    calorias = opcion.get('calorias')
+    proteina = macros.get('proteina_g')
+    grasa = macros.get('grasa_g')
+    carbohidratos = macros.get('carbohidratos_g')
+
+    if calorias is None or proteina is None or grasa is None or carbohidratos is None:
+        return error_response(
+            'opcion debe incluir calorias y macros { proteina_g, grasa_g, carbohidratos_g }',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400
+        )
+
+    factor_actividad = float(data.get('factor_actividad', 1.55))
+    libertad = int(data.get('libertad', 5))
+
+    # Velocidad/déficit informativos (no critical, solo audit)
+    velocidad_cambio = opcion.get('velocidad_semanal_kg', 0)
+    deficit_calorico = opcion.get('deficit_diario', 0)
+    disponibilidad_energetica = (opcion.get('disponibilidad_energetica') or {}).get('ea_valor')
+
+    parametros_macros = data.get('parametros_macros') or {}
+
+    try:
+        conn = get_clinical_connection()
+        cursor = conn.cursor()
+
+        # Distribución default 4-comidas equitativa (los porcentajes los ajusta save-config después)
+        default_pct = {
+            'desayuno': 0.25, 'media_man': 0.0, 'almuerzo': 0.30,
+            'merienda': 0.20, 'media_tar': 0.0, 'cena': 0.25,
+        }
+
+        cursor.execute("""
+            INSERT INTO nutrition_plans
+                (patient_id, calorias, proteina, grasa, carbohidratos,
+                 desayuno_p, desayuno_g, desayuno_c,
+                 media_man_p, media_man_g, media_man_c,
+                 almuerzo_p, almuerzo_g, almuerzo_c,
+                 merienda_p, merienda_g, merienda_c,
+                 media_tar_p, media_tar_g, media_tar_c,
+                 cena_p, cena_g, cena_c,
+                 libertad, factor_actividad, velocidad_cambio,
+                 deficit_calorico, disponibilidad_energetica,
+                 parametros_macros_json,
+                 created_at)
+            VALUES (?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?,
+                    datetime('now', 'localtime'))
+        """, [
+            patient['patient_id'], calorias, proteina, grasa, carbohidratos,
+            default_pct['desayuno'], default_pct['desayuno'], default_pct['desayuno'],
+            default_pct['media_man'], default_pct['media_man'], default_pct['media_man'],
+            default_pct['almuerzo'], default_pct['almuerzo'], default_pct['almuerzo'],
+            default_pct['merienda'], default_pct['merienda'], default_pct['merienda'],
+            default_pct['media_tar'], default_pct['media_tar'], default_pct['media_tar'],
+            default_pct['cena'], default_pct['cena'], default_pct['cena'],
+            libertad, factor_actividad, velocidad_cambio,
+            deficit_calorico, disponibilidad_energetica,
+            json.dumps(parametros_macros, ensure_ascii=False) if parametros_macros else None,
+        ])
+        plan_id = cursor.lastrowid
+
+        conn.commit()
+        conn.close()
+
+        return success_response({
+            'plan_id': plan_id,
+            'calorias': calorias,
+            'macros': {
+                'proteina_g': proteina,
+                'grasa_g': grasa,
+                'carbohidratos_g': carbohidratos,
+            },
+            'velocidad_cambio': velocidad_cambio,
+            'persisted': True,
+        }, message='Plan persistido. Ajustá distribución por comida con POST /meal-plans/save-config.')
+
+    except Exception as e:
+        return error_response(
+            f'Error persistiendo plan: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500
         )
 
 
@@ -2352,7 +2799,7 @@ def _get_plan_data(cursor, patient_id):
     """Helper: fetch nutrition_plans row for the patient from clinical.db."""
     cursor.execute("""
         SELECT * FROM nutrition_plans WHERE patient_id = ?
-        ORDER BY created_at DESC LIMIT 1
+        ORDER BY id DESC LIMIT 1
     """, [patient_id])
     return cursor.fetchone()
 
@@ -2381,7 +2828,13 @@ def adjust_blocks():
     if comida_id not in COMIDAS_INDICES:
         return error_response('Comida no válida', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = data.get('nombre_apellido') or data.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
 
@@ -2483,10 +2936,16 @@ def adjust_blocks():
 def get_block_suggestions():
     """
     Obtiene sugerencias de bloques: presets globales + favoritos del usuario + ajustes recientes.
-    Query: ?comida=desayuno (optional filter)
+    Query: ?comida=desayuno (optional filter), ?patient=<dni> (specialist asignado)
     """
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
     comida_param = request.args.get('comida')
 
     if not patient:
@@ -2551,7 +3010,7 @@ def get_block_suggestions():
                 SELECT comida, campo, valor_nuevo, created_at
                 FROM block_adjustments_log
                 WHERE patient_id = ? AND created_at >= datetime('now', '-7 days')
-                ORDER BY created_at DESC LIMIT 10
+                ORDER BY id DESC LIMIT 10
             ''', (patient['patient_id'],))
             for a in cursor.fetchall():
                 sugerencias['ajustes_recientes'].append({
@@ -2724,7 +3183,6 @@ def save_block_constructor():
         return error_response('Módulo functions no disponible', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
     user = get_current_user()
-    patient = resolve_patient_id(user['nombre_apellido'])
     data = request.get_json() or {}
 
     comida = data.get('comida')
@@ -2733,6 +3191,14 @@ def save_block_constructor():
 
     if not comida or not alimentos or not alias:
         return error_response('Faltan campos: comida, alimentos, alias', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    target_name = data.get('nombre_apellido') or data.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
+        patient = resolve_patient_id(target_name)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
 
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -3057,9 +3523,11 @@ def save_daily_log():
     user = get_current_user()
     data = request.get_json()
 
-    # Admin/doctor can save for a specific patient
+    # Owner, admin o especialista asignado pueden guardar log del paciente
     target_name = data.get('nombre_apellido') if data else None
-    if target_name and user.get('is_admin'):
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(target_name)
     else:
         patient = resolve_patient_id(user['nombre_apellido'])
@@ -3147,8 +3615,10 @@ def get_daily_log():
     Query: ?fecha=YYYY-MM-DD&nombre_apellido=X (admin/doctor)
     """
     user = get_current_user()
-    target_name = request.args.get('nombre_apellido')
-    if target_name and user.get('is_admin'):
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(target_name)
     else:
         patient = resolve_patient_id(user['nombre_apellido'])
@@ -3223,8 +3693,10 @@ def get_daily_log_history():
     Query: ?days=30&nombre_apellido=X (admin/doctor)
     """
     user = get_current_user()
-    target_name = request.args.get('nombre_apellido')
-    if target_name and user.get('is_admin'):
+    target_name = request.args.get('nombre_apellido') or request.args.get('patient')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente', code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(target_name)
     else:
         patient = resolve_patient_id(user['nombre_apellido'])

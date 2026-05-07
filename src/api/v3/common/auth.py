@@ -220,11 +220,80 @@ def is_assigned_professional(specialist_user_id, patient_identifier):
         return False
 
 
+def check_patient_access(user, patient_identifier):
+    """
+    Devuelve True si el `user` actual tiene acceso al paciente `patient_identifier`.
+
+    Acceso:
+        - admin (is_admin / rol == 'admin') siempre.
+        - el propio paciente (match por auth_user_id, DNI, nombre, o patient_id
+          resuelto via resolve_patient_id).
+        - especialista con assignment 'accepted' (auth.db.specialist_assignments).
+
+    Args:
+        user: dict devuelto por get_current_user().
+        patient_identifier: string o int — auth_user_id, DNI, nombre_apellido,
+            email, o patient_id.
+
+    Returns:
+        bool
+    """
+    if not user:
+        return False
+
+    if user.get('is_admin') or user.get('rol') == 'admin':
+        return True
+
+    if patient_identifier in (None, ''):
+        return False
+
+    pid_str = str(patient_identifier).strip()
+    candidates = {
+        str(user.get('user_id') or ''),
+        str(user.get('dni') or ''),
+        str(user.get('nombre_apellido') or ''),
+        str(user.get('email') or '').lower(),
+    }
+    if pid_str in candidates or pid_str.lower() in candidates:
+        return True
+
+    # Resolver el identifier al paciente (clinical.db) y comparar
+    try:
+        from .database import resolve_patient_id  # local to avoid circular
+        target = resolve_patient_id(pid_str)
+    except Exception:
+        target = None
+
+    if target:
+        target_keys = {
+            str(target.get('patient_id') or ''),
+            str(target.get('auth_user_id') or ''),
+            str(target.get('dni') or ''),
+            str(target.get('nombre') or ''),
+            str(target.get('email') or '').lower(),
+        }
+        if target_keys & candidates:
+            return True
+        # Especialista asignado: probar con DNI y con nombre
+        specialist_id = user.get('user_id')
+        if specialist_id:
+            for key in (target.get('dni'), target.get('nombre')):
+                if key and is_assigned_professional(specialist_id, key):
+                    return True
+
+    # Ultimo intento: pasar el identifier crudo al chequeo de assignments
+    specialist_id = user.get('user_id')
+    if specialist_id and is_assigned_professional(specialist_id, pid_str):
+        return True
+
+    return False
+
+
 def require_owner_or_admin(f):
     """
     Decorador que requiere ser dueño del recurso o administrador.
     El ID del recurso debe estar en kwargs como 'user_id' o 'id'.
-    
+
     Usage:
         @require_owner_or_admin
         def get_user_data(user_id):

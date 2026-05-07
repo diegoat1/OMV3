@@ -5,6 +5,7 @@ import type { AuthUser } from '../types/api'
 
 interface LoginProps {
   onLogin: (user: AuthUser) => void
+  onCreateAccount?: () => void
 }
 
 export function Login({ onLogin }: LoginProps) {

@@ -1,5 +1,5 @@
 import { api, tokenStore } from './apiClient'
-import type { AuthUser, LoginResponse } from '../types/api'
+import type { AuthUser, LoginResponse, RegisterPayload } from '../types/api'
 
 export const authService = {
   async login(email: string, password: string): Promise<AuthUser> {
@@ -11,6 +11,9 @@ export const authService = {
   async me(): Promise<AuthUser> {
     const data = await api.get<{ user: AuthUser }>('/auth/me')
     return data.user
+  },
+  async register(payload: RegisterPayload): Promise<{ user_id: number; status: string }> {
+    return api.post<{ user_id: number; status: string }>('/auth/register', payload)
   },
   async logout(): Promise<void> {
     try {
