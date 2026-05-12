@@ -8,7 +8,7 @@ interface LoginProps {
   onCreateAccount?: () => void
 }
 
-export function Login({ onLogin }: LoginProps) {
+export function Login({ onLogin, onCreateAccount }: LoginProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -106,6 +106,36 @@ export function Login({ onLogin }: LoginProps) {
             {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
+
+        {onCreateAccount && (
+          <div
+            style={{
+              marginTop: 18,
+              paddingTop: 16,
+              borderTop: '1px solid var(--line)',
+              fontSize: 13,
+              color: 'var(--text-2)',
+              textAlign: 'center',
+            }}
+          >
+            ¿No tenés cuenta?{' '}
+            <button
+              type="button"
+              onClick={onCreateAccount}
+              style={{
+                background: 'transparent',
+                border: 0,
+                color: 'var(--medic)',
+                cursor: 'pointer',
+                font: 'inherit',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Crear cuenta
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

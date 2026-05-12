@@ -12,9 +12,34 @@ html, body { overflow-x: hidden; }
 
 /* Mobile-only nav (bottom tab bar) — hidden by default, shown <640px */
 .sidebar-mobile-nav { display: none; }
-/* Bottom-sheet is mobile-only; hide on desktop/tablet so it doesn't leak unstyled.
-   The mobile @media block re-enables display: block. */
-.sheet, .sheet-backdrop { display: none; }
+/* Sheets render as a bottom-sheet on mobile (overridden inside the mobile
+   @media block below) and as a centered modal dialog on tablet/desktop.
+   The base rules here apply when no breakpoint matches (>1024px). */
+.sheet-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 80;
+  animation: ums-fade-in 0.18s ease-out;
+}
+.sheet {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 90;
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 24px 22px;
+  width: min(480px, calc(100vw - 32px));
+  max-height: 86vh;
+  overflow-y: auto;
+  animation: ums-fade-in 0.18s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* On desktop the iOS-style drag handle is meaningless — hide it. */
+.sheet-handle { display: none; }
 /* PatientHome avatar tap-target only makes sense on mobile (desktop/tablet
    have the topbar role switcher). The .ph-header itself stays visible on
    all breakpoints — it carries the date + greeting. */
