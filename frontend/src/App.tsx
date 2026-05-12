@@ -16,6 +16,7 @@ import { Nutrition } from './screens/patient/Nutrition'
 import { Progress as PatientProgress } from './screens/patient/Progress'
 import { AdminHome } from './screens/AdminHome'
 import { AdminAudit } from './screens/admin/AdminAudit'
+import { AdminPending } from './screens/admin/AdminPending'
 import { DoctorHome } from './screens/doctor/DoctorHome'
 import { DoctorPatients } from './screens/doctor/DoctorPatients'
 import { DoctorPatientDetail } from './screens/doctor/DoctorPatientDetail'
@@ -108,7 +109,12 @@ function resolveScreen(
     case 'd-templates':
       return { node: <Placeholder title="Plantillas" />, crumbs: ['Omega Medicina', 'Plantillas'] }
     case 'a-home':
-      return { node: <AdminHome />, crumbs: ['Omega Medicina', 'Sistema'] }
+      return {
+        node: <AdminHome onOpenPending={() => setScreen('a-pending')} />,
+        crumbs: ['Omega Medicina', 'Sistema'],
+      }
+    case 'a-pending':
+      return { node: <AdminPending />, crumbs: ['Omega Medicina', 'Pendientes'] }
     case 'a-users':
       return { node: <Placeholder title="Usuarios" />, crumbs: ['Omega Medicina', 'Usuarios'] }
     case 'a-audit':

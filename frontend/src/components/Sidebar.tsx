@@ -55,6 +55,7 @@ const NAV: Record<Role, NavGroup[]> = {
   admin: [
     { title: 'Sistema', items: [
       { id: 'a-home', label: 'Panel', icon: 'home' },
+      { id: 'a-pending', label: 'Pendientes', icon: 'user' },
       { id: 'a-users', label: 'Usuarios', icon: 'users' },
       { id: 'a-audit', label: 'Auditoría', icon: 'shield' },
       { id: 'a-db', label: 'Base de datos', icon: 'db' },
@@ -102,7 +103,7 @@ const MOBILE_TABS: Record<Role, NavItem[]> = {
   ],
   admin: [
     { id: 'a-home', label: 'Panel', icon: 'dashboard' },
-    { id: 'a-users', label: 'Usuarios', icon: 'user' },
+    { id: 'a-pending', label: 'Pendientes', icon: 'user' },
     { id: 'a-audit', label: 'Audit', icon: 'history' },
     { id: 'a-db', label: 'Datos', icon: 'data' },
   ],

@@ -1,19 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
 import { Progress } from '../components/atoms'
-
-interface StatTile {
-  k: string
-  v: string
-  d: string
-}
-
-const STATS: StatTile[] = [
-  { k: 'Usuarios', v: '—', d: 'sin datos' },
-  { k: 'Activos 30d', v: '—', d: 'sin datos' },
-  { k: 'Pendientes', v: '—', d: 'aprobación' },
-  { k: 'Errores 24h', v: '—', d: 'sin incidentes' },
-]
+import { adminService } from '../services/adminService'
+import { ApiError } from '../services/apiClient'
 
 interface ModuleUsage {
   name: string
@@ -41,10 +31,34 @@ const SYSTEM_ACTIONS: SystemAction[] = [
   { title: 'Limpieza', sub: 'Temporales · logs', icon: 'settings' },
 ]
 
-export function AdminHome() {
+interface Props {
+  onOpenPending?: () => void
+}
+
+export function AdminHome({ onOpenPending }: Props = {}) {
+  const [pendingCount, setPendingCount] = useState<number | null>(null)
+  const [pendingErr, setPendingErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    adminService.listPendingUsers()
+      .then((r) => { if (!cancelled) setPendingCount(r.total) })
+      .catch((e) => {
+        if (cancelled) return
+        setPendingErr(e instanceof ApiError ? e.message : 'Error cargando pendientes')
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const stats = [
+    { k: 'Usuarios', v: '—', d: 'sin datos' },
+    { k: 'Activos 30d', v: '—', d: 'sin datos' },
+    { k: 'Pendientes', v: pendingErr ? '—' : pendingCount != null ? String(pendingCount) : '…', d: pendingErr ? 'sin acceso' : 'aprobación' },
+    { k: 'Errores 24h', v: '—', d: 'sin incidentes' },
+  ]
+
   return (
     <div className="admin-home" data-mod="admin">
-      {/* Page title — module pill + serif italic display */}
       <div className="ah-title-block">
         <div className="module-pill">Admin</div>
         <div className="display ah-title">
@@ -53,9 +67,8 @@ export function AdminHome() {
         <div className="ah-subtitle">Omega Medicina · producción</div>
       </div>
 
-      {/* 4 stat tiles */}
       <div className="ah-stats">
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <div key={s.k} className="stat">
             <div className="k">{s.k}</div>
             <div className="v">{s.v}</div>
@@ -80,17 +93,44 @@ export function AdminHome() {
         </div>
       </div>
 
-      {/* Pending approvals — empty state */}
+      {/* Pending approvals — link to AdminPending */}
       <div className="ah-section">
         <div className="row-between" style={{ marginBottom: 10 }}>
           <div className="section-label">Aprobaciones pendientes</div>
-          <div className="mono" style={{ color: 'var(--text-3)' }}>0 pendientes</div>
+          <div className="mono" style={{ color: 'var(--text-3)' }}>
+            {pendingErr ? '— sin acceso' : pendingCount != null ? `${pendingCount} pendiente${pendingCount === 1 ? '' : 's'}` : 'cargando…'}
+          </div>
         </div>
-        <div className="card">
-          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-            Sin aprobaciones pendientes.
-          </p>
-        </div>
+        <button
+          type="button"
+          className="card"
+          onClick={onOpenPending}
+          disabled={!onOpenPending}
+          style={{
+            width: '100%',
+            textAlign: 'left',
+            border: '1px solid var(--line)',
+            background: 'var(--bg-1)',
+            color: 'var(--text-1)',
+            cursor: onOpenPending ? 'pointer' : 'default',
+            transition: 'background 0.12s',
+          }}
+        >
+          <div className="row-between">
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+              {pendingErr
+                ? pendingErr
+                : pendingCount === 0
+                  ? 'Sin aprobaciones pendientes.'
+                  : pendingCount != null
+                    ? `${pendingCount} usuario${pendingCount === 1 ? '' : 's'} esperando revisión. Tocá para abrir el panel.`
+                    : 'Cargando estado…'}
+            </p>
+            {onOpenPending && pendingCount != null && pendingCount > 0 && (
+              <Icon name="chevR" size={16} />
+            )}
+          </div>
+        </button>
       </div>
 
       {/* System quick actions */}
