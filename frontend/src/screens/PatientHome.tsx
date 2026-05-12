@@ -1,6 +1,10 @@
+import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
-import { Progress } from '../components/atoms'
+import { Avatar, Progress } from '../components/atoms'
+import { assignmentService } from '../services/assignmentService'
+import { ApiError } from '../services/apiClient'
+import type { MyRequest, MySpecialist, PendingAssignment } from '../types/api'
 
 interface ModuleTile {
   label: string
@@ -23,6 +27,22 @@ const HEALTH_STATS: { k: string; v: number; c: string }[] = [
   { k: 'Ánimo', v: 0, c: 'var(--medic)' },
 ]
 
+const ROLE_LABEL: Record<string, string> = {
+  doctor: 'Médico',
+  nutricionista: 'Nutricionista',
+  nutritionist: 'Nutricionista',
+  entrenador: 'Entrenador',
+  trainer: 'Entrenador',
+}
+
+const ROLE_COLOR: Record<string, string> = {
+  doctor: '#4FB8A8',
+  nutricionista: '#E8A93A',
+  nutritionist: '#E8A93A',
+  entrenador: '#7D8CFF',
+  trainer: '#7D8CFF',
+}
+
 interface Props {
   userName?: string
   userId?: string | null
@@ -30,7 +50,67 @@ interface Props {
   onBrowseSpecialists?: () => void
 }
 
-export function PatientHome({ onCheckIn }: Props = {}) {
+export function PatientHome({ onCheckIn, onBrowseSpecialists }: Props = {}) {
+  const [specialists, setSpecialists] = useState<MySpecialist[]>([])
+  const [incoming, setIncoming] = useState<PendingAssignment[]>([])
+  const [outgoing, setOutgoing] = useState<MyRequest[]>([])
+  const [loadingLinks, setLoadingLinks] = useState(true)
+  const [actingId, setActingId] = useState<number | null>(null)
+  const [linksError, setLinksError] = useState<string | null>(null)
+
+  const reloadLinks = useCallback(async () => {
+    setLoadingLinks(true)
+    setLinksError(null)
+    try {
+      const [sp, inc, out] = await Promise.all([
+        assignmentService.mySpecialists().catch(() => ({ specialists: [] })),
+        assignmentService.pendingForPatient().catch(() => ({ pending: [] })),
+        assignmentService.myOutgoingRequests().catch(() => ({ requests: [] })),
+      ])
+      setSpecialists(sp.specialists)
+      setIncoming(inc.pending)
+      setOutgoing(out.requests)
+    } catch (e) {
+      setLinksError(e instanceof ApiError ? e.message : 'Error cargando vínculos')
+    } finally {
+      setLoadingLinks(false)
+    }
+  }, [])
+
+  useEffect(() => { reloadLinks() }, [reloadLinks])
+
+  const handleAccept = async (id: number) => {
+    setActingId(id)
+    try {
+      await assignmentService.accept(id)
+      await reloadLinks()
+    } finally {
+      setActingId(null)
+    }
+  }
+  const handleReject = async (id: number) => {
+    if (!confirm('¿Rechazar esta solicitud?')) return
+    setActingId(id)
+    try {
+      await assignmentService.reject(id)
+      await reloadLinks()
+    } finally {
+      setActingId(null)
+    }
+  }
+  const handleCancel = async (id: number) => {
+    if (!confirm('¿Cancelar esta solicitud?')) return
+    setActingId(id)
+    try {
+      await assignmentService.cancel(id)
+      await reloadLinks()
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const hasAnyLinks = specialists.length + incoming.length + outgoing.length > 0
+
   return (
     <div className="patient-home">
       {/* Health Index hero */}
@@ -71,6 +151,155 @@ export function PatientHome({ onCheckIn }: Props = {}) {
           ))}
         </div>
       </div>
+
+      {/* Solicitudes recibidas — patient must accept/reject */}
+      {!loadingLinks && incoming.length > 0 && (
+        <div className="ph-section">
+          <div className="row-between" style={{ marginBottom: 10 }}>
+            <div className="section-label">Solicitudes recibidas</div>
+            <div className="mono" style={{ color: 'var(--text-3)' }}>
+              {incoming.length} pendiente{incoming.length === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {incoming.map((r, i) => {
+              const role = (r.specialist_role || '').toLowerCase()
+              const color = ROLE_COLOR[role] || 'var(--medic)'
+              return (
+                <div
+                  key={r.id}
+                  className="ph-link-row"
+                  style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+                >
+                  <Avatar name={r.specialist_name} color={color} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ph-link-name">{r.specialist_name}</div>
+                    <div className="ph-link-meta">
+                      Te quiere vincular como {ROLE_LABEL[role] || role || 'especialista'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="ph-link-btn ph-link-accept"
+                      onClick={() => handleAccept(r.id)}
+                      disabled={actingId === r.id}
+                      aria-label="Aceptar"
+                    >
+                      <Icon name="check" size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ph-link-btn ph-link-reject"
+                      onClick={() => handleReject(r.id)}
+                      disabled={actingId === r.id}
+                      aria-label="Rechazar"
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mis profesionales — accepted links */}
+      {!loadingLinks && specialists.length > 0 && (
+        <div className="ph-section">
+          <div className="row-between" style={{ marginBottom: 10 }}>
+            <div className="section-label">Mis profesionales</div>
+            <div className="mono" style={{ color: 'var(--text-3)' }}>
+              {specialists.length} vinculad{specialists.length === 1 ? 'o' : 'os'}
+            </div>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {specialists.map((s, i) => {
+              const role = (s.specialist_role || '').toLowerCase()
+              const color = ROLE_COLOR[role] || 'var(--medic)'
+              return (
+                <div
+                  key={s.id}
+                  className="ph-link-row"
+                  style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+                >
+                  <Avatar name={s.specialist_name} color={color} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ph-link-name">{s.specialist_name}</div>
+                    <div className="ph-link-meta">
+                      {ROLE_LABEL[role] || role || 'Especialista'}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Solicitudes enviadas — patient can cancel */}
+      {!loadingLinks && outgoing.length > 0 && (
+        <div className="ph-section">
+          <div className="row-between" style={{ marginBottom: 10 }}>
+            <div className="section-label">Solicitudes enviadas</div>
+            <div className="mono" style={{ color: 'var(--text-3)' }}>
+              {outgoing.length} esperando
+            </div>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {outgoing.map((r, i) => {
+              const role = (r.specialist_role || '').toLowerCase()
+              const color = ROLE_COLOR[role] || 'var(--medic)'
+              return (
+                <div
+                  key={r.id}
+                  className="ph-link-row"
+                  style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+                >
+                  <Avatar name={r.specialist_name} color={color} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ph-link-name">{r.specialist_name}</div>
+                    <div className="ph-link-meta" style={{ color: 'var(--warn)' }}>
+                      Esperando respuesta · {ROLE_LABEL[role] || role}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="ph-link-btn ph-link-reject"
+                    onClick={() => handleCancel(r.id)}
+                    disabled={actingId === r.id}
+                    aria-label="Cancelar"
+                    title="Cancelar"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state when no links of any kind — invite to browse */}
+      {!loadingLinks && !linksError && !hasAnyLinks && onBrowseSpecialists && (
+        <div className="ph-section">
+          <div className="section-label">Tu equipo</div>
+          <div className="card">
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 10px' }}>
+              Todavía no tenés profesionales vinculados. Pedí seguimiento de un médico, nutricionista o entrenador.
+            </p>
+            <button
+              type="button"
+              className="ph-cta"
+              onClick={onBrowseSpecialists}
+            >
+              <Icon name="user" size={14} /> Buscar profesional
+              <Icon name="chevR" size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Today agenda — empty state with check-in CTA */}
       <div className="ph-section">

@@ -16,6 +16,9 @@ export const assignmentService = {
   mySpecialists(): Promise<{ specialists: MySpecialist[] }> {
     return api.get<{ specialists: MySpecialist[] }>('/assignments/my-specialists')
   },
+  myOutgoingRequests(): Promise<{ requests: MyRequest[] }> {
+    return api.get<{ requests: MyRequest[] }>('/assignments/my-outgoing-requests')
+  },
 
   // Specialist side
   myPatients(): Promise<{ patients: MyPatient[] }> {
