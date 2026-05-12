@@ -304,6 +304,32 @@ def reject_assignment(assignment_id):
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
+@assignments_bp.route('/my-outgoing-requests', methods=['GET'])
+@require_auth
+def my_outgoing_requests():
+    """
+    Returns outgoing assignment requests sent by the current patient
+    (waiting for the specialist to accept). Mirror of /my-requests for the
+    patient side. Used by PatientHome to show "Solicitudes enviadas".
+    """
+    user = get_current_user()
+    try:
+        conn = get_auth_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, specialist_id, specialist_name, specialist_role,
+                   patient_id, patient_name, patient_dni, status, created_at, updated_at
+            FROM specialist_assignments
+            WHERE patient_id = ? AND status = 'pending_specialist'
+            ORDER BY created_at DESC
+        """, [user['user_id']])
+        rows = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return success_response({'requests': rows})
+    except Exception as e:
+        return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
 @assignments_bp.route('/my-specialists', methods=['GET'])
 @require_auth
 def my_specialists():
@@ -358,7 +384,12 @@ def my_patients():
 @require_auth
 def cancel_assignment(assignment_id):
     """
-    Specialist cancels a pending or accepted assignment.
+    Cancels a pending or accepted assignment.
+
+    Who may cancel:
+      - The specialist (their outgoing requests + accepted assignments).
+      - The patient (their outgoing requests in 'pending_specialist').
+      - Admin.
     """
     user = get_current_user()
     try:
@@ -372,9 +403,14 @@ def cancel_assignment(assignment_id):
             return error_response('Solicitud no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
 
         a = dict(row)
+        uid = str(user['user_id'])
+        is_specialist = str(a['specialist_id']) == uid
+        # Patient can only cancel their OWN outgoing requests (pending_specialist)
+        is_patient_cancelling_own = (
+            str(a['patient_id']) == uid and a['status'] == 'pending_specialist'
+        )
 
-        # Only the specialist or admin can cancel
-        if str(a['specialist_id']) != str(user['user_id']) and not user.get('is_admin'):
+        if not (is_specialist or is_patient_cancelling_own or user.get('is_admin')):
             conn.close()
             return error_response('No tenés permiso', code=ErrorCodes.FORBIDDEN, status_code=403)
 
@@ -387,10 +423,12 @@ def cancel_assignment(assignment_id):
         conn.commit()
         conn.close()
 
+        actor_label = 'Paciente' if is_patient_cancelling_own else 'Especialista'
+        target_label = a['specialist_name'] if is_patient_cancelling_own else a['patient_name']
         _log_audit(
-            user['user_id'], user.get('nombre_apellido', 'Especialista'),
+            user['user_id'], user.get('nombre_apellido', actor_label),
             'assignment_cancelled',
-            f'Canceló asignación ID {assignment_id} con paciente {a["patient_name"]}',
+            f'Canceló asignación ID {assignment_id} con {target_label}',
             request.remote_addr
         )
 
