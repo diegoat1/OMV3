@@ -18,6 +18,10 @@ interface Props {
 const TABS = ['Resumen', 'Historial', 'Planes', 'Labs', 'Archivos'] as const
 type Tab = (typeof TABS)[number]
 
+// Tabs not implemented yet — show them disabled with a "Pronto" hint
+// instead of letting users click into broken empty screens.
+const DISABLED_TABS: Set<Tab> = new Set(['Labs', 'Archivos'])
+
 interface PlanRow {
   label: string
   sub: string
@@ -142,7 +146,14 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
               : '— años · — · Fase: —'}
           </div>
         </div>
-        <button type="button" className="dpd-video-btn" aria-label="Iniciar videollamada">
+        <button
+          type="button"
+          className="dpd-video-btn"
+          aria-label="Iniciar videollamada (próximamente)"
+          title="Videollamada — próximamente"
+          disabled
+          style={{ opacity: 0.4, cursor: 'not-allowed' }}
+        >
           <Icon name="video" size={18} />
         </button>
       </div>
@@ -165,17 +176,38 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
 
       {/* Tabs */}
       <div className="dpd-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={'dpd-tab' + (tab === t ? ' is-active' : '')}
-            onClick={() => setTab(t)}
-            aria-pressed={tab === t}
-          >
-            {t}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const isDisabled = DISABLED_TABS.has(t)
+          return (
+            <button
+              key={t}
+              type="button"
+              className={'dpd-tab' + (tab === t ? ' is-active' : '')}
+              onClick={() => !isDisabled && setTab(t)}
+              aria-pressed={tab === t}
+              aria-disabled={isDisabled}
+              disabled={isDisabled}
+              title={isDisabled ? `${t} — próximamente` : undefined}
+              style={isDisabled ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+            >
+              {t}
+              {isDisabled && (
+                <span
+                  className="mono"
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 9,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-3)',
+                  }}
+                >
+                  pronto
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {error && (
