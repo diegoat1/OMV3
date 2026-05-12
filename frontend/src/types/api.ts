@@ -712,6 +712,78 @@ export interface AdjustCaloriesResponse {
   datos_nuevos: { calorias: number; proteina: number; grasa: number; carbohidratos: number }
 }
 
+/* ────────────── Check-in diario + Health Index (Fase 7) ────────────── */
+
+/** Daily check-in row (clinical.db.daily_checkins). All fields optional —
+ *  the backend upserts whichever are present. Scales are typically 0-10
+ *  (OMV-68), bristol is 1-7, deposicion is a small int code. */
+export interface CheckinPayload {
+  fumo?: 0 | 1
+  alcohol?: 0 | 1
+  actividad_fisica?: 0 | 1
+  actividad_tipo?: string
+  actividad_minutos?: number
+  horas_sueno?: number
+  calidad_sueno?: number
+  estres?: number
+  energia?: number
+  animo?: number
+  deposicion?: 0 | 1
+  deposicion_veces?: number
+  bristol?: number
+  dolor_abdominal?: number
+  sangre_moco?: 0 | 1
+  hidratacion_litros?: number
+  hambre_ansiedad?: number
+  tomo_medicacion?: 0 | 1
+  medicacion_detalle?: string
+  completado?: 0 | 1
+}
+
+export interface CheckinRow extends CheckinPayload {
+  id: number
+  patient_id: number
+  fecha: string
+}
+
+/** POST /checkin/today response includes the recomputed Health Index. */
+export interface SubmitCheckinResponse {
+  checkin: CheckinRow
+  health_index: HealthIndex
+}
+
+/** Health Index 0-100 + 7 weighted components (clinical.db.health_index_history). */
+export interface HealthIndex {
+  patient_id?: number
+  fecha?: string
+  score: number               // 0-100
+  comp_corporal: number       // 35%
+  comp_cintura: number        // 20%
+  comp_actividad: number      // 15%
+  comp_sueno: number          // 10%
+  comp_recuperacion: number   // 10%
+  comp_digestivo: number      //  5%
+  comp_habitos: number        //  5%
+  delta?: number | null       // change vs previous day (frontend-computed)
+}
+
+export interface HealthIndexTrendPoint {
+  fecha: string
+  score: number
+  comp_corporal: number
+  comp_cintura: number
+  comp_actividad: number
+  comp_sueno: number
+  comp_recuperacion: number
+  comp_digestivo: number
+  comp_habitos: number
+}
+
+export interface HealthIndexTrendResponse {
+  trend: HealthIndexTrendPoint[]
+  total: number
+}
+
 /** Map the backend's `rol` string (which can be 'user', 'doctor', 'admin' or
  * comma-separated combinations) to one of the UI role buckets. */
 export function backendRoleToUIRole(rol: string, isAdmin: boolean): Role {
