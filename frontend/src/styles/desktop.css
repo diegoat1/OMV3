@@ -866,3 +866,538 @@ button { font-family: inherit; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Register / RegisterSuccess — visible on all viewports.
+   3-step form opened from Login.
+   ───────────────────────────────────────────────────────────────────────── */
+.reg-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  color: var(--text-1);
+}
+.reg-top { display: flex; align-items: center; gap: 12px; }
+.reg-back {
+  background: transparent;
+  border: 0;
+  color: var(--text-1);
+  cursor: pointer;
+  padding: 4px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  transition: background 0.12s, transform 0.1s;
+}
+.reg-back:hover { background: var(--bg-2); }
+.reg-back:active { transform: scale(0.92); }
+.reg-progress { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.reg-progress .mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.reg-progress-bar { height: 4px; background: var(--bg-2); border-radius: 100px; overflow: hidden; }
+.reg-progress-bar > span { display: block; height: 100%; border-radius: 100px; transition: width 0.25s ease-out; }
+
+.reg-form { display: flex; flex-direction: column; gap: 14px; }
+.reg-step { display: flex; flex-direction: column; gap: 12px; }
+.reg-step-title { font-size: 28px; }
+.reg-step-sub { font-size: 13px; color: var(--text-2); margin-top: -6px; margin-bottom: 4px; }
+
+.reg-field { display: flex; flex-direction: column; gap: 6px; }
+.reg-field-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.reg-field-input {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  padding: 12px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.reg-field-input::placeholder { color: var(--text-3); }
+.reg-field-input:focus { outline: none; border-color: var(--medic); background: var(--bg-2); }
+
+.reg-sexo-row { display: flex; gap: 8px; }
+.reg-sexo-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s, transform 0.1s;
+}
+.reg-sexo-btn:active { transform: scale(0.96); }
+.reg-sexo-btn.is-active { border-color: var(--medic); background: var(--medic-soft); color: var(--medic); }
+
+.reg-roles { display: flex; flex-direction: column; gap: 8px; }
+.reg-role-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  color: var(--text-1);
+  transition: border-color 0.12s, background 0.12s, transform 0.1s;
+}
+.reg-role-card:active { transform: scale(0.99); }
+.reg-role-card:hover { background: var(--bg-2); }
+.reg-role-ic {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.reg-role-text { flex: 1; min-width: 0; }
+.reg-role-label { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.reg-role-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.reg-role-check {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.reg-error {
+  font-size: 13px;
+  color: var(--err);
+  background: rgba(226, 62, 74, 0.08);
+  border: 1px solid rgba(226, 62, 74, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.reg-warning {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+  background: var(--nutri-soft);
+  border: 1px solid rgba(232, 169, 58, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+}
+.reg-warning b { color: var(--text-1); }
+.reg-warning-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warn);
+  margin-right: 8px;
+}
+
+.reg-submit { margin-top: 4px; }
+.reg-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.reg-fineprint {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 1.5;
+}
+.reg-link, .reg-link-btn {
+  color: var(--medic);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+.reg-back-to-login {
+  font-size: 12px;
+  color: var(--text-2);
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* RegisterSuccess */
+.reg-success {
+  align-items: center;
+  text-align: center;
+  padding-top: 24px;
+}
+.reg-success-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(111, 207, 111, 0.14);
+  color: var(--ok);
+  display: grid; place-items: center;
+  margin-bottom: 6px;
+}
+.reg-success-title { font-size: 32px; }
+.reg-success-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.reg-success-sub b { color: var(--text-1); }
+.reg-success-email {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  align-self: stretch;
+  text-align: left;
+}
+.reg-success-email-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.reg-success-email-value { font-size: 14px; color: var(--text-1); margin-top: 4px; }
+.reg-success-steps {
+  display: flex; flex-direction: column; gap: 10px;
+  align-self: stretch;
+  margin-top: 4px;
+}
+.reg-success-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  text-align: left;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.reg-success-step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--medic-soft);
+  color: var(--medic);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.reg-success-step-text { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.reg-success-step-text b { color: var(--text-1); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   BrowseSpecialists — patient screen to search and request a professional.
+   ───────────────────────────────────────────────────────────────────────── */
+.bs-screen { display: flex; flex-direction: column; gap: 12px; }
+.bs-role-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
+}
+.bs-role-chip:active { transform: scale(0.96); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DoctorPatients — extra classes used by the accordion list and request rows.
+   (.dp-screen / .dp-search / .dp-chip / .dpd-* base classes already exist
+   higher up — these only fill in the new selectors.)
+   ───────────────────────────────────────────────────────────────────────── */
+.ph-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.ph-link-name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+.ph-link-meta { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+.ph-link-btn {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-1);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+}
+.ph-link-btn:active { transform: scale(0.92); }
+.ph-link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ph-link-accept { background: var(--medic-soft); color: var(--medic); border-color: rgba(79, 184, 168, 0.3); }
+.ph-link-accept:hover { background: rgba(79, 184, 168, 0.18); }
+.ph-link-reject { background: rgba(226, 62, 74, 0.08); color: var(--omega); border-color: rgba(226, 62, 74, 0.25); }
+.ph-link-reject:hover { background: rgba(226, 62, 74, 0.16); }
+
+.dp-link-row {
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+.dp-patient-row {
+  font-family: var(--font-sans);
+  color: var(--text-1);
+  transition: background 0.12s;
+}
+.dp-patient-row:hover { background: rgba(255, 255, 255, 0.03); }
+.dp-chev {
+  color: var(--text-3);
+  display: grid; place-items: center;
+  transition: transform 0.15s ease-out;
+}
+
+.dp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 10px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.dp-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+}
+.dp-action:hover { background: var(--bg-2); }
+.dp-action:active { transform: scale(0.99); }
+.dp-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.dp-action > span:first-of-type { flex: 1; }
+.dp-action-danger { color: var(--omega); }
+.dp-action-danger:hover { background: rgba(226, 62, 74, 0.1); }
+.dp-action-loading { color: var(--text-3); font-size: 11px; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DoctorPatientDetail — extra classes used by the new ficha layout.
+   ───────────────────────────────────────────────────────────────────────── */
+.dpd-edit-btn {
+  margin-top: 12px;
+  background: transparent;
+  color: var(--text-1);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 13px;
+}
+.dpd-edit-btn:hover { background: var(--bg-2); }
+.dpd-edit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dpd-new-meas-btn {
+  background: var(--medic);
+  color: #0b2523;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.dpd-new-meas-btn:hover { filter: brightness(1.06); }
+.dpd-new-meas-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+.dpd-const-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.dpd-const-field { display: flex; flex-direction: column; gap: 4px; }
+.dpd-const-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.dpd-const-value { font-size: 14px; color: var(--text-1); font-weight: 500; }
+
+.dpd-incomplete-badge {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(232, 169, 58, 0.12);
+  color: var(--warn);
+  border: 1px solid rgba(232, 169, 58, 0.3);
+}
+.dpd-blocker {
+  font-size: 11px;
+  color: var(--warn);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.dpd-latest-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 4px;
+}
+.dpd-latest-date { font-size: 13px; color: var(--text-1); font-weight: 500; margin-top: 2px; }
+
+.dpd-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.dpd-history-date { font-size: 13px; font-weight: 500; color: var(--text-1); }
+.dpd-history-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+@media (min-width: 900px) {
+  .dpd-latest-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Goal card / targets — visible on DoctorPatientDetail (desktop + mobile).
+   ───────────────────────────────────────────────────────────────────────── */
+.goal-card { display: flex; flex-direction: column; gap: 6px; }
+.goal-notas {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border-radius: 8px;
+  border-left: 2px solid var(--analytic);
+}
+.goal-targets { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.goal-target { display: flex; flex-direction: column; gap: 2px; }
+.goal-target-row { display: flex; align-items: baseline; gap: 6px; font-size: 14px; }
+.goal-target-delta { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+
+/* Phase tag colored by tipo — used inside roadmap timeline AND in the goal
+   sheet's auto-roadmap view. Defined here because it appears on desktop too. */
+.goal-auto-phase-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.goal-auto-phase-tag--volumen {
+  background: rgba(125, 140, 255, 0.12);
+  color: var(--analytic);
+  border-color: rgba(125, 140, 255, 0.3);
+}
+.goal-auto-phase-tag--definicion {
+  background: rgba(79, 184, 168, 0.12);
+  color: var(--medic);
+  border-color: rgba(79, 184, 168, 0.3);
+}
+.goal-auto-phase-tag--recomposicion {
+  background: rgba(232, 169, 58, 0.12);
+  color: var(--warn);
+  border-color: rgba(232, 169, 58, 0.3);
+}
+.goal-auto-phase-tag--mantenimiento {
+  background: rgba(168, 163, 173, 0.12);
+  color: var(--text-2);
+  border-color: var(--line-strong);
+}
+.goal-auto-phase-tag--baseline {
+  background: rgba(168, 163, 173, 0.08);
+  color: var(--text-3);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Roadmap timeline — multi-phase plan card in DoctorPatientDetail "Resumen".
+   ───────────────────────────────────────────────────────────────────────── */
+.roadmap-card { padding: 0; }
+.roadmap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: roadmap;
+}
+.roadmap-step {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+  position: relative;
+}
+.roadmap-step:first-child { border-top: 0; }
+.roadmap-step-marker {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--text-3);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+}
+.roadmap-step.is-active .roadmap-step-marker {
+  background: var(--analytic);
+  color: #0b1230;
+  border-color: var(--analytic);
+}
+.roadmap-step.is-next .roadmap-step-marker {
+  background: var(--medic-soft);
+  color: var(--medic);
+  border-color: rgba(79, 184, 168, 0.4);
+}
+.roadmap-step.is-done .roadmap-step-marker {
+  background: rgba(111, 207, 111, 0.14);
+  color: var(--ok);
+  border-color: rgba(111, 207, 111, 0.3);
+}
+.roadmap-step-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.roadmap-step-head { display: flex; align-items: center; gap: 8px; }
+.roadmap-step-desc { font-size: 13px; color: var(--text-1); line-height: 1.4; }
+.roadmap-step-meta { font-size: 11px; color: var(--text-2); }
+
+.roadmap-footer {
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--text-2);
+  background: rgba(125, 140, 255, 0.06);
+  border-top: 1px solid var(--line);
+}
+.roadmap-footer strong { color: var(--text-1); font-weight: 500; }
