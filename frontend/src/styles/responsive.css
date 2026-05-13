@@ -45,6 +45,125 @@ html, body { overflow-x: hidden; }
    all breakpoints — it carries the date + greeting. */
 .ph-avatar { display: none; }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Shared sheet content — admin approval/reject, edit-constitutional,
+   new-measurement, propose-goal, accept-goal, add-food, etc.
+   These classes were originally mobile-only; promoted to all breakpoints
+   so the sheets render with proper form styling on tablet + desktop too.
+   ───────────────────────────────────────────────────────────────────── */
+.sheet-section-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 8px 4px 6px;
+}
+.adm-sheet { display: flex; flex-direction: column; gap: 14px; }
+.adm-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: -2px;
+}
+.adm-sheet-name { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.adm-sheet-meta {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-sheet-badge {
+  color: var(--warn);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.adm-sheet-close {
+  background: transparent;
+  border: 0;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 6px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: background 0.12s, transform 0.1s;
+}
+.adm-sheet-close:hover { background: var(--bg-2); color: var(--text-1); }
+.adm-sheet-close:active { transform: scale(0.92); }
+
+.adm-field { display: flex; flex-direction: column; gap: 6px; }
+.adm-field-row { display: flex; gap: 10px; }
+.adm-field-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.adm-input {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.12s, background 0.12s;
+}
+.adm-input::placeholder { color: var(--text-3); }
+.adm-input:focus { outline: none; border-color: var(--medic); background: var(--bg-2); }
+.adm-input[type="number"] { font-family: var(--font-mono); }
+textarea.adm-input { resize: vertical; min-height: 64px; }
+select.adm-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
+
+.adm-toggle-row { display: flex; align-items: center; }
+.adm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-1);
+}
+.adm-toggle input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: var(--medic);
+  cursor: pointer;
+}
+
+.adm-error {
+  font-size: 13px;
+  color: var(--err);
+  background: rgba(226, 62, 74, 0.08);
+  border: 1px solid rgba(226, 62, 74, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.adm-submit {
+  margin-top: 4px;
+  background: var(--medic);
+  color: #0b2523;
+  font-weight: 600;
+}
+.adm-submit:hover { filter: brightness(1.06); }
+.adm-submit:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
+
+.adm-reject-submit {
+  margin-top: 4px;
+  background: var(--err);
+  color: #fff;
+  font-weight: 600;
+}
+.adm-reject-submit:hover { filter: brightness(1.06); }
+.adm-reject-submit:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
+
 /* Keyframes for sheet animation (iOS-style slide-up) */
 @keyframes ums-fade-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ums-slide-up {
@@ -199,14 +318,6 @@ html, body { overflow-x: hidden; }
     text-align: center;
     margin-bottom: 14px;
   }
-  .sheet-section-label {
-    font-family: var(--font-mono, monospace);
-    font-size: 11px;
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    padding: 8px 4px 6px;
-  }
   .sheet-list {
     background: var(--bg-1);
     border: 1px solid var(--line);
@@ -236,117 +347,6 @@ html, body { overflow-x: hidden; }
     color: #fff;
   }
   .sheet-row-label { flex: 1; }
-
-  /* ───────────────────────────────────────────────────────────────────
-     Admin / measurement / goal sheet — shared form layout for the
-     admin approval, reject, edit-constitutional, new-measurement, and
-     propose-goal sheets. Visible only on phone since .sheet is
-     display:none above 640px.
-     ─────────────────────────────────────────────────────────────────── */
-  .adm-sheet { display: flex; flex-direction: column; gap: 14px; }
-  .adm-sheet-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: -2px;
-  }
-  .adm-sheet-name { font-size: 16px; font-weight: 600; color: var(--text-1); }
-  .adm-sheet-meta {
-    font-size: 12px;
-    color: var(--text-2);
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .adm-sheet-badge {
-    color: var(--warn);
-    font-family: var(--font-mono);
-    font-size: 10px;
-  }
-  .adm-sheet-close {
-    background: transparent;
-    border: 0;
-    color: var(--text-2);
-    cursor: pointer;
-    padding: 6px;
-    display: grid; place-items: center;
-    border-radius: 8px;
-    flex-shrink: 0;
-    transition: background 0.12s, transform 0.1s;
-  }
-  .adm-sheet-close:hover { background: var(--bg-2); color: var(--text-1); }
-  .adm-sheet-close:active { transform: scale(0.92); }
-
-  .adm-field { display: flex; flex-direction: column; gap: 6px; }
-  .adm-field-row { display: flex; gap: 10px; }
-  .adm-field-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-3);
-  }
-  .adm-input {
-    background: var(--bg-1);
-    border: 1px solid var(--line);
-    color: var(--text-1);
-    padding: 11px 12px;
-    border-radius: 10px;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    width: 100%;
-    transition: border-color 0.12s, background 0.12s;
-  }
-  .adm-input::placeholder { color: var(--text-3); }
-  .adm-input:focus { outline: none; border-color: var(--medic); background: var(--bg-2); }
-  .adm-input[type="number"] { font-family: var(--font-mono); }
-  textarea.adm-input { resize: vertical; min-height: 64px; }
-  select.adm-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
-
-  .adm-toggle-row { display: flex; align-items: center; }
-  .adm-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-1);
-  }
-  .adm-toggle input[type="checkbox"] {
-    width: 18px; height: 18px;
-    accent-color: var(--medic);
-    cursor: pointer;
-  }
-
-  .adm-error {
-    font-size: 13px;
-    color: var(--err);
-    background: rgba(226, 62, 74, 0.08);
-    border: 1px solid rgba(226, 62, 74, 0.25);
-    border-radius: 10px;
-    padding: 10px 12px;
-  }
-
-  .adm-submit {
-    margin-top: 4px;
-    background: var(--medic);
-    color: #0b2523;
-    font-weight: 600;
-  }
-  .adm-submit:hover { filter: brightness(1.06); }
-  .adm-submit:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
-
-  .adm-reject-submit {
-    margin-top: 4px;
-    background: var(--err);
-    color: #fff;
-    font-weight: 600;
-  }
-  .adm-reject-submit:hover { filter: brightness(1.06); }
-  .adm-reject-submit:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
 
   /* ───────────────────────────────────────────────────────────────────
      ProposeGoalSheet — manual + auto roadmap views.

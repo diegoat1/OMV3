@@ -7,11 +7,12 @@ interface TopbarProps {
   crumbs: string[]
   role: Role
   setRole: (r: Role) => void
+  availableRoles: Role[]
   toggleCollapsed: () => void
   onLogout: () => void
 }
 
-export function Topbar({ crumbs, role, setRole, toggleCollapsed, onLogout }: TopbarProps) {
+export function Topbar({ crumbs, role, setRole, availableRoles, toggleCollapsed, onLogout }: TopbarProps) {
   return (
     <header className="topbar">
       <button className="icon-btn" onClick={toggleCollapsed} title="Colapsar panel">
@@ -32,7 +33,7 @@ export function Topbar({ crumbs, role, setRole, toggleCollapsed, onLogout }: Top
       <div className="actions">
         <button className="icon-btn" title="Notificaciones"><Icon name="bell" size={16} /></button>
         <div style={{ width: 1, height: 22, background: 'var(--line)', margin: '0 4px' }} />
-        <RoleSwitcher role={role} setRole={setRole} />
+        <RoleSwitcher role={role} setRole={setRole} availableRoles={availableRoles} />
         <button className="icon-btn" onClick={onLogout} title="Cerrar sesión">
           <Icon name="logout" size={16} />
         </button>
@@ -41,15 +42,32 @@ export function Topbar({ crumbs, role, setRole, toggleCollapsed, onLogout }: Top
   )
 }
 
-function RoleSwitcher({ role, setRole }: { role: Role; setRole: (r: Role) => void }) {
+function RoleSwitcher({
+  role,
+  setRole,
+  availableRoles,
+}: {
+  role: Role
+  setRole: (r: Role) => void
+  availableRoles: Role[]
+}) {
   const [open, setOpen] = useState(false)
   const safeRole: Role = role in RoleColors ? role : 'patient'
+  // Users with only one approved role have nothing to switch to — render a
+  // static badge instead of a dropdown so the affordance matches the
+  // permission.
+  const isStatic = availableRoles.length <= 1
   return (
     <div style={{ position: 'relative' }}>
       <button
         className="btn btn-ghost"
-        style={{ height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6 }}
-        onClick={() => setOpen(!open)}
+        style={{
+          height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6,
+          cursor: isStatic ? 'default' : 'pointer',
+        }}
+        onClick={() => { if (!isStatic) setOpen(!open) }}
+        aria-haspopup={!isStatic}
+        aria-expanded={open}
       >
         <span
           className="av"
@@ -58,9 +76,9 @@ function RoleSwitcher({ role, setRole }: { role: Role; setRole: (r: Role) => voi
           {RoleLabels[safeRole][0]}
         </span>
         <span style={{ fontSize: 12 }}>{RoleLabels[safeRole]}</span>
-        <Icon name="chevD" size={12} />
+        {!isStatic && <Icon name="chevD" size={12} />}
       </button>
-      {open && (
+      {open && !isStatic && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
           <div
@@ -72,7 +90,7 @@ function RoleSwitcher({ role, setRole }: { role: Role; setRole: (r: Role) => voi
             }}
           >
             <div className="mono" style={{ padding: '8px 10px 4px' }}>Cambiar de rol</div>
-            {(Object.keys(RoleLabels) as Role[]).map((r) => (
+            {availableRoles.map((r) => (
               <button
                 key={r}
                 onClick={() => { setRole(r); setOpen(false) }}

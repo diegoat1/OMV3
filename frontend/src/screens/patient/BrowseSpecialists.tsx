@@ -35,25 +35,35 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function BrowseSpecialists({ onClose, onRequested, preselectRole }: Props) {
   const [q, setQ] = useState('')
+  // Server query — kept separate from `q` so we can debounce keystrokes
+  // instead of firing one request per character.
+  const [qDebounced, setQDebounced] = useState('')
   const [role, setRole] = useState<string>(preselectRole?.toLowerCase() || '')
   const [list, setList] = useState<AvailableSpecialist[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [requestingId, setRequestingId] = useState<number | null>(null)
-  const [successId, setSuccessId] = useState<number | null>(null)
+  const [successIds, setSuccessIds] = useState<Set<number>>(new Set())
+
+  // Debounce the search input so rapid typing doesn't spam the backend or
+  // race responses out of order.
+  useEffect(() => {
+    const t = setTimeout(() => setQDebounced(q.trim()), 250)
+    return () => clearTimeout(t)
+  }, [q])
 
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await assignmentService.listAvailableSpecialists(role || undefined, q || undefined)
+      const res = await assignmentService.listAvailableSpecialists(role || undefined, qDebounced || undefined)
       setList(res.specialists)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando profesionales')
     } finally {
       setLoading(false)
     }
-  }, [role, q])
+  }, [role, qDebounced])
 
   useEffect(() => { reload() }, [reload])
 
@@ -65,7 +75,11 @@ export function BrowseSpecialists({ onClose, onRequested, preselectRole }: Props
         specialist_id: s.id,
         specialist_role: chosenRole,
       })
-      setSuccessId(s.id)
+      setSuccessIds((prev) => {
+        const next = new Set(prev)
+        next.add(s.id)
+        return next
+      })
       onRequested?.()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No pudimos enviar la solicitud')
@@ -152,7 +166,7 @@ export function BrowseSpecialists({ onClose, onRequested, preselectRole }: Props
                 isFirst={i === 0}
                 preselectRole={preselectRole?.toLowerCase()}
                 requestingId={requestingId}
-                wasRequested={successId === s.id}
+                wasRequested={successIds.has(s.id)}
                 onRequest={handleRequest}
               />
             ))}

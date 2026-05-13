@@ -1103,19 +1103,21 @@ button { font-family: inherit; }
 .bs-role-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 7px 12px;
   background: transparent;
   color: var(--text-2);
   border: 1px solid var(--line);
   border-radius: 100px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 500;
   cursor: pointer;
+  min-height: 32px;
   transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
 }
+.bs-role-chip:hover { background: rgba(255, 255, 255, 0.04); }
 .bs-role-chip:active { transform: scale(0.96); }
 
 /* ─────────────────────────────────────────────────────────────────────────

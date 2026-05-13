@@ -7,12 +7,24 @@ interface Props {
   onClose: () => void
   role: Role
   setRole: (r: Role) => void
+  availableRoles: Role[]
   onLogout: () => void
   userName: string
 }
 
-export function UserMenuSheet({ open, onClose, role, setRole, onLogout, userName }: Props) {
+export function UserMenuSheet({
+  open,
+  onClose,
+  role,
+  setRole,
+  availableRoles,
+  onLogout,
+  userName,
+}: Props) {
   if (!open) return null
+  // Hide the role list entirely when there's only one approved role —
+  // showing a one-item "switcher" is misleading.
+  const showRoleList = availableRoles.length > 1
   return (
     <>
       <div className="sheet-backdrop" onClick={onClose} />
@@ -20,22 +32,26 @@ export function UserMenuSheet({ open, onClose, role, setRole, onLogout, userName
         <div className="sheet-handle" />
         <div className="sheet-title">{userName}</div>
 
-        <div className="sheet-section-label">Cambiar de rol</div>
-        <div className="sheet-list">
-          {(Object.keys(RoleLabels) as Role[]).map((r) => (
-            <button
-              key={r}
-              className={'sheet-row' + (r === role ? ' is-active' : '')}
-              onClick={() => { setRole(r); onClose() }}
-            >
-              <span className="sheet-row-av" style={{ background: RoleColors[r].bg, color: RoleColors[r].txt }}>
-                {RoleLabels[r][0]}
-              </span>
-              <span className="sheet-row-label">{RoleLabels[r]}</span>
-              {r === role && <Icon name="check" size={16} />}
-            </button>
-          ))}
-        </div>
+        {showRoleList && (
+          <>
+            <div className="sheet-section-label">Cambiar de rol</div>
+            <div className="sheet-list">
+              {availableRoles.map((r) => (
+                <button
+                  key={r}
+                  className={'sheet-row' + (r === role ? ' is-active' : '')}
+                  onClick={() => { setRole(r); onClose() }}
+                >
+                  <span className="sheet-row-av" style={{ background: RoleColors[r].bg, color: RoleColors[r].txt }}>
+                    {RoleLabels[r][0]}
+                  </span>
+                  <span className="sheet-row-label">{RoleLabels[r]}</span>
+                  {r === role && <Icon name="check" size={16} />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div className="sheet-section-label">Sesión</div>
         <div className="sheet-list">

@@ -22,6 +22,11 @@ export interface AuthUser {
   email: string
   nombre_apellido?: string | null
   rol: string
+  /** CSV of roles the user actually requested at registration
+   *  (e.g. 'patient' or 'doctor,nutricionista'). Drives which entries
+   *  the topbar role switcher offers. Empty for legacy users — falls
+   *  back to `rol`. */
+  desired_role?: string | null
   is_admin: boolean
   sexo?: string | null
   altura?: number | null
@@ -1019,4 +1024,24 @@ export function backendRoleToUIRole(rol: string, isAdmin: boolean): Role {
   if (parts.includes('nutritionist') || parts.includes('nutricionista')) return 'nutritionist'
   if (parts.includes('trainer') || parts.includes('entrenador')) return 'trainer'
   return 'patient'
+}
+
+/** Set of UI roles the user is allowed to switch into in the topbar.
+ *  - admins can preview every role
+ *  - everyone else only sees the role(s) the admin actually approved.
+ *  Falls back to `rol` when `desired_role` is missing (legacy users / old
+ *  tokens issued before the field was exposed). Always returns at least one
+ *  role so the switcher never renders empty. */
+export function availableUIRoles(user: AuthUser): Role[] {
+  if (user.is_admin) {
+    return ['admin', 'doctor', 'nutritionist', 'trainer', 'patient']
+  }
+  const source = (user.desired_role || user.rol || '').toLowerCase()
+  const parts = source.split(',').map((r) => r.trim()).filter(Boolean)
+  const roles: Role[] = []
+  if (parts.some((p) => ['doctor', 'medico', 'médico'].includes(p))) roles.push('doctor')
+  if (parts.some((p) => ['nutritionist', 'nutricionista'].includes(p))) roles.push('nutritionist')
+  if (parts.some((p) => ['trainer', 'entrenador'].includes(p))) roles.push('trainer')
+  if (parts.some((p) => ['patient', 'paciente', 'user'].includes(p))) roles.push('patient')
+  return roles.length > 0 ? roles : [backendRoleToUIRole(user.rol, user.is_admin)]
 }

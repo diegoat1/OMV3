@@ -22,7 +22,7 @@ import { DoctorPatients } from './screens/doctor/DoctorPatients'
 import { DoctorPatientDetail } from './screens/doctor/DoctorPatientDetail'
 import { authService } from './services/authService'
 import { tokenStore } from './services/apiClient'
-import { backendRoleToUIRole, type AuthUser, type Role } from './types/api'
+import { availableUIRoles, backendRoleToUIRole, type AuthUser, type Role } from './types/api'
 
 const DEFAULT_SCREEN: Record<Role, string> = {
   patient: 'p-home',
@@ -207,9 +207,15 @@ export default function App() {
   }
 
   const userName = userDisplayName(user)
+  const availableRoles = availableUIRoles(user)
   const handleLogout = async () => {
     await authService.logout()
     setUser(null)
+  }
+  const switchRole = (r: Role) => {
+    if (!availableRoles.includes(r)) return
+    setRole(r)
+    setScreen(DEFAULT_SCREEN[r])
   }
   const def = resolveScreen(
     screen,
@@ -227,7 +233,8 @@ export default function App() {
       <Topbar
         crumbs={def.crumbs}
         role={role}
-        setRole={(r) => { setRole(r); setScreen(DEFAULT_SCREEN[r]) }}
+        setRole={switchRole}
+        availableRoles={availableRoles}
         toggleCollapsed={() => setCollapsed(!collapsed)}
         onLogout={handleLogout}
       />
@@ -241,7 +248,8 @@ export default function App() {
         open={userMenuOpen}
         onClose={() => setUserMenuOpen(false)}
         role={role}
-        setRole={(r) => { setRole(r); setScreen(DEFAULT_SCREEN[r]) }}
+        setRole={switchRole}
+        availableRoles={availableRoles}
         onLogout={handleLogout}
         userName={userName}
       />

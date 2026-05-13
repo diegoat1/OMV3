@@ -58,7 +58,7 @@ def login():
         
         auth_cursor.execute("""
             SELECT u.id, u.email, u.password_hash, u.role, u.display_name, u.is_active,
-                   u.status, l.patient_dni
+                   u.status, u.desired_role, l.patient_dni
             FROM users u
             LEFT JOIN patient_user_link l ON u.id = l.user_id
             WHERE LOWER(u.email) = ?
@@ -124,7 +124,8 @@ def login():
                 pass
         
         is_admin = 'admin' in [r.strip() for r in (auth_dict['role'] or '').split(',')]
-        
+        desired_role = auth_dict.get('desired_role') or ''
+
         # 3. Generar token
         token_data = {
             'user_id': str(auth_dict['id']),
@@ -132,11 +133,12 @@ def login():
             'email': auth_dict['email'],
             'nombre_apellido': auth_dict['display_name'] or '',
             'rol': auth_dict['role'],
+            'desired_role': desired_role,
             'is_admin': is_admin
         }
-        
+
         token = generate_token(token_data)
-        
+
         _log_audit(
             auth_dict['id'], auth_dict['display_name'] or email,
             'login',
@@ -156,6 +158,7 @@ def login():
                 'telefono': perfil_data.get('TELEFONO'),
                 'fecha_nacimiento': perfil_data.get('FECHA_NACIMIENTO'),
                 'rol': auth_dict['role'],
+                'desired_role': desired_role,
                 'is_admin': is_admin
             }
         }, message='Login exitoso')
@@ -405,6 +408,24 @@ def get_me():
             merged_user['altura'] = pe.get('ALTURA')
             merged_user['telefono'] = pe.get('TELEFONO') or merged_user.get('telefono')
             merged_user['fecha_nacimiento'] = pe.get('FECHA_NACIMIENTO')
+
+        # `desired_role` (CSV of requested role(s)) drives the frontend
+        # role-switcher options. Fall back to a fresh auth.db lookup if the
+        # JWT was issued before this field was added to the token payload.
+        if not merged_user.get('desired_role'):
+            try:
+                auth_conn = get_auth_connection(sqlite3.Row)
+                auth_cursor = auth_conn.cursor()
+                auth_cursor.execute(
+                    "SELECT desired_role FROM users WHERE id = ?",
+                    [merged_user.get('id')],
+                )
+                row = auth_cursor.fetchone()
+                auth_conn.close()
+                if row:
+                    merged_user['desired_role'] = dict(row).get('desired_role') or ''
+            except Exception:
+                merged_user['desired_role'] = ''
         
         response_data = {
             'user': merged_user,
