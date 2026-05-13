@@ -172,26 +172,42 @@ def login():
 def register():
     """
     Registro de nuevo usuario. Queda pendiente de verificación.
+    Contrato alineado con frontend/src/types/api.ts:RegisterPayload.
+    No requiere documento: la creación del patient_user_link y del registro
+    en clinical.db.patients se difiere a "completar perfil clínico".
     """
     data = request.get_json() or {}
-    
+
     nombre = (data.get('nombre') or '').strip()
     email = (data.get('email') or '').strip().lower()
-    documento = (data.get('documento') or '').strip()
+    password = data.get('password') or ''
+    sexo = (data.get('sexo') or '').strip().upper() or None
+    fecha_nacimiento = (data.get('fecha_nacimiento') or '').strip() or None
     telefono = (data.get('telefono') or '').strip()
-    desired_role = (data.get('desired_role') or 'patient').strip()
-    
-    if not nombre or not email or not documento:
+    desired_roles = data.get('desired_roles') or []
+
+    # Compatibilidad con el contrato viejo (singular)
+    if not desired_roles and data.get('desired_role'):
+        desired_roles = [data['desired_role']]
+
+    if not nombre or not email or not password:
         return error_response(
-            'Nombre, email y documento son requeridos',
+            'Nombre, email y password son requeridos',
             code=ErrorCodes.VALIDATION_ERROR,
             status_code=400
         )
-    
+
+    if sexo and sexo not in ('M', 'F'):
+        return error_response(
+            'Sexo inválido',
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400
+        )
+
     try:
         auth_conn = get_auth_connection(sqlite3.Row)
         cursor = auth_conn.cursor()
-        
+
         # Verificar email duplicado
         cursor.execute('SELECT id FROM users WHERE LOWER(email) = ?', [email])
         if cursor.fetchone():
@@ -201,52 +217,42 @@ def register():
                 code=ErrorCodes.VALIDATION_ERROR,
                 status_code=409
             )
-        
-        # Verificar documento duplicado
-        cursor.execute('SELECT user_id FROM patient_user_link WHERE patient_dni = ?', [documento])
-        if cursor.fetchone():
-            auth_conn.close()
-            return error_response(
-                'Ya existe una cuenta con ese documento',
-                code=ErrorCodes.VALIDATION_ERROR,
-                status_code=409
-            )
-        
-        # Hash password (documento como contraseña inicial)
-        password_hash = bcrypt.hashpw(documento.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
-        # Mapear desired_role a role en DB
-        role = 'doctor' if desired_role == 'professional' else 'user'
-        
-        # Insertar usuario con status pending
+
+        # Hash del password que envió el usuario
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Mapear primer rol deseado a la columna `role` legacy
+        primary = (desired_roles[0] if desired_roles else 'patient').lower()
+        role = 'doctor' if primary in ('doctor', 'nutritionist', 'trainer', 'professional') else 'user'
+
+        # Guardar el array completo como CSV (admin lo lee como string)
+        desired_role_csv = ','.join(str(r).lower() for r in desired_roles) or 'patient'
+
         cursor.execute("""
-            INSERT INTO users (email, password_hash, role, display_name, is_active, status, telefono, desired_role)
-            VALUES (?, ?, ?, ?, 1, 'pending_verification', ?, ?)
-        """, [email, password_hash, role, nombre, telefono, desired_role])
-        
+            INSERT INTO users (email, password_hash, role, display_name, is_active, status,
+                               telefono, desired_role, sexo, fecha_nacimiento)
+            VALUES (?, ?, ?, ?, 1, 'pending_verification', ?, ?, ?, ?)
+        """, [email, password_hash, role, nombre, telefono, desired_role_csv, sexo, fecha_nacimiento])
+
         user_id = cursor.lastrowid
-        
-        # Crear link con DNI
-        cursor.execute("""
-            INSERT INTO patient_user_link (user_id, patient_dni)
-            VALUES (?, ?)
-        """, [user_id, documento])
-        
+
         auth_conn.commit()
         auth_conn.close()
 
         _log_audit(
             user_id, nombre,
             'user_registered',
-            f'Nuevo registro: {nombre} ({email}) - rol deseado: {desired_role}',
+            f'Nuevo registro: {nombre} ({email}) - roles deseados: {desired_role_csv}',
             request.remote_addr
         )
-        
+
         return success_response({
             'user_id': user_id,
-            'status': 'pending_verification'
+            'status': 'pending_verification',
+            'email_verified': False,
+            'email_verification_required': True,
         }, message='Registro exitoso. Tu cuenta está pendiente de verificación.')
-        
+
     except Exception as e:
         return error_response(
             f'Error en registro: {str(e)}',
