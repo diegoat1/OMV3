@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
 import { Avatar, Progress } from '../components/atoms'
+import { AcceptGoalSheet } from '../components/AcceptGoalSheet'
 import { assignmentService } from '../services/assignmentService'
+import { goalService } from '../services/goalService'
+import { measurementService } from '../services/measurementService'
 import { ApiError } from '../services/apiClient'
-import type { MyRequest, MySpecialist, PendingAssignment } from '../types/api'
+import type { Goal, Measurement, MyRequest, MySpecialist, PendingAssignment } from '../types/api'
 
 interface ModuleTile {
   label: string
@@ -50,13 +53,16 @@ interface Props {
   onBrowseSpecialists?: () => void
 }
 
-export function PatientHome({ onCheckIn, onBrowseSpecialists }: Props = {}) {
+export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = {}) {
   const [specialists, setSpecialists] = useState<MySpecialist[]>([])
   const [incoming, setIncoming] = useState<PendingAssignment[]>([])
   const [outgoing, setOutgoing] = useState<MyRequest[]>([])
   const [loadingLinks, setLoadingLinks] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
   const [linksError, setLinksError] = useState<string | null>(null)
+  const [proposedGoal, setProposedGoal] = useState<Goal | null>(null)
+  const [latestMeasurement, setLatestMeasurement] = useState<Measurement | null>(null)
+  const [acceptGoalOpen, setAcceptGoalOpen] = useState(false)
 
   const reloadLinks = useCallback(async () => {
     setLoadingLinks(true)
@@ -77,7 +83,18 @@ export function PatientHome({ onCheckIn, onBrowseSpecialists }: Props = {}) {
     }
   }, [])
 
+  const reloadGoal = useCallback(async () => {
+    if (!userId) return
+    const [gp, m] = await Promise.all([
+      goalService.getProposed(userId).catch(() => ({ user_id: '', goal: null })),
+      measurementService.list(userId, 1).catch(() => ({ user_id: '', nombre_apellido: '', measurements: [], total: 0 })),
+    ])
+    setProposedGoal(gp.goal)
+    setLatestMeasurement(m.measurements[0] ?? null)
+  }, [userId])
+
   useEffect(() => { reloadLinks() }, [reloadLinks])
+  useEffect(() => { reloadGoal() }, [reloadGoal])
 
   const handleAccept = async (id: number) => {
     setActingId(id)
@@ -135,6 +152,50 @@ export function PatientHome({ onCheckIn, onBrowseSpecialists }: Props = {}) {
           ))}
         </div>
       </div>
+
+      {/* Proposed goal — patient must accept or reject */}
+      {proposedGoal && (
+        <div className="ph-section">
+          <div
+            className="card"
+            style={{
+              background: 'linear-gradient(160deg, rgba(125,140,255,0.16), rgba(79,184,168,0.06)), var(--bg-1)',
+              border: '1px solid rgba(125,140,255,0.4)',
+              cursor: 'pointer',
+            }}
+            onClick={() => setAcceptGoalOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setAcceptGoalOpen(true)
+              }
+            }}
+          >
+            <div className="row-between" style={{ marginBottom: 6 }}>
+              <div
+                className="mono"
+                style={{
+                  color: 'var(--analytic)',
+                  fontSize: 10,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Objetivo propuesto
+              </div>
+              <Icon name="chevR" size={16} />
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-1)' }}>
+              Tu profesional armó un plan para vos
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '6px 0 0' }}>
+              Revisalo y aceptalo para activarlo, o pedile cambios.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Modules quick-access */}
       <div className="ph-section">
@@ -339,6 +400,24 @@ export function PatientHome({ onCheckIn, onBrowseSpecialists }: Props = {}) {
           <Progress value={0} color="var(--text-3)" />
         </div>
       </div>
+
+      {/* Accept-goal sheet */}
+      {proposedGoal && acceptGoalOpen && userId && (
+        <AcceptGoalSheet
+          goal={proposedGoal}
+          userId={userId}
+          latestMeasurement={latestMeasurement}
+          onClose={() => setAcceptGoalOpen(false)}
+          onAccepted={() => {
+            setAcceptGoalOpen(false)
+            reloadGoal()
+          }}
+          onRejected={() => {
+            setAcceptGoalOpen(false)
+            reloadGoal()
+          }}
+        />
+      )}
     </div>
   )
 }
