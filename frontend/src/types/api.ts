@@ -823,6 +823,121 @@ export interface SaveDailyLogResponse {
   summary: DailyLogSummary | null
 }
 
+/* ────────────── Training (Fase 6) ────────────── */
+
+/** Strength test entry — a 1RM snapshot per exercise.
+ *  Shape returned by GET /training/strength. Loose because the backend stores
+ *  the per-lift detail in several JSON columns. */
+export interface StrengthTest {
+  id: number
+  patient_id: number
+  fecha: string
+  peso_corporal: number | null
+  /** `{ squat: { peso, reps, rm }, bench: {...}, deadlift: {...}, ... }` */
+  lift_inputs_json?: Record<string, { peso?: number; reps?: number; rm?: number }> | null
+  lifts_results_json?: Record<string, unknown> | null
+  categories_results_json?: Record<string, unknown> | null
+  muscle_groups_json?: Record<string, unknown> | null
+  standards_json?: Record<string, unknown> | null
+}
+
+export interface StrengthResponse {
+  user: string
+  strength_data: StrengthTest | null
+  message?: string
+}
+
+/** POST /training/strength body */
+export interface CreateStrengthPayload {
+  ejercicios: Record<string, { peso: number; reps: number }>
+  peso_corporal?: number
+  nombre_apellido?: string
+  patient?: string
+}
+
+/** Lightweight plan list row from GET /training/plans. */
+export interface TrainingPlanRow {
+  id: number
+  patient_id?: number
+  name?: string | null
+  active?: boolean
+  current_dia?: number
+  total_dias?: number
+  total_days?: number  // alias used in some endpoints
+  cycle_week?: number | null
+  created_at?: string
+  updated_at?: string
+  source?: string | null
+  /** May be present in /plans/<id> but typically absent in list. */
+  plan_data?: unknown
+}
+
+export interface TrainingPlansResponse {
+  plans: TrainingPlanRow[]
+  total: number
+}
+
+/** GET /training/sessions/today — the day's exercises with prescription. */
+export interface TodayExercise {
+  exercise_key: string
+  ejercicio?: string
+  prescription?: string | null
+  current_session?: number | null
+  current_level?: string | null
+  current_weight?: number | null
+  extra_load?: number | null
+  is_test?: boolean
+  sets?: Array<{ reps?: number; weight?: number; rir?: number }> | null
+}
+
+export interface TodaySession {
+  plan_id: number
+  plan_nombre: string
+  dia_actual: number
+  total_dias: number
+  cycle_week: number
+  ejercicios: TodayExercise[]
+  already_done: boolean
+}
+
+export interface TodaySessionResponse {
+  today: TodaySession | null
+  message?: string
+}
+
+/** POST /training/plans/<id>/optimize body — all fields optional. */
+export interface OptimizePlanPayload {
+  numeroDias?: number
+  numeroEjercicios?: number
+  runningConfig?: unknown
+  source_strength_id?: number
+}
+
+export interface OptimizePlanResponse {
+  plan_id: number
+  previous_plan_id: number
+  source_strength_id?: number
+  relativeData: unknown
+  optimizationResults: unknown
+}
+
+/** POST /training/sessions body — register a completed session. */
+export interface CreateSessionPayload {
+  plan_id?: number
+  day_number?: number
+  duracion_minutos?: number
+  notas?: string
+  ejercicios_completados?: Array<{
+    exercise_key?: string
+    ejercicio?: string
+    sets?: unknown
+    rpe?: number
+    notes?: string
+  }>
+  completed?: boolean
+  nombre_apellido?: string
+}
+
 /** Map the backend's `rol` string (which can be 'user', 'doctor', 'admin' or
  * comma-separated combinations) to one of the UI role buckets. */
 export function backendRoleToUIRole(rol: string, isAdmin: boolean): Role {

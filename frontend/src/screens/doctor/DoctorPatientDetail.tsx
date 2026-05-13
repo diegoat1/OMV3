@@ -9,6 +9,7 @@ import { EditConstitutionalSheet } from '../../components/EditConstitutionalShee
 import { NewMeasurementSheet } from '../../components/NewMeasurementSheet'
 import { ProposeGoalSheet } from '../../components/ProposeGoalSheet'
 import { PatientNutritionPlan } from './PatientNutritionPlan'
+import { PatientTrainingPlan } from './PatientTrainingPlan'
 
 interface Props {
   patientId: number | null
@@ -70,6 +71,7 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
   const [newMeasurement, setNewMeasurement] = useState(false)
   const [proposeGoal, setProposeGoal] = useState(false)
   const [completingGoal, setCompletingGoal] = useState(false)
+  const [planesSubTab, setPlanesSubTab] = useState<'nutricion' | 'entreno'>('nutricion')
 
   const reload = useCallback(async () => {
     if (patientId === null) return
@@ -409,7 +411,31 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
       )}
 
       {tab === 'Planes' && !isEmpty && profile && (
-        <PatientNutritionPlan patientId={patientId!} patientName={profile.nombre} />
+        <>
+          {/* Sub-tab toggle: Nutrición / Entreno */}
+          <div className="goal-mode-toggle" style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              className={'goal-mode-chip' + (planesSubTab === 'nutricion' ? ' is-active' : '')}
+              onClick={() => setPlanesSubTab('nutricion')}
+            >
+              <Icon name="nutrition" size={14} /> Nutrición
+            </button>
+            <button
+              type="button"
+              className={'goal-mode-chip' + (planesSubTab === 'entreno' ? ' is-active' : '')}
+              onClick={() => setPlanesSubTab('entreno')}
+            >
+              <Icon name="training" size={14} /> Entreno
+            </button>
+          </div>
+          {planesSubTab === 'nutricion' && (
+            <PatientNutritionPlan patientId={patientId!} patientName={profile.nombre} />
+          )}
+          {planesSubTab === 'entreno' && (
+            <PatientTrainingPlan patientId={patientId!} patientName={profile.nombre} />
+          )}
+        </>
       )}
 
       {(tab === 'Labs' || tab === 'Archivos') && !isEmpty && (
