@@ -193,6 +193,16 @@ html, body { overflow-x: hidden; }
     background: rgba(255, 255, 255, 0.18);
     margin: 6px auto 14px;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Sheet content + admin/measurement/goal form styles. These apply at
+   ALL breakpoints — the .sheet container renders as a bottom-sheet on
+   phone and as a centered modal on tablet/desktop, but the inner
+   content (titles, section labels, lists, form fields) needs the same
+   styling either way. Originally these were nested inside the mobile
+   media query, which broke the modals on screens >640px.
+   ────────────────────────────────────────────────────────────────────── */
   .sheet-title {
     font-size: 15px; font-weight: 600;
     color: var(--text-1);
@@ -496,7 +506,6 @@ html, body { overflow-x: hidden; }
     color: var(--text-2);
   }
   .goal-auto-detail-row strong { color: var(--text-1); font-weight: 600; }
-}
 
 /* Landscape phones — keep sidebar at bottom but compact main */
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
