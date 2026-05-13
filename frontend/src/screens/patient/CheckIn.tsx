@@ -1,8 +1,16 @@
 import { useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { checkinService } from '../../services/checkinService'
+import { ApiError } from '../../services/apiClient'
 
 const MOOD_EMOJI = ['😞', '😕', '😐', '🙂', '😄'] as const
 const PAIN_LEVELS = ['No', 'Leve', 'Moderado', 'Fuerte'] as const
+const PAIN_VALUES: Record<(typeof PAIN_LEVELS)[number], number> = {
+  No: 0,
+  Leve: 3,
+  Moderado: 6,
+  Fuerte: 9,
+}
 
 interface Props {
   onClose?: () => void
@@ -13,10 +21,26 @@ export function CheckIn({ onClose }: Props) {
   const [sleep, setSleep] = useState<number>(7.5)
   const [energy, setEnergy] = useState<number>(3)
   const [pain, setPain] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    // TODO: POST to api/v3/checkin/ when backend is wired
-    onClose?.()
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      // UI uses 1-5 scales; backend OMV-68 expects 0-10 ranges, so scale x2.
+      await checkinService.submitToday({
+        animo: mood * 2,
+        energia: energy * 2,
+        horas_sueno: sleep,
+        dolor_abdominal: pain ? PAIN_VALUES[pain as (typeof PAIN_LEVELS)[number]] : 0,
+        completado: 1,
+      })
+      onClose?.()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos guardar el check-in.')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -132,13 +156,29 @@ export function CheckIn({ onClose }: Props) {
         </div>
       </div>
 
+      {error && (
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--err)',
+            background: 'rgba(226, 62, 74, 0.08)',
+            border: '1px solid rgba(226, 62, 74, 0.25)',
+            borderRadius: 10,
+            padding: '10px 12px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Submit */}
       <button
         type="button"
         className="btn btn-full checkin-submit"
         onClick={handleSubmit}
+        disabled={submitting}
       >
-        <Icon name="check" size={18} /> Guardar check-in
+        <Icon name="check" size={18} /> {submitting ? 'Guardando…' : 'Guardar check-in'}
       </button>
     </div>
   )

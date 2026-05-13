@@ -4,10 +4,18 @@ import type { IconName } from '../components/Icon'
 import { Avatar, Progress } from '../components/atoms'
 import { AcceptGoalSheet } from '../components/AcceptGoalSheet'
 import { assignmentService } from '../services/assignmentService'
+import { checkinService } from '../services/checkinService'
 import { goalService } from '../services/goalService'
 import { measurementService } from '../services/measurementService'
 import { ApiError } from '../services/apiClient'
-import type { Goal, Measurement, MyRequest, MySpecialist, PendingAssignment } from '../types/api'
+import type {
+  Goal,
+  HealthIndex,
+  Measurement,
+  MyRequest,
+  MySpecialist,
+  PendingAssignment,
+} from '../types/api'
 
 interface ModuleTile {
   label: string
@@ -23,12 +31,24 @@ const MODULES: ModuleTile[] = [
   { label: 'Performance', sub: 'Clock semanal', icon: 'target', color: 'var(--analytic)' },
 ]
 
-const HEALTH_STATS: { k: string; v: number; c: string }[] = [
-  { k: 'Sueño', v: 0, c: 'var(--analytic)' },
-  { k: 'Nutri', v: 0, c: 'var(--nutri)' },
-  { k: 'Entreno', v: 0, c: 'var(--omega)' },
-  { k: 'Ánimo', v: 0, c: 'var(--medic)' },
-]
+/** Health-Index has 7 components weighted 35/20/15/10/10/5/5. For the home
+ *  card we collapse them into 4 conceptual buckets matching the design. */
+function healthStats(hi: HealthIndex | null): { k: string; v: number; c: string }[] {
+  if (!hi) {
+    return [
+      { k: 'Sueño', v: 0, c: 'var(--analytic)' },
+      { k: 'Nutri', v: 0, c: 'var(--nutri)' },
+      { k: 'Entreno', v: 0, c: 'var(--omega)' },
+      { k: 'Ánimo', v: 0, c: 'var(--medic)' },
+    ]
+  }
+  return [
+    { k: 'Sueño', v: Math.round(hi.comp_sueno || 0), c: 'var(--analytic)' },
+    { k: 'Cuerpo', v: Math.round(hi.comp_corporal || 0), c: 'var(--nutri)' },
+    { k: 'Activ.', v: Math.round(hi.comp_actividad || 0), c: 'var(--omega)' },
+    { k: 'Ánimo', v: Math.round(hi.comp_recuperacion || 0), c: 'var(--medic)' },
+  ]
+}
 
 const ROLE_LABEL: Record<string, string> = {
   doctor: 'Médico',
@@ -63,6 +83,8 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
   const [proposedGoal, setProposedGoal] = useState<Goal | null>(null)
   const [latestMeasurement, setLatestMeasurement] = useState<Measurement | null>(null)
   const [acceptGoalOpen, setAcceptGoalOpen] = useState(false)
+  const [healthIndex, setHealthIndex] = useState<HealthIndex | null>(null)
+  const [healthDelta, setHealthDelta] = useState<number | null>(null)
 
   const reloadLinks = useCallback(async () => {
     setLoadingLinks(true)
@@ -93,8 +115,28 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
     setLatestMeasurement(m.measurements[0] ?? null)
   }, [userId])
 
+  const reloadHealth = useCallback(async () => {
+    try {
+      const [hi, trend] = await Promise.all([
+        checkinService.getHealthIndex().catch(() => null),
+        checkinService.getHealthIndexTrend(7).catch(() => ({ trend: [], total: 0 })),
+      ])
+      setHealthIndex(hi)
+      if (hi && trend.trend.length >= 2) {
+        const prev = trend.trend[trend.trend.length - 2]
+        setHealthDelta(hi.score - prev.score)
+      } else {
+        setHealthDelta(null)
+      }
+    } catch {
+      setHealthIndex(null)
+      setHealthDelta(null)
+    }
+  }, [])
+
   useEffect(() => { reloadLinks() }, [reloadLinks])
   useEffect(() => { reloadGoal() }, [reloadGoal])
+  useEffect(() => { reloadHealth() }, [reloadHealth])
 
   const handleAccept = async (id: number) => {
     setActingId(id)
@@ -137,16 +179,35 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
           <Icon name="chevR" size={16} />
         </div>
         <div className="ph-health-score">
-          <div className="ph-score-num">—</div>
-          <div className="ph-score-delta">
-            <Icon name="arrowUp" size={12} /> Sin datos
+          <div className="ph-score-num">{healthIndex ? Math.round(healthIndex.score) : '—'}</div>
+          <div
+            className="ph-score-delta"
+            style={
+              healthDelta == null
+                ? undefined
+                : { color: healthDelta >= 0 ? 'var(--ok)' : 'var(--omega)' }
+            }
+          >
+            {healthDelta == null ? (
+              <>
+                <Icon name="arrowUp" size={12} /> {healthIndex ? 'Hoy' : 'Sin datos'}
+              </>
+            ) : (
+              <>
+                <Icon name={healthDelta >= 0 ? 'arrowUp' : 'arrowDown'} size={12} />
+                {healthDelta > 0 ? '+' : ''}
+                {Math.round(healthDelta)} pts vs ayer
+              </>
+            )}
           </div>
         </div>
         <div className="ph-stats">
-          {HEALTH_STATS.map((s) => (
+          {healthStats(healthIndex).map((s) => (
             <div key={s.k}>
               <div className="mono ph-stat-k">{s.k}</div>
-              <div className="ph-stat-v" style={{ color: s.c }}>—</div>
+              <div className="ph-stat-v" style={{ color: s.c }}>
+                {healthIndex ? s.v : '—'}
+              </div>
               <Progress value={s.v} color={s.c} />
             </div>
           ))}
