@@ -712,6 +712,117 @@ export interface AdjustCaloriesResponse {
   datos_nuevos: { calorias: number; proteina: number; grasa: number; carbohidratos: number }
 }
 
+/* ─────────────────── Food catalog (ALIMENTOS legacy table) ─────────────────── */
+
+/** Row from `GET /nutrition/foods` (legacy ALIMENTOS table). The macros are
+ *  expressed per 100 g of food. `Medidacasera*` are optional household measure
+ *  hints (e.g. "1 cucharada" + 15 grams). */
+export interface Food {
+  ID: number
+  Largadescripcion: string
+  P: number          // proteína / 100g
+  G: number          // grasa / 100g
+  CH: number         // carbohidratos / 100g
+  F: number          // fibra / 100g
+  Gramo1?: number | null
+  Medidacasera1?: string | number | null
+  Gramo2?: number | null
+  Medidacasera2?: string | number | null
+}
+
+export interface FoodsListResponse {
+  data: Food[]
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+    has_next: boolean
+    has_prev: boolean
+  }
+}
+
+/* ─────────────────── Daily nutrition log ─────────────────── */
+
+/** A single food entry inside a meal's foods_json array. Free-form on the
+ *  backend; this is what we send/receive from the frontend. */
+export interface LoggedFood {
+  food_id: number
+  nombre: string
+  gramos: number
+  // Snapshot of macros at the time of logging — per 100g multiplied by gramos/100
+  proteina_g: number
+  grasa_g: number
+  carbohidratos_g: number
+  calorias: number
+}
+
+/** One meal row in the daily log (one per meal_key per fecha per patient). */
+export interface DailyLogMeal {
+  meal_key: MealKey
+  recipe_id: number | null
+  recipe_name: string | null
+  foods_json: LoggedFood[] | null
+  completed: boolean
+  total_p: number
+  total_g: number
+  total_c: number
+  total_cal: number
+  target_p: number
+  target_g: number
+  target_c: number
+  meal_score: number
+}
+
+/** Aggregated daily totals from the `nutrition_daily_summary` table. */
+export interface DailyLogSummary {
+  meals_completed: number
+  meals_total: number
+  total_p: number
+  total_g: number
+  total_c: number
+  total_cal: number
+  target_p: number
+  target_g: number
+  target_c: number
+  target_cal: number
+  daily_score: number
+}
+
+/** GET /nutrition/daily-log?fecha=YYYY-MM-DD */
+export interface DailyLogResponse {
+  fecha: string
+  meals: DailyLogMeal[]
+  summary: DailyLogSummary | null
+}
+
+/** POST /nutrition/daily-log body — only the meals you want to upsert.
+ *  Backend recomputes the summary row from the persisted state. */
+export interface SaveDailyLogPayload {
+  fecha?: string
+  meals: Array<{
+    meal_key: MealKey
+    recipe_id?: number | null
+    recipe_name?: string | null
+    foods_json?: LoggedFood[] | string | null
+    completed?: boolean
+    total_p?: number
+    total_g?: number
+    total_c?: number
+    total_cal?: number
+    target_p?: number
+    target_g?: number
+    target_c?: number
+  }>
+  nombre_apellido?: string
+}
+
+export interface SaveDailyLogResponse {
+  fecha: string
+  meals_saved: number
+  meals: Array<{ meal_key: MealKey; completed: boolean; meal_score: number }>
+  summary: DailyLogSummary | null
+}
+
 /** Map the backend's `rol` string (which can be 'user', 'doctor', 'admin' or
  * comma-separated combinations) to one of the UI role buckets. */
 export function backendRoleToUIRole(rol: string, isAdmin: boolean): Role {
