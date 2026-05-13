@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>OMV3 API Tester</title>
+<style>
+  :root {
+    --bg-0: #0B0A0C; --bg-1: #131215; --bg-2: #1B1A1E; --bg-3: #26242A;
+    --line: rgba(255,255,255,0.08); --line-strong: rgba(255,255,255,0.16);
+    --text-1: #F4F1F3; --text-2: #A8A3AD; --text-3: #6B656F;
+    --omega: #E23E4A; --medic: #4FB8A8; --nutri: #E8A93A;
+    --analytic: #7D8CFF; --ok: #6FCF6F; --warn: #E8A93A; --err: #E23E4A;
+    --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg-0); color: var(--text-1);
+    font-family: var(--sans); font-size: 13px;
+    margin: 0; padding: 16px; line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 16px 0 8px; color: var(--text-2); font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.1em; }
+  .sub { color: var(--text-2); font-size: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input, select, textarea, button {
+    font-family: inherit; font-size: 13px;
+    background: var(--bg-1); color: var(--text-1);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 10px;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--medic); }
+  button {
+    cursor: pointer; transition: filter 0.1s, background 0.1s;
+  }
+  button:hover { filter: brightness(1.15); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--medic); color: #0b2523; border: 0; font-weight: 600; }
+  .btn-warn { background: var(--warn); color: #1a1304; border: 0; font-weight: 600; }
+  .btn-danger { background: var(--err); color: #fff; border: 0; }
+  .mono { font-family: var(--mono); font-size: 11px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 100px;
+          font-family: var(--mono); font-size: 10px; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase; }
+  .pill-GET { background: rgba(79,184,168,0.18); color: var(--medic); }
+  .pill-POST { background: rgba(125,140,255,0.18); color: var(--analytic); }
+  .pill-PUT { background: rgba(232,169,58,0.18); color: var(--warn); }
+  .pill-DELETE { background: rgba(226,62,74,0.18); color: var(--omega); }
+  .pill-PATCH { background: rgba(168,163,173,0.18); color: var(--text-2); }
+  header {
+    position: sticky; top: 0; background: var(--bg-0); z-index: 10;
+    padding-bottom: 12px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .header-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .auth-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px; margin-bottom: 12px;
+  }
+  .auth-slot {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px;
+  }
+  .auth-slot.active { border-color: var(--medic); }
+  .auth-slot .label { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .auth-slot input { width: 100%; margin-bottom: 4px; }
+  .auth-slot .actions { display: flex; gap: 6px; margin-top: 6px; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+  .status-dot.on { background: var(--ok); }
+  .status-dot.err { background: var(--err); }
+  .section {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .section-head {
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: 14px; padding: 4px 0;
+  }
+  .section-head .chev { transition: transform 0.15s; }
+  .section.collapsed .chev { transform: rotate(-90deg); }
+  .section.collapsed .endpoints { display: none; }
+  .section-count { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-left: auto; }
+  .endpoints { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .endpoint {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 10px;
+  }
+  .endpoint-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .endpoint-path { font-family: var(--mono); font-size: 12px; color: var(--text-1); }
+  .endpoint-note { color: var(--text-2); font-size: 11px; margin-top: 4px; }
+  .endpoint-form { display: none; margin-top: 8px; gap: 6px; flex-direction: column; }
+  .endpoint.expanded .endpoint-form { display: flex; }
+  .endpoint.expanded { border-color: var(--medic); }
+  .params-grid { display: grid; grid-template-columns: 140px 1fr; gap: 4px 8px; align-items: center; }
+  .params-grid label { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  textarea { width: 100%; min-height: 80px; font-family: var(--mono); font-size: 11px; resize: vertical; }
+  .response {
+    margin-top: 8px; background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font-family: var(--mono); font-size: 11px;
+    white-space: pre-wrap; max-height: 320px; overflow-y: auto;
+  }
+  .response.ok { border-color: rgba(111,207,111,0.4); }
+  .response.warn { border-color: rgba(232,169,58,0.4); }
+  .response.err { border-color: rgba(226,62,74,0.4); }
+  .response-meta { color: var(--text-3); margin-bottom: 4px; }
+  .filter-bar { margin: 8px 0; }
+  .filter-bar input { width: 320px; max-width: 100%; }
+  .toolbar { display: flex; gap: 6px; }
+  .small { font-size: 11px; padding: 4px 8px; }
+  details summary { cursor: pointer; user-select: none; color: var(--text-2); font-size: 11px; padding: 4px 0; }
+  .info-card {
+    background: rgba(125,140,255,0.06); border: 1px solid rgba(125,140,255,0.2);
+    border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--text-2);
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OMV3 API Tester</h1>
+  <div class="sub">Tester manual de endpoints — recordá deployar el backend antes de pegarle a PA.</div>
+  <div class="header-row" style="margin-top:8px">
+    <label>Base URL:
+      <select id="baseUrl">
+        <option value="https://omegamedicina.pythonanywhere.com">PA · omegamedicina.pythonanywhere.com</option>
+        <option value="http://localhost:8000">Local · localhost:8000</option>
+      </select>
+    </label>
+    <label>Token activo:
+      <select id="activeUser"></select>
+    </label>
+    <button class="small" onclick="window.location.reload()">↻ Reload</button>
+    <button class="small btn-danger" onclick="clearAllTokens()">✕ Logout todos</button>
+  </div>
+</header>
+
+<h2>Cuentas</h2>
+<div class="info-card">
+  Cargá las credenciales una vez. Cada slot guarda su token en <span class="mono">sessionStorage</span> (se borra al cerrar el browser). Para usar un token en los endpoints de abajo, seleccionalo en el dropdown "Token activo".
+</div>
+<div class="auth-grid" id="authGrid"></div>
+
+<h2>Endpoints</h2>
+<div class="filter-bar">
+  <input id="filter" placeholder="Filtrar por path o nombre… (ej: goals, training, /me)" oninput="renderEndpoints()">
+  <button class="small" onclick="expandAll()">Expandir todo</button>
+  <button class="small" onclick="collapseAll()">Colapsar</button>
+</div>
+<div id="endpointsRoot"></div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────
+// Presets — slots con credenciales editables. Pre-fill con creds que
+// ya sabemos que funcionan en PA. El user puede sobrescribirlas.
+// ──────────────────────────────────────────────────────────────────────
+
+const PRESET_USERS = [
+  {
+    id: 'admin',
+    label: 'Admin',
+    color: 'var(--admin, var(--text-2))',
+    email: 'datoffaletti@gmail.com',
+    password: '37070509',
+    note: 'is_admin=1 (Toffaletti) — admite también doctor, nutricionista, entrenador',
+  },
+  {
+    id: 'medico',
+    label: 'Médico',
+    color: 'var(--medic)',
+    email: 'datoffaletti@gmail.com',
+    password: '37070509',
+    note: 'Mismo user que admin. Tiene pacientes vinculados.',
+  },
+  {
+    id: 'nutricionista',
+    label: 'Nutricionista',
+    color: 'var(--nutri)',
+    email: '',
+    password: '',
+    note: 'Cargá email + password de un nutricionista.',
+  },
+  {
+    id: 'entrenador',
+    label: 'Entrenador',
+    color: 'var(--analytic)',
+    email: '',
+    password: '',
+    note: 'Cargá email + password de un entrenador.',
+  },
+  {
+    id: 'paciente',
+    label: 'Paciente',
+    color: 'var(--omega)',
+    email: 'datoffaletti@gmail.com',
+    password: '37070509',
+    note: 'datoffaletti tiene patient_id 41 con mediciones / goals / plan.',
+  },
+  {
+    id: 'paciente2',
+    label: 'Paciente 2',
+    color: 'var(--text-2)',
+    email: '',
+    password: '',
+    note: 'Cargá otro paciente para probar flujos cruzados.',
+  },
+]
+
+// ──────────────────────────────────────────────────────────────────────
+// Endpoint catalog — organizado por slice / módulo. Cada endpoint:
+//   { section, method, path, body?, note?, requiresAuth? (default true) }
+// path puede tener placeholders {patientId}, {goalId}, etc. — se renderean
+// como inputs editables en el form del card.
+// ──────────────────────────────────────────────────────────────────────
+
+const ENDPOINTS = [
+  // ─── Health ──────────────────────────────────────────────────────────
+  { section: 'Health · sin auth', method: 'GET', path: '/api/v3/health',
+    requiresAuth: false, note: 'Sanity check del backend. Devuelve módulos cargados.' },
+
+  // ─── Auth (Slice 1) ──────────────────────────────────────────────────
+  { section: 'Auth', method: 'POST', path: '/api/v3/auth/login',
+    requiresAuth: false,
+    body: { email: 'datoffaletti@gmail.com', password: '37070509' },
+    note: 'Login. Devuelve { token, user }. Token se guarda automáticamente en el slot activo si el call viene del panel de Cuentas.' },
+  { section: 'Auth', method: 'POST', path: '/api/v3/auth/register',
+    requiresAuth: false,
+    body: {
+      nombre: 'QA Test User',
+      email: 'qa-' + Date.now() + '@omv3test.com',
+      password: 'test1234',
+      sexo: 'M',
+      fecha_nacimiento: '1990-01-01',
+      telefono: '',
+      desired_roles: ['patient'],
+    },
+    note: 'Registra un user nuevo. Queda en status=pending_verification.' },
+  { section: 'Auth', method: 'GET', path: '/api/v3/auth/me',
+    note: 'Devuelve el user del token. Útil para validar que un token sigue vivo.' },
+
+  // ─── Admin (Slice 1) ─────────────────────────────────────────────────
+  { section: 'Admin · Slice 1', method: 'GET', path: '/api/v3/admin/pending-users',
+    note: 'Lista users con status=pending_verification. Requiere is_admin=1.' },
+  { section: 'Admin · Slice 1', method: 'POST', path: '/api/v3/admin/auth-users/{userId}/approve',
+    body: { membership_period_days: 30, payment: { amount: 10000, currency: 'ARS', payment_method: 'transferencia' } },
+    note: 'Aprueba un user pendiente. force_email_verification=true para bypass.' },
+  { section: 'Admin · Slice 1', method: 'POST', path: '/api/v3/admin/auth-users/{userId}/reject',
+    body: { reason: 'Test rejection' } },
+  { section: 'Admin · Slice 1', method: 'GET', path: '/api/v3/admin/kpis',
+    note: 'Stats agregadas: total users, active, doctors, admins, pendings.' },
+
+  // ─── Assignments (Slice 2) ───────────────────────────────────────────
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/specialists',
+    note: 'NUEVO en fix QA — lista profesionales para el paciente (excluye admins, ya vinculados y el caller). Filtros: ?role=doctor&q=name' },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/patient-request',
+    body: { specialist_id: 39, specialist_role: 'doctor' },
+    note: 'NUEVO en fix QA — paciente solicita vinculación. status=pending_specialist.' },
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/my-specialists',
+    note: 'Mis profesionales aceptados (lado paciente).' },
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/my-patients',
+    note: 'Mis pacientes aceptados (lado profesional).' },
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/pending',
+    note: 'Solicitudes entrantes esperando que YO acepte (status=pending_patient).' },
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/my-requests',
+    note: 'Solicitudes salientes (lado profesional).' },
+  { section: 'Assignments · Slice 2', method: 'GET', path: '/api/v3/assignments/my-outgoing-requests',
+    note: 'Solicitudes salientes (lado paciente).' },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/request',
+    body: { patient_dni: '12345678' },
+    note: 'Profesional pide vincularse usando DNI del paciente.' },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/{assignmentId}/accept' },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/{assignmentId}/reject',
+    body: { reason: '' } },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/{assignmentId}/cancel',
+    note: 'Permitido al especialista, al paciente (sobre sus outgoing) o al admin.' },
+  { section: 'Assignments · Slice 2', method: 'POST', path: '/api/v3/assignments/unassign-patient/{patientId}',
+    note: 'Profesional desasigna a un paciente (cancela TODAS las asignaciones accepted).' },
+
+  // ─── Users / Mediciones (Slice 3) ────────────────────────────────────
+  { section: 'Users · Slice 3', method: 'GET', path: '/api/v3/users',
+    note: 'Lista de pacientes accesibles según rol.' },
+  { section: 'Users · Slice 3', method: 'GET', path: '/api/v3/users/{userId}',
+    note: 'Datos del paciente (frontend proyecta a StaticProfile).' },
+  { section: 'Users · Slice 3', method: 'PUT', path: '/api/v3/users/{userId}',
+    body: { altura: 175, envergadura: 178, circ_cuello: 38, circ_muneca: 17 },
+    note: 'Update parcial de medidas constitucionales.' },
+  { section: 'Users · Slice 3', method: 'DELETE', path: '/api/v3/users/{userId}' },
+  { section: 'Users · Slice 3', method: 'GET', path: '/api/v3/users/{userId}/measurements?limit=10',
+    note: 'Historial de mediciones (peso, circunferencias, BF Navy, FFMI).' },
+  { section: 'Users · Slice 3', method: 'POST', path: '/api/v3/users/{userId}/measurements',
+    body: {
+      peso: 80,
+      circ_abdomen: 85,
+      circ_cintura: 80,
+      fecha_registro: new Date().toISOString().slice(0,10),
+    } },
+  { section: 'Users · Slice 3', method: 'DELETE', path: '/api/v3/users/{userId}/measurements/{measurementId}' },
+
+  // ─── Goals (Slice 4) ─────────────────────────────────────────────────
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals',
+    note: 'Lista de goals del paciente. Filtros: ?status=active|proposed|completed|rejected|archived' },
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals?status=proposed' },
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals?status=active' },
+  { section: 'Goals · Slice 4', method: 'POST', path: '/api/v3/users/{userId}/goals',
+    body: {
+      categoria: 'recomposicion',
+      peso_objetivo: 78,
+      bf_objetivo: 18,
+      ffmi_objetivo: 22.5,
+      meses_estimados: 3,
+      notas: 'Test desde API tester',
+    },
+    note: 'Profesional propone (queda proposed); owner/admin lo crea activo directamente.' },
+  { section: 'Goals · Slice 4', method: 'POST', path: '/api/v3/users/{userId}/goals/{goalId}/accept',
+    note: 'Paciente acepta el goal propuesto → status=active.' },
+  { section: 'Goals · Slice 4', method: 'POST', path: '/api/v3/users/{userId}/goals/{goalId}/reject',
+    body: { reason: 'Plazo demasiado corto' } },
+  { section: 'Goals · Slice 4', method: 'POST', path: '/api/v3/users/{userId}/goals/{goalId}/complete' },
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals/auto-roadmap',
+    note: 'Calcula el roadmap multi-fase (no persiste).' },
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals/roadmap',
+    note: 'Roadmap activo persistido.' },
+  { section: 'Goals · Slice 4', method: 'GET', path: '/api/v3/users/{userId}/goals/next-step',
+    note: 'Próximo paso del roadmap activo.' },
+
+  // ─── Nutrition (Slice 5) ─────────────────────────────────────────────
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/plans',
+    note: 'Planes alimentarios del paciente actual. ?patient=Nombre Apellido para profesional/admin.' },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/plans/{planId}' },
+  { section: 'Nutrition · Slice 5', method: 'POST', path: '/api/v3/nutrition/plans/auto-calculate',
+    body: { factor_actividad: 1.55 },
+    note: 'Calcula opciones de macros desde mediciones + goal (no persiste).' },
+  { section: 'Nutrition · Slice 5', method: 'POST', path: '/api/v3/nutrition/plans/auto-calculate/accept',
+    body: { opcion: { nombre: 'moderado' }, factor_actividad: 1.55 } },
+  { section: 'Nutrition · Slice 5', method: 'PUT', path: '/api/v3/nutrition/plans/{planId}/macros',
+    body: { calorias: 2200, proteina: 160, grasa: 70, ch: 250 },
+    note: 'Admin/especialista. El paciente NO puede tocar macros.' },
+  { section: 'Nutrition · Slice 5', method: 'PUT', path: '/api/v3/nutrition/plans/{planId}/structure',
+    body: { libertad: 8 },
+    note: 'Paciente owner-OK. Edita campos no-macros (libertad, comidas_config, etc.).' },
+  { section: 'Nutrition · Slice 5', method: 'POST', path: '/api/v3/nutrition/solve-meal',
+    body: { meal_key: 'almuerzo', libertad: 5, alimentos: [{ id: 'pollo', nombre: 'Pollo', proteina_100g: 22, grasa_100g: 1, carbohidratos_100g: 0 }] } },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/foods?q=arroz&per_page=10',
+    note: 'Search catálogo ALIMENTOS. FIX QA: ahora solo Largadescripcion (antes 500 por Cortadescripcion).' },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/foods/{foodId}' },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/recipes?q=' },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/daily-log?fecha=' + new Date().toISOString().slice(0,10),
+    note: 'Daily-log del día. ?nombre_apellido=X para acceso profesional.' },
+  { section: 'Nutrition · Slice 5', method: 'POST', path: '/api/v3/nutrition/daily-log',
+    body: {
+      fecha: new Date().toISOString().slice(0,10),
+      meals: [{
+        meal_key: 'almuerzo',
+        foods_json: [{ food_id: 12, nombre: 'Arroz blanco', gramos: 100, proteina_g: 7.1, grasa_g: 0.7, carbohidratos_g: 80, calorias: 354 }],
+        completed: true,
+        total_p: 7.1, total_g: 0.7, total_c: 80, total_cal: 354,
+        target_p: 30, target_g: 15, target_c: 70,
+      }],
+    } },
+  { section: 'Nutrition · Slice 5', method: 'GET', path: '/api/v3/nutrition/daily-log/history?days=14' },
+
+  // ─── Training (Slice 6) ──────────────────────────────────────────────
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/strength',
+    note: 'Último test de fuerza. ?user=Nombre Apellido para profesional.' },
+  { section: 'Training · Slice 6', method: 'POST', path: '/api/v3/training/strength',
+    body: { peso_corporal: 80, ejercicios: { squat: { peso: 100, reps: 5 }, bench: { peso: 80, reps: 5 } } } },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/strength/history' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/plans',
+    note: 'Planes de entrenamiento. ?patient=Nombre Apellido para profesional.' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/plans/{planId}' },
+  { section: 'Training · Slice 6', method: 'POST', path: '/api/v3/training/plans',
+    body: {
+      total_dias: 4,
+      plan_data: { dias: [{ dia: 1, ejercicios: ['squat', 'bench'] }] },
+      name: 'Plan QA test',
+    } },
+  { section: 'Training · Slice 6', method: 'POST', path: '/api/v3/training/plans/{planId}/optimize',
+    body: { numeroDias: 4, numeroEjercicios: 6 },
+    note: 'Optimiza el plan con PuLP basado en strength test.' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/sessions/today',
+    note: 'Ejercicios del día actual con prescripción.' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/sessions/current' },
+  { section: 'Training · Slice 6', method: 'POST', path: '/api/v3/training/sessions',
+    body: { plan_id: 1, day_number: 1, completed: true, duracion_minutos: 60 },
+    note: 'Registra una sesión completada.' },
+  { section: 'Training · Slice 6', method: 'POST', path: '/api/v3/training/sessions/advance',
+    note: 'Avanza al siguiente día del plan.' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/sessions/history?limit=10' },
+  { section: 'Training · Slice 6', method: 'GET', path: '/api/v3/training/programs',
+    requiresAuth: false,
+    note: 'Programas gratuitos públicos.' },
+
+  // ─── Check-in + Health Index (Slice 7) ───────────────────────────────
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/today' },
+  { section: 'Check-in · Slice 7', method: 'POST', path: '/api/v3/checkin/today',
+    body: { animo: 8, energia: 6, horas_sueno: 7.5, calidad_sueno: 7, estres: 4, dolor_abdominal: 0, completado: 1 },
+    note: 'Upsert. Backend recalcula Health Index automáticamente al guardar.' },
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/history?limit=14' },
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/stats' },
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/health-index',
+    note: 'Score 0-100 + 7 comp_*.' },
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/health-index/trend?days=30' },
+  { section: 'Check-in · Slice 7', method: 'POST', path: '/api/v3/checkin/symptoms',
+    body: { sistema: 'digestivo', sintoma: 'reflujo', severidad: 5 } },
+  { section: 'Check-in · Slice 7', method: 'GET', path: '/api/v3/checkin/symptoms' },
+
+  // ─── Telemedicine ────────────────────────────────────────────────────
+  { section: 'Telemedicine', method: 'GET', path: '/api/v3/telemedicine/appointments?limit=20' },
+  { section: 'Telemedicine', method: 'POST', path: '/api/v3/telemedicine/appointments',
+    body: { fecha_cita: '2026-06-01T10:00:00', tipo_cita: 'control', modalidad: 'presencial' } },
+  { section: 'Telemedicine', method: 'GET', path: '/api/v3/telemedicine/appointments/{appointmentId}' },
+  { section: 'Telemedicine', method: 'PATCH', path: '/api/v3/telemedicine/appointments/{appointmentId}/status',
+    body: { estado: 'completada' } },
+  { section: 'Telemedicine', method: 'GET', path: '/api/v3/telemedicine/situations' },
+  { section: 'Telemedicine', method: 'POST', path: '/api/v3/telemedicine/situations',
+    body: { tipo: 'consulta', titulo: 'Test', descripcion: 'desde API tester' } },
+]
+
+// ──────────────────────────────────────────────────────────────────────
+// State + storage
+// ──────────────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'omv3-api-tester'
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    return {
+      baseUrl: s.baseUrl || 'https://omegamedicina.pythonanywhere.com',
+      activeUser: s.activeUser || 'admin',
+      slots: s.slots || {},
+    }
+  } catch { return { baseUrl: 'https://omegamedicina.pythonanywhere.com', activeUser: 'admin', slots: {} } }
+}
+
+function saveState(s) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+}
+
+const state = loadState()
+
+// Init slots with presets if missing
+for (const u of PRESET_USERS) {
+  if (!state.slots[u.id]) {
+    state.slots[u.id] = { email: u.email, password: u.password, token: null, user: null, status: 'idle' }
+  }
+}
+saveState(state)
+
+// ──────────────────────────────────────────────────────────────────────
+// Render auth slots
+// ──────────────────────────────────────────────────────────────────────
+
+function renderAuth() {
+  const grid = document.getElementById('authGrid')
+  grid.innerHTML = ''
+  for (const u of PRESET_USERS) {
+    const slot = state.slots[u.id]
+    const div = document.createElement('div')
+    div.className = 'auth-slot' + (state.activeUser === u.id ? ' active' : '')
+    const isOn = !!slot.token
+    div.innerHTML = `
+      <div class="label">
+        <span class="status-dot ${isOn ? 'on' : (slot.status === 'err' ? 'err' : '')}"></span>
+        <span style="color:${u.color}">${u.label}</span>
+        ${isOn ? `<span class="mono" style="color:var(--text-3);margin-left:auto">role: ${slot.user?.rol || '?'}</span>` : ''}
+      </div>
+      <input data-slot="${u.id}" data-field="email" placeholder="email" value="${slot.email}">
+      <input data-slot="${u.id}" data-field="password" type="password" placeholder="password" value="${slot.password}">
+      <div class="actions">
+        ${isOn
+          ? `<button class="small btn-danger" data-action="logout" data-slot="${u.id}">Logout</button>
+             <button class="small" data-action="activate" data-slot="${u.id}">Usar este token</button>`
+          : `<button class="small btn-primary" data-action="login" data-slot="${u.id}">Login</button>`
+        }
+      </div>
+      <div class="mono" style="color:var(--text-3);margin-top:4px;font-size:10px">${u.note}</div>
+    `
+    grid.appendChild(div)
+  }
+
+  // wire inputs
+  for (const inp of grid.querySelectorAll('input[data-slot]')) {
+    inp.addEventListener('input', (e) => {
+      const id = e.target.dataset.slot
+      const f = e.target.dataset.field
+      state.slots[id][f] = e.target.value
+      saveState(state)
+    })
+  }
+  // wire buttons
+  for (const btn of grid.querySelectorAll('button[data-action]')) {
+    btn.addEventListener('click', async (e) => {
+      const id = btn.dataset.slot
+      const action = btn.dataset.action
+      if (action === 'login') await doLogin(id)
+      else if (action === 'logout') { state.slots[id].token = null; state.slots[id].user = null; saveState(state); renderAuth(); renderActiveSelector() }
+      else if (action === 'activate') { state.activeUser = id; saveState(state); renderAuth(); renderActiveSelector() }
+    })
+  }
+}
+
+function renderActiveSelector() {
+  const sel = document.getElementById('activeUser')
+  sel.innerHTML = ''
+  for (const u of PRESET_USERS) {
+    const slot = state.slots[u.id]
+    const opt = document.createElement('option')
+    opt.value = u.id
+    opt.textContent = `${u.label}${slot.token ? ' ✓' : ' ◯'}${slot.user ? ' · ' + slot.user.email : ''}`
+    sel.appendChild(opt)
+  }
+  sel.value = state.activeUser
+  sel.onchange = () => { state.activeUser = sel.value; saveState(state); renderAuth() }
+}
+
+async function doLogin(slotId) {
+  const slot = state.slots[slotId]
+  slot.status = 'loading'
+  renderAuth()
+  try {
+    const r = await fetch(state.baseUrl + '/api/v3/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: slot.email, password: slot.password }),
+    })
+    const j = await r.json().catch(() => null)
+    if (r.ok && j?.success) {
+      slot.token = j.data.token
+      slot.user = j.data.user
+      slot.status = 'ok'
+      // Auto-activate if it's the first login
+      if (!Object.values(state.slots).filter(s => s.token).length) state.activeUser = slotId
+    } else {
+      slot.status = 'err'
+      alert(`Login falló (${r.status}): ${j?.error?.message || r.statusText}`)
+    }
+  } catch (e) {
+    slot.status = 'err'
+    alert('Network error: ' + e.message)
+  }
+  saveState(state)
+  renderAuth()
+  renderActiveSelector()
+}
+
+function clearAllTokens() {
+  for (const s of Object.values(state.slots)) { s.token = null; s.user = null }
+  saveState(state)
+  renderAuth()
+  renderActiveSelector()
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Render endpoints
+// ──────────────────────────────────────────────────────────────────────
+
+function extractParams(path) {
+  return [...path.matchAll(/\{(\w+)\}/g)].map((m) => m[1])
+}
+
+function renderEndpoints() {
+  const root = document.getElementById('endpointsRoot')
+  root.innerHTML = ''
+  const filter = document.getElementById('filter').value.trim().toLowerCase()
+  const sections = {}
+  for (const ep of ENDPOINTS) {
+    if (filter && !(`${ep.method} ${ep.path} ${ep.section} ${ep.note || ''}`.toLowerCase().includes(filter))) continue
+    sections[ep.section] = sections[ep.section] || []
+    sections[ep.section].push(ep)
+  }
+  for (const [sectionName, eps] of Object.entries(sections)) {
+    const sec = document.createElement('div')
+    sec.className = 'section'
+    sec.innerHTML = `
+      <div class="section-head">
+        <span class="chev">▾</span>
+        ${sectionName}
+        <span class="section-count">${eps.length} endpoints</span>
+      </div>
+      <div class="endpoints"></div>
+    `
+    sec.querySelector('.section-head').addEventListener('click', () => sec.classList.toggle('collapsed'))
+    const list = sec.querySelector('.endpoints')
+    for (const ep of eps) list.appendChild(buildEndpointCard(ep))
+    root.appendChild(sec)
+  }
+}
+
+function buildEndpointCard(ep) {
+  const card = document.createElement('div')
+  card.className = 'endpoint'
+  const params = extractParams(ep.path)
+  const bodyExample = ep.body ? JSON.stringify(ep.body, null, 2) : ''
+
+  card.innerHTML = `
+    <div class="endpoint-head">
+      <span class="pill pill-${ep.method}">${ep.method}</span>
+      <span class="endpoint-path">${ep.path}</span>
+      ${ep.requiresAuth === false ? `<span class="mono" style="color:var(--text-3);font-size:10px">sin auth</span>` : ''}
+    </div>
+    ${ep.note ? `<div class="endpoint-note">${ep.note}</div>` : ''}
+    <div class="endpoint-form">
+      ${params.length > 0 ? `<div class="params-grid">${params.map((p) => `
+        <label>${p}</label>
+        <input data-param="${p}" placeholder="${p}">
+      `).join('')}</div>` : ''}
+      ${ep.method !== 'GET' && ep.method !== 'DELETE' ? `
+        <details ${bodyExample ? 'open' : ''}>
+          <summary>Body (JSON)</summary>
+          <textarea class="body" placeholder='{}'>${bodyExample}</textarea>
+        </details>
+      ` : ''}
+      <div class="toolbar">
+        <button class="btn-primary" data-action="send">Send</button>
+        <button class="small" data-action="curl">Copy cURL</button>
+      </div>
+      <div class="response" style="display:none"></div>
+    </div>
+  `
+
+  // Expand on header click
+  card.querySelector('.endpoint-head').addEventListener('click', () => card.classList.toggle('expanded'))
+  card.querySelector('[data-action="send"]').addEventListener('click', (e) => {
+    e.stopPropagation()
+    runRequest(ep, card)
+  })
+  card.querySelector('[data-action="curl"]').addEventListener('click', (e) => {
+    e.stopPropagation()
+    copyCurl(ep, card)
+  })
+  return card
+}
+
+function resolvePath(ep, card) {
+  let p = ep.path
+  for (const param of extractParams(ep.path)) {
+    const inp = card.querySelector(`input[data-param="${param}"]`)
+    const v = inp?.value?.trim()
+    if (!v) throw new Error(`Falta {${param}}`)
+    p = p.replace(`{${param}}`, encodeURIComponent(v))
+  }
+  return p
+}
+
+function resolveBody(ep, card) {
+  const ta = card.querySelector('textarea.body')
+  if (!ta) return null
+  const raw = ta.value.trim()
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch (e) { throw new Error(`Body JSON inválido: ${e.message}`) }
+}
+
+async function runRequest(ep, card) {
+  const respEl = card.querySelector('.response')
+  respEl.style.display = 'block'
+  respEl.classList.remove('ok', 'warn', 'err')
+  respEl.textContent = 'Enviando…'
+  let path
+  let body
+  try {
+    path = resolvePath(ep, card)
+    body = resolveBody(ep, card)
+  } catch (e) {
+    respEl.classList.add('err')
+    respEl.textContent = e.message
+    return
+  }
+  const headers = { 'Content-Type': 'application/json' }
+  if (ep.requiresAuth !== false) {
+    const slot = state.slots[state.activeUser]
+    if (!slot?.token) {
+      respEl.classList.add('err')
+      respEl.textContent = `Necesitás token. Logueá el slot "${PRESET_USERS.find(u => u.id === state.activeUser)?.label}".`
+      return
+    }
+    headers.Authorization = 'Bearer ' + slot.token
+  }
+  const opts = { method: ep.method, headers }
+  if (body !== null && body !== undefined) opts.body = JSON.stringify(body)
+  const url = state.baseUrl + path
+  const t0 = performance.now()
+  try {
+    const r = await fetch(url, opts)
+    const t1 = performance.now()
+    const text = await r.text()
+    let pretty
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2) } catch { pretty = text }
+    respEl.classList.add(r.ok ? 'ok' : (r.status < 500 ? 'warn' : 'err'))
+    const slotLabel = ep.requiresAuth === false ? '(sin auth)' : `as ${state.activeUser}`
+    respEl.innerHTML =
+      `<div class="response-meta">${r.status} ${r.statusText} · ${(t1 - t0).toFixed(0)}ms · ${slotLabel}\n${ep.method} ${url}</div>` +
+      escapeHtml(pretty)
+  } catch (e) {
+    respEl.classList.add('err')
+    respEl.textContent = `Network error: ${e.message}`
+  }
+}
+
+function copyCurl(ep, card) {
+  let path
+  let body
+  try {
+    path = resolvePath(ep, card)
+    body = resolveBody(ep, card)
+  } catch (e) { alert(e.message); return }
+  const url = state.baseUrl + path
+  const parts = [`curl -X ${ep.method} '${url}'`]
+  if (ep.requiresAuth !== false) {
+    const slot = state.slots[state.activeUser]
+    if (slot?.token) parts.push(`-H 'Authorization: Bearer ${slot.token}'`)
+  }
+  parts.push(`-H 'Content-Type: application/json'`)
+  if (body) parts.push(`-d '${JSON.stringify(body)}'`)
+  const cmd = parts.join(' \\\n  ')
+  navigator.clipboard.writeText(cmd).then(
+    () => alert('cURL copiado al clipboard'),
+    () => prompt('Copialo manualmente:', cmd),
+  )
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function expandAll() { for (const ep of document.querySelectorAll('.endpoint')) ep.classList.add('expanded') }
+function collapseAll() {
+  for (const ep of document.querySelectorAll('.endpoint')) ep.classList.remove('expanded')
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────────────────────────────
+
+document.getElementById('baseUrl').value = state.baseUrl
+document.getElementById('baseUrl').onchange = (e) => { state.baseUrl = e.target.value; saveState(state) }
+renderAuth()
+renderActiveSelector()
+renderEndpoints()
+</script>
+</body>
+</html>
