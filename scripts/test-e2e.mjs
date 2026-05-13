@@ -185,7 +185,10 @@ async function testPatientFlows(patientSession) {
 
   // Slice 3 — Onboarding clínico
   logSection('Slice 3 — Datos clínicos del paciente')
-  await check(`GET /users/${uid}/static-profile`, 'GET', `/api/v3/users/${uid}/static-profile`, { token: t }, ['nombre'])
+  // Note: frontend's userService.getStaticProfile() calls GET /users/<id> and
+  // derives the StaticProfile shape client-side. The backend doesn't expose
+  // /static-profile as a separate endpoint.
+  await check(`GET /users/${uid} (proyectado a StaticProfile en frontend)`, 'GET', `/api/v3/users/${uid}`, { token: t }, ['user'])
   await check(`GET /users/${uid}/measurements (limit=1)`, 'GET', `/api/v3/users/${uid}/measurements?limit=1`, { token: t }, ['measurements'])
 
   // Slice 4 — Aceptar objetivo
@@ -239,7 +242,7 @@ async function testDoctorFlows(doctorSession) {
   const pid = firstPatient.patient_id
   const pname = firstPatient.patient_name
   logSection(`Slice 3/6 — Doctor → Paciente "${pname}" (id ${pid})`)
-  await check(`GET /users/${pid}/static-profile`, 'GET', `/api/v3/users/${pid}/static-profile`, { token: t }, ['nombre'])
+  await check(`GET /users/${pid}`, 'GET', `/api/v3/users/${pid}`, { token: t }, ['user'])
   await check(`GET /users/${pid}/measurements`, 'GET', `/api/v3/users/${pid}/measurements?limit=3`, { token: t }, ['measurements'])
   await check(`GET /users/${pid}/goals (todos)`, 'GET', `/api/v3/users/${pid}/goals`, { token: t })
   await check(`GET /training/strength?user=${encodeURIComponent(pname)}`, 'GET', `/api/v3/training/strength?user=${encodeURIComponent(pname)}`, { token: t })

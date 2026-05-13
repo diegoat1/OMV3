@@ -304,6 +304,205 @@ def reject_assignment(assignment_id):
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
+@assignments_bp.route('/specialists', methods=['GET'])
+@require_auth
+def list_available_specialists():
+    """
+    Returns approved specialists the patient can browse and request a link to.
+
+    Query params:
+      - role: filter by 'doctor' | 'nutricionista' | 'entrenador'
+      - q: search by display_name or email (LIKE %q%)
+
+    Returns: { specialists: [{ id, display_name, email, roles[] }], total }
+
+    Excludes:
+      - The caller itself
+      - Users not active / not status='active' (i.e. pending or rejected)
+      - Admins (admin-only role)
+      - Specialists already accepted-linked to the caller (to avoid duplicates)
+    """
+    user = get_current_user()
+    role_filter = (request.args.get('role') or '').strip().lower()
+    q = (request.args.get('q') or '').strip()
+
+    try:
+        conn = get_auth_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        # Match users whose comma-separated role contains any specialist role.
+        # The role column holds CSV strings like "doctor,user" or
+        # "admin,doctor,nutricionista". SQLite has no easy CSV-element match,
+        # so we filter in Python after a coarse LIKE prefilter on the role
+        # column.
+        params = [user['user_id']]
+        query = """
+            SELECT id, email, display_name, role, status, is_active
+            FROM users
+            WHERE id != ?
+              AND is_active = 1
+              AND status = 'active'
+              AND (role LIKE '%doctor%' OR role LIKE '%nutricionista%' OR role LIKE '%entrenador%')
+        """
+        if q:
+            query += " AND (display_name LIKE ? OR email LIKE ?)"
+            qparam = f'%{q}%'
+            params.extend([qparam, qparam])
+
+        cursor.execute(query, params)
+        all_rows = [dict(r) for r in cursor.fetchall()]
+
+        # Strip admins (role contains 'admin') from the list — admins aren't
+        # bookable as clinical specialists from the patient flow.
+        def specialist_roles(role_csv):
+            parts = [r.strip().lower() for r in (role_csv or '').split(',')]
+            allowed = {'doctor', 'nutricionista', 'entrenador'}
+            return [r for r in parts if r in allowed]
+
+        # Build specialists list with their specialist roles only
+        specialists = []
+        for r in all_rows:
+            roles = specialist_roles(r['role'])
+            if not roles:
+                continue
+            # Optional role filter
+            if role_filter and role_filter not in roles:
+                continue
+            specialists.append({
+                'id': r['id'],
+                'display_name': r['display_name'] or r['email'],
+                'email': r['email'],
+                'roles': roles,
+            })
+
+        # Exclude specialists already accepted-linked to the caller (patient)
+        cursor.execute("""
+            SELECT specialist_id FROM specialist_assignments
+            WHERE patient_id = ? AND status = 'accepted'
+        """, [user['user_id']])
+        already_linked = {row['specialist_id'] for row in cursor.fetchall()}
+        specialists = [s for s in specialists if s['id'] not in already_linked]
+
+        conn.close()
+        return success_response({
+            'specialists': specialists,
+            'total': len(specialists),
+        })
+
+    except Exception as e:
+        return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@assignments_bp.route('/patient-request', methods=['POST'])
+@require_auth
+def patient_request_specialist():
+    """
+    Patient-initiated link request. Creates an assignment with
+    status='pending_specialist' (waiting for the specialist to accept).
+
+    Body: { specialist_id: int, specialist_role?: 'doctor'|'nutricionista'|'entrenador' }
+
+    The specialist_role is recorded on the assignment when the specialist offers
+    multiple roles (e.g. doctor+nutricionista) so they know which capacity the
+    patient is requesting.
+    """
+    user = get_current_user()
+    data = request.get_json() or {}
+    specialist_id = data.get('specialist_id')
+    requested_role = (data.get('specialist_role') or '').strip().lower() or None
+
+    if not specialist_id:
+        return error_response('specialist_id es requerido',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    try:
+        conn = get_auth_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        # Verify caller is a patient (anyone non-admin can request — but they
+        # can't request to themselves)
+        if str(specialist_id) == str(user['user_id']):
+            conn.close()
+            return error_response('No podés solicitarte a vos mismo',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        # Verify specialist exists, is active, and has a specialist role
+        cursor.execute("""
+            SELECT id, display_name, role, is_active, status
+            FROM users WHERE id = ?
+        """, [specialist_id])
+        spec = cursor.fetchone()
+        if not spec:
+            conn.close()
+            return error_response('Especialista no encontrado',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+        spec = dict(spec)
+        if not spec['is_active'] or spec['status'] != 'active':
+            conn.close()
+            return error_response('Especialista no activo',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+        if not _has_specialist_role(spec['role']):
+            conn.close()
+            return error_response('El usuario indicado no es un especialista',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        spec_role = requested_role if requested_role in ('doctor', 'nutricionista', 'entrenador') else _get_specialist_role(spec['role'])
+
+        # Block duplicates: don't create another pending/accepted for the same pair+role
+        cursor.execute("""
+            SELECT id, status FROM specialist_assignments
+            WHERE patient_id = ? AND specialist_id = ?
+              AND status IN ('pending_patient', 'pending_specialist', 'accepted')
+        """, [user['user_id'], specialist_id])
+        existing = cursor.fetchone()
+        if existing:
+            ex = dict(existing)
+            if ex['status'] == 'accepted':
+                conn.close()
+                return error_response('Ya estás vinculado a este especialista',
+                                      code=ErrorCodes.VALIDATION_ERROR, status_code=409)
+            conn.close()
+            return error_response('Ya existe una solicitud pendiente con este especialista',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=409)
+
+        # Resolve patient name + DNI
+        patient_name = user.get('nombre_apellido') or ''
+        patient_dni = user.get('dni') or ''
+
+        now = datetime.utcnow().isoformat()
+        cursor.execute("""
+            INSERT INTO specialist_assignments
+                (specialist_id, specialist_name, specialist_role,
+                 patient_id, patient_name, patient_dni,
+                 status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending_specialist', ?, ?)
+        """, [
+            specialist_id, spec['display_name'] or '', spec_role,
+            user['user_id'], patient_name, patient_dni,
+            now, now,
+        ])
+        assignment_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        _log_audit(
+            user['user_id'], patient_name,
+            'patient_requested_specialist',
+            f'{patient_name} solicitó vincularse con {spec["display_name"]} ({spec_role})',
+            request.remote_addr
+        )
+
+        return success_response({
+            'assignment_id': assignment_id,
+            'status': 'pending_specialist',
+            'specialist_name': spec['display_name'],
+            'specialist_role': spec_role,
+        }, message='Solicitud enviada. El especialista debe aceptarla.', status_code=201)
+
+    except Exception as e:
+        return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
 @assignments_bp.route('/my-outgoing-requests', methods=['GET'])
 @require_auth
 def my_outgoing_requests():

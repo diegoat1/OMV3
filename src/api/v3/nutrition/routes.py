@@ -686,9 +686,12 @@ def list_foods():
         params = []
         
         if search:
-            query += " AND (Largadescripcion LIKE ? OR Cortadescripcion LIKE ?)"
+            # ALIMENTOS only has Largadescripcion (the OR Cortadescripcion
+            # variant referenced a column that doesn't exist and crashed
+            # search with `no such column: Cortadescripcion`).
+            query += " AND Largadescripcion LIKE ?"
             search_param = f"%{search}%"
-            params.extend([search_param, search_param])
+            params.append(search_param)
         
         # Contar total
         count_query = query.replace("SELECT *", "SELECT COUNT(*)")
