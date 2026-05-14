@@ -40,6 +40,76 @@ CHECKIN_FIELDS = [
     'completado',
 ]
 
+# OMV-68: rangos válidos por campo. (min, max). None significa booleano (0|1).
+# Las escalas 0-10 (estres/energia/animo/etc.) corresponden al frontend post-OMV-68.
+_CHECKIN_RANGES = {
+    'fumo': None, 'alcohol': None, 'actividad_fisica': None,
+    'deposicion': None, 'sangre_moco': None, 'tomo_medicacion': None, 'completado': None,
+    'actividad_minutos': (0, 600),
+    'horas_sueno': (0, 24),
+    'calidad_sueno': (0, 10), 'estres': (0, 10), 'energia': (0, 10),
+    'animo': (0, 10), 'dolor_abdominal': (0, 10), 'hambre_ansiedad': (0, 10),
+    'deposicion_veces': (0, 20),
+    'bristol': (1, 7),
+    'hidratacion_litros': (0, 10),
+}
+
+
+def _validate_checkin_payload(data: dict) -> 'tuple[dict, object]':
+    """Coerce + validate checkin fields. Returns (cleaned, error_response or None)."""
+    cleaned = {}
+    for f in CHECKIN_FIELDS:
+        if f not in data:
+            continue
+        raw = data[f]
+        rng = _CHECKIN_RANGES.get(f, 'unknown')
+        if rng is None:
+            # Boolean / 0|1
+            if raw in (None, ''):
+                continue
+            if raw in (0, 1, '0', '1', True, False):
+                cleaned[f] = int(bool(raw))
+            else:
+                return cleaned, error_response(
+                    f'{f} debe ser 0 o 1', code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                )
+        elif isinstance(rng, tuple):
+            try:
+                n = float(raw)
+            except (TypeError, ValueError):
+                return cleaned, error_response(
+                    f'{f} debe ser numérico', code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                )
+            if n < rng[0] or n > rng[1]:
+                return cleaned, error_response(
+                    f'{f} fuera de rango ({rng[0]}-{rng[1]})',
+                    code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                )
+            cleaned[f] = n
+        else:
+            # texto libre: actividad_tipo, medicacion_detalle
+            cleaned[f] = str(raw) if raw is not None else None
+    return cleaned, None
+
+
+def _validate_iso_date(value, field='fecha'):
+    """OMV-72: valida YYYY-MM-DD y no permite fechas futuras > +1 día."""
+    if not value:
+        return None, None
+    try:
+        d = datetime.strptime(value, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None, error_response(
+            f'{field} debe tener formato YYYY-MM-DD',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
+    if d > (date.today() + timedelta(days=1)):
+        return None, error_response(
+            f'{field} no puede estar en el futuro',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
+    return d.isoformat(), None
+
 
 @checkin_bp.route('/today', methods=['GET'])
 @require_auth
@@ -74,7 +144,14 @@ def submit_today():
 
     data = request.get_json(silent=True) or {}
     pid = patient['patient_id']
-    hoy = _today_str()
+    # OMV-68 + OMV-72: validar campos numéricos / booleanos / fecha.
+    cleaned, err = _validate_checkin_payload(data)
+    if err is not None:
+        return err
+    fecha_in, err = _validate_iso_date(data.get('fecha'), 'fecha')
+    if err is not None:
+        return err
+    hoy = fecha_in or _today_str()
 
     conn = get_clinical_connection(sqlite3.Row)
     cursor = conn.cursor()
@@ -87,10 +164,9 @@ def submit_today():
         # UPDATE
         sets = []
         vals = []
-        for f in CHECKIN_FIELDS:
-            if f in data:
-                sets.append(f"{f} = ?")
-                vals.append(data[f])
+        for f, v in cleaned.items():
+            sets.append(f"{f} = ?")
+            vals.append(v)
         if sets:
             vals.extend([pid, hoy])
             cursor.execute(f"UPDATE daily_checkins SET {', '.join(sets)} WHERE patient_id = ? AND fecha = ?", vals)
@@ -100,10 +176,9 @@ def submit_today():
         # INSERT
         cols = ['patient_id', 'fecha']
         vals = [pid, hoy]
-        for f in CHECKIN_FIELDS:
-            if f in data:
-                cols.append(f)
-                vals.append(data[f])
+        for f, v in cleaned.items():
+            cols.append(f)
+            vals.append(v)
         placeholders = ', '.join(['?'] * len(vals))
         cursor.execute(f"INSERT INTO daily_checkins ({', '.join(cols)}) VALUES ({placeholders})", vals)
         conn.commit()
@@ -443,15 +518,32 @@ def get_history():
 @checkin_bp.route('/stats', methods=['GET'])
 @require_auth
 def get_stats():
-    """Weekly averages: sleep, stress, energy, mood, adherence %."""
+    """Promedios del check-in. Por defecto últimos 7 días; aceptá `?days=N`
+    (1-365) o `?desde=YYYY-MM-DD` (OMV-73)."""
     user = get_current_user()
     patient = _get_patient_for_user(user)
     if not patient:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
 
-    pid = patient['patient_id']
-    hace_7 = (date.today() - timedelta(days=6)).isoformat()
+    days = request.args.get('days', 7, type=int)
+    days = max(1, min(365, days))
+    desde_param = request.args.get('desde')
+    desde_validated, err = _validate_iso_date(desde_param, 'desde')
+    if err is not None:
+        return err
+    if desde_validated:
+        hace = desde_validated
+        # Días reales en la ventana hasta hoy (para adherencia_pct).
+        try:
+            d0 = datetime.strptime(desde_validated, '%Y-%m-%d').date()
+            window_days = max(1, (date.today() - d0).days + 1)
+        except Exception:
+            window_days = days
+    else:
+        hace = (date.today() - timedelta(days=days - 1)).isoformat()
+        window_days = days
 
+    pid = patient['patient_id']
     conn = get_clinical_connection(sqlite3.Row)
     cursor = conn.cursor()
     cursor.execute("""
@@ -465,16 +557,17 @@ def get_stats():
             AVG(hidratacion_litros) as avg_hidratacion
         FROM daily_checkins
         WHERE patient_id = ? AND fecha >= ?
-    """, [pid, hace_7])
+    """, [pid, hace])
     row = cursor.fetchone()
     conn.close()
 
     dias = row['dias_completados'] or 0
 
     return success_response({
-        'periodo': f'{hace_7} a {_today_str()}',
+        'periodo': f'{hace} a {_today_str()}',
+        'ventana_dias': window_days,
         'dias_completados': dias,
-        'adherencia_pct': round((dias / 7) * 100),
+        'adherencia_pct': round((dias / window_days) * 100) if window_days else 0,
         'avg_sueno': round(row['avg_sueno'] or 0, 1),
         'avg_horas_sueno': round(row['avg_horas_sueno'] or 0, 1),
         'avg_estres': round(row['avg_estres'] or 0, 1),
@@ -537,7 +630,46 @@ def submit_symptom():
     saved = dict(cursor.fetchone())
     conn.close()
 
+    # OMV-69: sync con telemedicine.SITUACIONES_CLINICAS — síntomas con
+    # intensidad alta se replican como situación clínica abierta para que el
+    # profesional las vea en la ficha del paciente.
+    _sync_symptom_to_situation(saved, user, patient)
+
     return success_response(saved)
+
+
+def _sync_symptom_to_situation(symptom_row, user, patient):
+    """Best-effort copia de un síntoma de intensidad >= 5 a SITUACIONES_CLINICAS."""
+    try:
+        intensidad = symptom_row.get('intensidad')
+        if intensidad is None or float(intensidad) < 5:
+            return
+    except (TypeError, ValueError):
+        return
+    try:
+        from ..common.database import get_telemed_connection as _gtc
+        tconn = _gtc()
+        tcur = tconn.cursor()
+        nombre = (
+            f"Síntoma {symptom_row.get('sistema')} — intensidad "
+            f"{symptom_row.get('intensidad')}"
+        )
+        descripcion = symptom_row.get('descripcion') or 'Reportado desde check-in'
+        tcur.execute("""
+            INSERT INTO SITUACIONES_CLINICAS
+                (user_id, paciente_nombre, nombre, descripcion, fecha_inicio,
+                 tipo_situacion, activa, severidad, created_at)
+            VALUES (?, ?, ?, ?, DATE('now'), 'sintoma', 1, ?, CURRENT_TIMESTAMP)
+        """, [
+            user.get('nombre_apellido') or '',
+            patient.get('nombre') or '',
+            nombre, descripcion, 'media',
+        ])
+        tconn.commit()
+        tconn.close()
+    except Exception:
+        # No bloquear el flujo del symptom POST si telemed.db falla.
+        pass
 
 
 @checkin_bp.route('/symptoms', methods=['GET'])

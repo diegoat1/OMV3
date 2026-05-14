@@ -637,11 +637,66 @@ def get_scores():
 # CALCULADORAS
 # ============================================
 
+# OMV-2: validación de rangos para inputs de las calculadoras.
+_CALC_RANGES = {
+    'peso': (20, 300),
+    'altura': (50, 250),
+    'edad': (5, 120),
+    'peso_magro': (5, 250),
+    'bf_percent': (2, 70),
+    'circ_cuello': (15, 80),
+    'circ_abdomen': (40, 250),
+    'circ_cintura': (40, 250),
+    'circ_cadera': (40, 250),
+    'tdee': (500, 8000),
+    'factor_actividad': (1.0, 2.5),
+    'velocidad': (0.05, 1.5),
+}
+
+
+def _validate_calc_inputs(data: dict, required: list, optional: list = ()) -> tuple:
+    """Returns (clean_dict, error_response_or_None).
+
+    Coerces strings to floats/ints, enforces RANGES, rejects negatives. Para
+    campos no listados en _CALC_RANGES sólo se valida que sea numérico positivo.
+    """
+    out = {}
+    for field in list(required) + list(optional):
+        raw = data.get(field)
+        if raw in (None, ''):
+            if field in required:
+                return None, error_response(
+                    f'{field} es requerido',
+                    code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                )
+            continue
+        try:
+            n = float(raw)
+        except (TypeError, ValueError):
+            return None, error_response(
+                f'{field} debe ser numérico',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+            )
+        if n <= 0:
+            return None, error_response(
+                f'{field} debe ser positivo',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+            )
+        rng = _CALC_RANGES.get(field)
+        if rng and (n < rng[0] or n > rng[1]):
+            return None, error_response(
+                f'{field} fuera de rango razonable ({rng[0]}-{rng[1]})',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+            )
+        out[field] = n
+    return out, None
+
+
 @analytics_bp.route('/calculators/bmr', methods=['POST'])
 def calculate_bmr():
     """
     Calcula la Tasa Metabólica Basal (BMR).
-    
+
     Request Body:
         {
             "peso": 75,
@@ -653,20 +708,21 @@ def calculate_bmr():
         }
     """
     data = request.get_json() or {}
-    
-    peso = float(data.get('peso', 0))
-    altura = float(data.get('altura', 0))
-    edad = int(data.get('edad', 0))
-    sexo = data.get('sexo', 'M').upper()
+
+    clean, err = _validate_calc_inputs(
+        data, required=['peso', 'altura'], optional=['edad', 'peso_magro'],
+    )
+    if err is not None:
+        return err
+    peso = clean.get('peso', 0)
+    altura = clean.get('altura', 0)
+    edad = int(clean.get('edad', 0)) if 'edad' in clean else 0
+    peso_magro = clean.get('peso_magro', 0)
+    sexo = (data.get('sexo') or 'M').upper()
+    if sexo not in ('M', 'F'):
+        return error_response('sexo debe ser "M" o "F"',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
     formula = data.get('formula', 'katch_mcardle')
-    peso_magro = float(data.get('peso_magro', 0))
-    
-    if not peso or not altura:
-        return error_response(
-            'Peso y altura son requeridos',
-            code=ErrorCodes.VALIDATION_ERROR,
-            status_code=400
-        )
     
     bmr = 0
     formula_usada = formula

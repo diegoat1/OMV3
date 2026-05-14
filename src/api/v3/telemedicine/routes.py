@@ -6,7 +6,7 @@ Migrated from legacy /api/telemed/* endpoints in main.py
 from flask import request
 from . import telemedicine_bp
 from ..common.responses import success_response, error_response, ErrorCodes
-from ..common.auth import require_auth, require_admin, get_current_user
+from ..common.auth import require_auth, require_admin, get_current_user, write_audit
 from ..common.database import get_telemed_connection, execute_telemed_query
 import sqlite3
 import json
@@ -249,6 +249,7 @@ def create_appointment():
         conn.commit()
         new_id = cursor.lastrowid
         conn.close()
+        write_audit("appointment_created", f"Cita ID {new_id}")
         return success_response({'id': new_id, 'message': 'Cita creada'}, status_code=201)
     except Exception as e:
         return error_response(f'Error creando cita: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
@@ -358,6 +359,7 @@ def create_medical_record():
         conn.commit()
         new_id = cursor.lastrowid
         conn.close()
+        write_audit("medical_record_created", f"Historia ID {new_id}")
         return success_response({'id': new_id, 'message': 'Registro creado'}, status_code=201)
     except Exception as e:
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
@@ -847,6 +849,31 @@ def create_document():
     except (TypeError, ValueError):
         tamano = None
 
+    # OMV-9: validar MIME y tamaño cuando vienen en el body.
+    mime_type = (data.get('mime_type') or '').strip()
+    _ALLOWED_MIME = {
+        'application/pdf',
+        'image/jpeg', 'image/png', 'image/webp', 'image/heic',
+        'image/heif',
+        'text/csv', 'text/plain',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/dicom',
+    }
+    _MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+    if mime_type and mime_type.lower() not in _ALLOWED_MIME:
+        return error_response(
+            f'Tipo de archivo no permitido: {mime_type}. Aceptados: PDF, imágenes, Office, DICOM.',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
+    if tamano is not None and (tamano <= 0 or tamano > _MAX_BYTES):
+        return error_response(
+            f'Tamaño de archivo fuera de rango (máx {_MAX_BYTES // (1024*1024)} MB).',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
+
     try:
         conn = get_telemed_connection(sqlite3.Row)
         cursor = conn.cursor()
@@ -871,6 +898,7 @@ def create_document():
         cursor.execute("SELECT * FROM TELEMED_DOCUMENTOS WHERE id = ?", (cursor.lastrowid,))
         doc = _serialize_document(cursor.fetchone())
         conn.close()
+        write_audit("document_created", f"Documento ID {doc.get('id')} ({doc.get('tipo_documento')})")
         return success_response({'documento': doc, 'created': True}, status_code=201)
     except Exception as e:
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)

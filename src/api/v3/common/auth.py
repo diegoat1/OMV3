@@ -405,3 +405,36 @@ def require_owner_or_admin(f):
         return f(*args, **kwargs)
     
     return decorated
+
+
+def write_audit(action, details=None, user=None, ip=None):
+    """
+    Centralized audit logger — OMV-7. Es safe-by-default: nunca raise, escribe
+    a auth.db.audit_log incluso si los blueprints clinical/telemedicine no
+    tienen su propio audit_log.
+
+    Args:
+        action: identificador estable de la acción ('plan_created', 'measurement_edited', etc.)
+        details: descripción humana.
+        user: dict con keys user_id, nombre_apellido (default = get_current_user()).
+        ip: opcional; si no se pasa se toma de flask.request.remote_addr.
+    """
+    try:
+        u = user or get_current_user() or {}
+        if ip is None:
+            try:
+                ip = request.remote_addr
+            except Exception:
+                ip = None
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO audit_log (user_id, user_name, action, details, ip_address) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [u.get('user_id'), u.get('nombre_apellido') or '', action,
+             details or '', ip or ''],
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass

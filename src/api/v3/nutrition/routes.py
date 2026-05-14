@@ -3560,8 +3560,18 @@ def get_food_groups_catalog():
 # DAILY LOG - Registro diario de nutrición
 # ============================================
 
+_DAILY_LOG_TABLES_CHECKED = False
+
+
 def _ensure_daily_log_tables(conn):
-    """Create daily log tables if they don't exist."""
+    """OMV-71: ownership de las tablas pasó a migrations/016_daily_log_tables.sql.
+
+    Mantenemos la función como fallback idempotente — solo crea las tablas si
+    faltan, y solo lo intenta UNA vez por proceso (no por request).
+    """
+    global _DAILY_LOG_TABLES_CHECKED
+    if _DAILY_LOG_TABLES_CHECKED:
+        return
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS nutrition_daily_logs (
@@ -3592,6 +3602,7 @@ def _ensure_daily_log_tables(conn):
         )
     """)
     conn.commit()
+    _DAILY_LOG_TABLES_CHECKED = True
 
 
 def _calc_coverage(actual, target):
@@ -3755,10 +3766,6 @@ def save_daily_log():
                 continue
 
             completed = meal.get('completed', False)
-            total_p = meal.get('total_p', 0) or 0
-            total_g = meal.get('total_g', 0) or 0
-            total_c = meal.get('total_c', 0) or 0
-            total_cal = meal.get('total_cal', 0) or 0
             # OMV-64: target_* del plan, ignorando lo que mande el cliente.
             cols = _meal_cols.get(meal_key)
             if cols:
@@ -3768,9 +3775,44 @@ def save_daily_log():
             else:
                 target_p = target_g = target_c = 0
 
+            # OMV-67: si vino foods_json con detalle por alimento, recomputar
+            # los totales server-side. El cliente puede mandar totales pero los
+            # ignoramos si tenemos los foods (fuente de verdad).
+            foods_json_raw = meal.get('foods_json')
+            foods_list = None
+            if foods_json_raw is not None:
+                try:
+                    foods_list = (
+                        json.loads(foods_json_raw) if isinstance(foods_json_raw, str)
+                        else foods_json_raw
+                    )
+                except Exception:
+                    foods_list = None
+
+            if isinstance(foods_list, list) and foods_list:
+                p = g = c = cal = 0.0
+                for f in foods_list:
+                    try:
+                        p += float(f.get('proteina_g') or 0)
+                        g += float(f.get('grasa_g') or 0)
+                        c += float(f.get('carbohidratos_g') or 0)
+                        cal += float(f.get('calorias') or 0)
+                    except (TypeError, ValueError):
+                        continue
+                total_p = round(p, 1)
+                total_g = round(g, 1)
+                total_c = round(c, 1)
+                total_cal = round(cal, 0) if cal > 0 else round(p * 4 + c * 4 + g * 9, 0)
+            else:
+                # Fallback al payload del cliente.
+                total_p = meal.get('total_p', 0) or 0
+                total_g = meal.get('total_g', 0) or 0
+                total_c = meal.get('total_c', 0) or 0
+                total_cal = meal.get('total_cal', 0) or 0
+
             meal_score = _calc_meal_score(total_p, total_g, total_c, target_p, target_g, target_c) if completed else 0
 
-            foods_json = meal.get('foods_json')
+            foods_json = foods_list if foods_list is not None else None
             if foods_json is not None and not isinstance(foods_json, str):
                 foods_json = json.dumps(foods_json)
 

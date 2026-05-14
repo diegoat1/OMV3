@@ -399,14 +399,45 @@ def delete_task(task_id):
 # INSIGHTS (Auto-generated tips & recommendations)
 # ============================================
 
+# OMV-12: in-memory cache de insights con TTL.
+# Diccionario por user_id con (timestamp, payload). TTL 10 min.
+import time
+_INSIGHTS_CACHE = {}
+_INSIGHTS_TTL_SECONDS = 600
+
+
+def _cache_get_insights(uid):
+    entry = _INSIGHTS_CACHE.get(str(uid))
+    if not entry:
+        return None
+    ts, payload = entry
+    if time.time() - ts > _INSIGHTS_TTL_SECONDS:
+        _INSIGHTS_CACHE.pop(str(uid), None)
+        return None
+    return payload
+
+
+def _cache_set_insights(uid, payload):
+    _INSIGHTS_CACHE[str(uid)] = (time.time(), payload)
+
+
 @engagement_bp.route('/insights', methods=['GET'])
 @require_auth
 def get_insights():
     """
     Genera insights personalizados basados en datos del usuario.
     Analyzes nutrition, training, and body composition data to provide actionable tips.
+
+    OMV-12: respuesta cacheada 10min por user_id en memoria. Pasá `?fresh=1`
+    para forzar el recálculo.
     """
     user = get_current_user()
+    fresh = request.args.get('fresh') == '1'
+
+    if not fresh:
+        cached = _cache_get_insights(user.get('user_id'))
+        if cached is not None:
+            return success_response({**cached, 'cached': True})
 
     try:
         conn = get_db_connection(sqlite3.Row)
@@ -560,11 +591,13 @@ def get_insights():
 
         conn.close()
 
-        return success_response({
+        payload = {
             'insights': insights,
             'total': len(insights),
             'generated_at': datetime.now().isoformat(),
-        })
+        }
+        _cache_set_insights(user.get('user_id'), payload)
+        return success_response(payload)
 
     except Exception as e:
         return error_response(
