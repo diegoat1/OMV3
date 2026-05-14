@@ -128,6 +128,18 @@ export const nutritionService = {
   getFood(foodId: number): Promise<Food> {
     return api.get<Food>(`/nutrition/foods/${foodId}`)
   },
+  /** Create a new food. Admin or specialist. */
+  createFood(payload: Partial<Food> & { Largadescripcion: string }): Promise<{ food: Food }> {
+    return api.post<{ food: Food }>('/nutrition/foods', payload)
+  },
+  /** Update an existing food. Admin or specialist. */
+  updateFood(foodId: number, payload: Partial<Food>): Promise<{ food: Food }> {
+    return api.put<{ food: Food }>(`/nutrition/foods/${foodId}`, payload)
+  },
+  /** Delete a food. Admin only. */
+  deleteFood(foodId: number): Promise<{ id: number }> {
+    return api.delete<{ id: number }>(`/nutrition/foods/${foodId}`)
+  },
   getFoodPortions(foodId: number): Promise<{ portions: FoodPortion[] }> {
     return api.get<{ portions: FoodPortion[] }>(`/nutrition/foods/${foodId}/portions`)
   },
@@ -218,5 +230,28 @@ export const nutritionService = {
   /** POST /nutrition/meal-plans — create a legacy meal plan shell. */
   createMealPlan(payload: Partial<NutritionPlan> & { nombre_apellido?: string }) {
     return api.post<{ id: number }>('/nutrition/meal-plans', payload)
+  },
+
+  /* ──────────────── Weekly diet survey ──────────────── */
+
+  submitDietSurvey(payload: {
+    groups: Record<string, { porciones_semana?: number; tipo?: string }>
+    notas?: string
+    patient?: string
+  }) {
+    return api.post<{
+      id: number; patient_id: number; fecha: string;
+      groups: Record<string, unknown>; notas?: string
+    }>('/nutrition/diet-survey', payload)
+  },
+  getDietSurveys(opts: { patient?: string; limit?: number } = {}) {
+    return api.get<{
+      surveys: Array<{
+        id: number; patient_id: number; fecha: string;
+        groups: Record<string, { porciones_semana?: number; tipo?: string }>;
+        notas?: string; created_at: string
+      }>
+      total: number
+    }>(`/nutrition/diet-survey${qs({ patient: opts.patient, limit: opts.limit })}`)
   },
 }

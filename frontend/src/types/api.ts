@@ -291,9 +291,13 @@ export interface PatientRequestPayload {
   specialist_role?: string  // 'doctor' | 'nutricionista' | 'entrenador'
 }
 
-/** POST /assignments/request body — specialist initiates a link by DNI. */
+/** POST /assignments/request body — specialist initiates a link by any of
+ *  email, display_name, DNI or a free-text `query` the backend disambiguates. */
 export interface SpecialistRequestPayload {
-  patient_dni: string
+  patient_email?: string
+  patient_name?: string
+  patient_dni?: string
+  query?: string
 }
 
 export interface SpecialistRequestResponse {
@@ -1553,6 +1557,34 @@ export interface BodyCompositionHistoryResponse {
   user: string
   history: BodyComposition[]
   total: number
+}
+
+/** GET /analytics/projection — projection toward the active goal. */
+export interface GoalProjection {
+  patient: { nombre: string; patient_id: number }
+  current: {
+    fecha: string
+    peso: number | null
+    bf_percent: number | null
+    ffmi: number | null
+  } | null
+  goal: { goal_peso: number | null; goal_bf: number | null; goal_ffmi: number | null } | null
+  rates: {
+    peso_kg_per_week: number | null
+    bf_pct_per_week: number | null
+    ffmi_per_week: number | null
+  } | null
+  estimates: {
+    dias: number
+    semanas: number
+    meses: number
+    fecha_estimada: string
+    por_metric: { peso: number | null; bf: number | null; ffmi: number | null }
+  } | null
+  score: number       // 0-100
+  stars: number       // 0-5
+  narrative: string
+  samples?: number
 }
 
 /** Scores agregados por `/analytics/scores`. */

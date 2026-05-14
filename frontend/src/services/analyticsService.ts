@@ -5,6 +5,7 @@ import type {
   AnalyticsSummary,
   BodyComposition,
   BodyCompositionHistoryResponse,
+  GoalProjection,
 } from '../types/api'
 
 function qs(params: Record<string, string | number | undefined>): string {
@@ -41,6 +42,10 @@ export const analyticsService = {
   },
   scores(opts: { user?: string } = {}): Promise<AnalyticsScores> {
     return api.get<AnalyticsScores>(`/analytics/scores${qs(opts)}`)
+  },
+  /** Goal projection: rates + days-to-goal + motivational score (0–100). */
+  projection(opts: { user?: string; patient_id?: number } = {}): Promise<GoalProjection> {
+    return api.get<GoalProjection>(`/analytics/projection${qs(opts)}`)
   },
 
   /* ──────────────── On-demand calculators ──────────────── */

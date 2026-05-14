@@ -9,6 +9,7 @@ interface Props {
   setRole: (r: Role) => void
   availableRoles: Role[]
   onLogout: () => void
+  onEditProfile?: () => void
   userName: string
 }
 
@@ -19,6 +20,7 @@ export function UserMenuSheet({
   setRole,
   availableRoles,
   onLogout,
+  onEditProfile,
   userName,
 }: Props) {
   if (!open) return null
@@ -49,6 +51,23 @@ export function UserMenuSheet({
                   {r === role && <Icon name="check" size={16} />}
                 </button>
               ))}
+            </div>
+          </>
+        )}
+
+        {onEditProfile && (
+          <>
+            <div className="sheet-section-label">Cuenta</div>
+            <div className="sheet-list">
+              <button
+                className="sheet-row"
+                onClick={() => { onClose(); onEditProfile() }}
+              >
+                <span className="sheet-row-av" style={{ background: 'rgba(125,140,255,0.12)', color: 'var(--analytic)' }}>
+                  <Icon name="edit" size={14} />
+                </span>
+                <span className="sheet-row-label">Editar mi perfil</span>
+              </button>
             </div>
           </>
         )}

@@ -994,3 +994,201 @@ def calculate_muscle_gain():
             'tdee': tdee
         }
     })
+
+
+@analytics_bp.route('/projection', methods=['GET'])
+@require_auth
+def goal_projection():
+    """
+    Projection toward the active goal.
+
+    Returns days-to-goal estimates, current trajectory and a motivational
+    score (0-100). Combines the patient's last N measurements with the
+    persisted goal (peso/bf/ffmi) to extrapolate.
+
+    Query params:
+        - user (optional): display_name target (specialists viewing a patient).
+        - patient_id (optional): clinical.db patient id direct lookup.
+
+    Response shape:
+        {
+          "patient": { "nombre": ..., "patient_id": ..., "fecha_objetivo": ... },
+          "current": { "peso", "bf", "ffmi", "fecha" },
+          "goal":    { "peso", "bf", "ffmi" },
+          "rates":   { "peso_kg_per_week", "bf_pct_per_week", "ffmi_per_week" },
+          "estimates": { "dias", "semanas", "meses", "fecha_estimada" },
+          "score": 0..100,
+          "stars": 0..5,
+          "narrative": "Vas en buen camino..."
+        }
+    """
+    user = get_current_user()
+    user_param = request.args.get('user')
+    direct_patient_id = request.args.get('patient_id', type=int)
+
+    if direct_patient_id:
+        try:
+            cconn = get_clinical_connection(sqlite3.Row)
+            cc = cconn.cursor()
+            cc.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [direct_patient_id])
+            prow = cc.fetchone()
+            cconn.close()
+            patient = {'patient_id': prow[0], 'dni': prow[1], 'nombre': prow[2]} if prow else None
+        except Exception:
+            patient = None
+    elif user_param:
+        patient = resolve_patient_id(user_param)
+    else:
+        patient = resolve_patient_id(user['nombre_apellido'])
+
+    if not patient:
+        return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    # Access control: same as get_summary/get_body_composition.
+    if patient.get('nombre') != user['nombre_apellido'] and not user.get('is_admin') and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+        return error_response('No tenés permisos para ver datos de este paciente',
+                              code=ErrorCodes.FORBIDDEN, status_code=403)
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        pid = patient['patient_id']
+
+        # Last 8 measurements ordered ascending (oldest → newest)
+        cursor.execute("""
+            SELECT fecha, peso, bf_percent, ffmi
+            FROM measurements
+            WHERE patient_id = ?
+            ORDER BY fecha DESC
+            LIMIT 8
+        """, [pid])
+        rows = [dict(r) for r in cursor.fetchall()]
+        rows.reverse()
+
+        # Active goal
+        cursor.execute("""
+            SELECT goal_peso, goal_bf, goal_ffmi
+            FROM goals WHERE patient_id = ? AND activo = 1
+            ORDER BY id DESC LIMIT 1
+        """, [pid])
+        g = cursor.fetchone()
+        conn.close()
+
+        if not rows:
+            return success_response({
+                'patient': {'nombre': patient['nombre'], 'patient_id': pid},
+                'current': None, 'goal': None, 'rates': None,
+                'estimates': None, 'score': 0, 'stars': 0,
+                'narrative': 'Sin mediciones todavía. Registrá una para arrancar la proyección.',
+            })
+
+        current = rows[-1]
+        goal = dict(g) if g else None
+
+        # Rate of change (kg / pp per week) from first→last measurement.
+        def _rate(field):
+            if len(rows) < 2:
+                return None
+            x0 = rows[0][field]; xN = rows[-1][field]
+            if x0 is None or xN is None:
+                return None
+            from datetime import datetime as _dt
+            try:
+                d0 = _dt.fromisoformat(str(rows[0]['fecha']).replace(' ', 'T').split('T')[0])
+                dN = _dt.fromisoformat(str(rows[-1]['fecha']).replace(' ', 'T').split('T')[0])
+            except Exception:
+                return None
+            days = max(1, (dN - d0).days)
+            return round(((xN - x0) / days) * 7, 3)
+
+        peso_rate = _rate('peso')
+        bf_rate   = _rate('bf_percent')
+        ffmi_rate = _rate('ffmi')
+
+        # Days-to-goal estimate using whichever metric has both a target and
+        # a non-trivial rate. Weight is the primary driver.
+        def _days_for(current_val, target_val, rate_per_week):
+            if current_val is None or target_val is None or not rate_per_week:
+                return None
+            delta = target_val - current_val
+            # Direction must match: if delta and rate disagree in sign, infinite.
+            if (delta > 0 and rate_per_week <= 0) or (delta < 0 and rate_per_week >= 0):
+                return None
+            if abs(rate_per_week) < 1e-4:
+                return None
+            return int(abs(delta / rate_per_week) * 7)
+
+        estimates = None
+        if goal:
+            days_peso = _days_for(current.get('peso'), goal.get('goal_peso'), peso_rate)
+            days_bf   = _days_for(current.get('bf_percent'), goal.get('goal_bf'),   bf_rate)
+            days_ffmi = _days_for(current.get('ffmi'), goal.get('goal_ffmi'), ffmi_rate)
+            options = [d for d in [days_peso, days_bf, days_ffmi] if d is not None]
+            if options:
+                # Worst-case (longest path) is the realistic ETA.
+                worst = max(options)
+                from datetime import datetime as _dt, timedelta as _td
+                eta = (_dt.utcnow() + _td(days=worst)).date().isoformat()
+                estimates = {
+                    'dias': worst,
+                    'semanas': round(worst / 7, 1),
+                    'meses': round(worst / 30.44, 1),
+                    'fecha_estimada': eta,
+                    'por_metric': {'peso': days_peso, 'bf': days_bf, 'ffmi': days_ffmi},
+                }
+
+        # Motivational score: combines (a) progress toward each defined target
+        # as a 0–1 fraction, (b) consistency (more measurements = better),
+        # (c) rate quality (closer to ideal pace = better). Clamp to 0-100.
+        score = 0.0
+        weights_sum = 0.0
+        if goal:
+            for cur_key, tgt_key in [('peso', 'goal_peso'), ('bf_percent', 'goal_bf'), ('ffmi', 'goal_ffmi')]:
+                cur_val = current.get(cur_key)
+                tgt_val = goal.get(tgt_key)
+                start_val = rows[0].get(cur_key)
+                if cur_val is None or tgt_val is None or start_val is None:
+                    continue
+                full_delta = tgt_val - start_val
+                done_delta = cur_val - start_val
+                if abs(full_delta) < 1e-4:
+                    frac = 1.0
+                else:
+                    frac = done_delta / full_delta
+                # Clamp [0,1.2] so over-shoot doesn't tank the score
+                frac = max(0.0, min(1.2, frac))
+                score += frac * 100
+                weights_sum += 1
+        if weights_sum > 0:
+            score = score / weights_sum
+        # Consistency bonus: up to +10 for 5+ measurements in the window.
+        score += min(10, len(rows) * 2)
+        score = max(0.0, min(100.0, score))
+
+        stars = round(score / 20)
+        narrative = (
+            'Sin objetivo activo, no puedo proyectar todavía.' if not goal else
+            'Vas en buen camino, mantené el ritmo.' if score >= 70 else
+            'Cerca del objetivo, ajustá los hábitos clave.' if score >= 40 else
+            'Hay margen de mejora: revisá tu plan con tu profesional.'
+        )
+
+        return success_response({
+            'patient': {'nombre': patient['nombre'], 'patient_id': pid},
+            'current': current,
+            'goal': goal,
+            'rates': {
+                'peso_kg_per_week': peso_rate,
+                'bf_pct_per_week':   bf_rate,
+                'ffmi_per_week':     ffmi_rate,
+            },
+            'estimates': estimates,
+            'score': round(score, 1),
+            'stars': stars,
+            'narrative': narrative,
+            'samples': len(rows),
+        })
+
+    except Exception as e:
+        return error_response(f'Error calculando proyección: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)

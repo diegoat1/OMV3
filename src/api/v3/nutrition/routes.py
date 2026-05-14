@@ -797,6 +797,150 @@ def get_food_portions(food_id):
         )
 
 
+# ─── Foods CRUD (admin + specialists may modify the catalog) ───
+
+def _is_specialist(role_csv: str) -> bool:
+    """True when the role CSV contains any professional role."""
+    if not role_csv:
+        return False
+    parts = {r.strip().lower() for r in role_csv.split(',')}
+    return bool(parts & {'doctor', 'medico', 'médico', 'nutricionista', 'nutritionist', 'entrenador', 'trainer'})
+
+
+def _normalize_food_payload(data: dict) -> dict:
+    """Coerce request body keys into ALIMENTOS column names + types."""
+    def _num(v):
+        try:
+            return float(v) if v not in (None, '', 'null') else 0
+        except (TypeError, ValueError):
+            return 0
+    return {
+        'Largadescripcion': (data.get('Largadescripcion') or data.get('nombre') or '').strip(),
+        'P': _num(data.get('P') if data.get('P') is not None else data.get('proteina_100g')),
+        'G': _num(data.get('G') if data.get('G') is not None else data.get('grasa_100g')),
+        'CH': _num(data.get('CH') if data.get('CH') is not None else data.get('carbohidratos_100g')),
+        'F': _num(data.get('F') if data.get('F') is not None else data.get('fibra_100g')),
+        'Gramo1': _num(data.get('Gramo1')),
+        'Medidacasera1': _num(data.get('Medidacasera1')),
+        'Gramo2': _num(data.get('Gramo2')),
+        'Medidacasera2': (data.get('Medidacasera2') or '') if data.get('Medidacasera2') is not None else '',
+    }
+
+
+@nutrition_bp.route('/foods', methods=['POST'])
+@require_auth
+def create_food():
+    """
+    Create a new ALIMENTOS catalog entry.
+
+    Body: Largadescripcion (required), P, G, CH, F, Gramo1, Medidacasera1,
+    Gramo2, Medidacasera2. Aliases proteina_100g/grasa_100g/carbohidratos_100g
+    are accepted for convenience.
+    """
+    user = get_current_user()
+    if not user.get('is_admin') and not _is_specialist(user.get('rol', '')):
+        return error_response(
+            'Solo profesionales o administradores pueden editar el catálogo',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+    data = request.get_json(silent=True) or {}
+    payload = _normalize_food_payload(data)
+    if not payload['Largadescripcion']:
+        return error_response('Nombre del alimento (Largadescripcion) requerido',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    try:
+        conn = get_db_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO ALIMENTOS
+                (Largadescripcion, P, G, CH, F, Gramo1, Medidacasera1, Gramo2, Medidacasera2)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            payload['Largadescripcion'], payload['P'], payload['G'], payload['CH'], payload['F'],
+            payload['Gramo1'], payload['Medidacasera1'], payload['Gramo2'], payload['Medidacasera2'],
+        ])
+        new_id = cursor.lastrowid
+        conn.commit()
+        cursor.execute("SELECT * FROM ALIMENTOS WHERE ID = ?", [new_id])
+        row = cursor.fetchone()
+        conn.close()
+        return success_response({'food': dict(row)}, message='Alimento creado.', status_code=201)
+    except Exception as e:
+        return error_response(f'Error creando alimento: {e}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@nutrition_bp.route('/foods/<int:food_id>', methods=['PUT'])
+@require_auth
+def update_food(food_id):
+    """Update an existing food. Same body shape as POST. All fields optional."""
+    user = get_current_user()
+    if not user.get('is_admin') and not _is_specialist(user.get('rol', '')):
+        return error_response(
+            'Solo profesionales o administradores pueden editar el catálogo',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+    data = request.get_json(silent=True) or {}
+    full = _normalize_food_payload(data)
+    # Only update the keys the caller actually sent (preserve existing values).
+    updates = {}
+    if data.get('Largadescripcion') or data.get('nombre'):
+        updates['Largadescripcion'] = full['Largadescripcion']
+    for col, alt_keys in [
+        ('P', ['proteina_100g']),
+        ('G', ['grasa_100g']),
+        ('CH', ['carbohidratos_100g']),
+        ('F', ['fibra_100g']),
+        ('Gramo1', []),
+        ('Medidacasera1', []),
+        ('Gramo2', []),
+        ('Medidacasera2', []),
+    ]:
+        if col in data or any(k in data for k in alt_keys):
+            updates[col] = full[col]
+    if not updates:
+        return error_response('Nada que actualizar', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    try:
+        conn = get_db_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("SELECT ID FROM ALIMENTOS WHERE ID = ?", [food_id])
+        if not cursor.fetchone():
+            conn.close()
+            return error_response('Alimento no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+        set_clause = ', '.join(f"{col} = ?" for col in updates)
+        cursor.execute(f"UPDATE ALIMENTOS SET {set_clause} WHERE ID = ?", [*updates.values(), food_id])
+        conn.commit()
+        cursor.execute("SELECT * FROM ALIMENTOS WHERE ID = ?", [food_id])
+        row = cursor.fetchone()
+        conn.close()
+        return success_response({'food': dict(row)}, message='Alimento actualizado.')
+    except Exception as e:
+        return error_response(f'Error actualizando alimento: {e}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@nutrition_bp.route('/foods/<int:food_id>', methods=['DELETE'])
+@require_auth
+def delete_food(food_id):
+    """Delete a food from the catalog. Admin only — drops the row outright."""
+    user = get_current_user()
+    if not user.get('is_admin'):
+        return error_response(
+            'Solo administradores pueden eliminar alimentos',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+    try:
+        conn = get_db_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM ALIMENTOS WHERE ID = ?", [food_id])
+        if cursor.rowcount == 0:
+            conn.close()
+            return error_response('Alimento no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+        conn.commit()
+        conn.close()
+        return success_response({'id': food_id}, message='Alimento eliminado.')
+    except Exception as e:
+        return error_response(f'Error eliminando alimento: {e}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
 @nutrition_bp.route('/food-groups', methods=['GET'])
 @require_auth
 def list_food_groups():
@@ -3758,3 +3902,124 @@ def get_daily_log_history():
 
     except Exception as e:
         return error_response(str(e), code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+# ─── Weekly diet survey (legacy /diet form replacement) ───
+_DIET_SURVEY_TABLE_BOOTSTRAP = """
+CREATE TABLE IF NOT EXISTS weekly_diet_survey (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id  INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    fecha       DATE NOT NULL,
+    survey_json TEXT NOT NULL,
+    notas       TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_weekly_diet_survey_patient
+    ON weekly_diet_survey(patient_id, fecha DESC);
+"""
+
+
+def _ensure_weekly_diet_survey_table(cursor):
+    for stmt in _DIET_SURVEY_TABLE_BOOTSTRAP.strip().split(';'):
+        if stmt.strip():
+            cursor.execute(stmt)
+
+
+@nutrition_bp.route('/diet-survey', methods=['POST'])
+@require_auth
+def submit_diet_survey():
+    """
+    Save a weekly diet/habits survey for the authenticated patient.
+
+    Body:
+        {
+            "groups": {
+                "lacteos":      { "porciones_semana": 5, "tipo": "entera" },
+                "carnes_rojas": { "porciones_semana": 2 },
+                ...
+            },
+            "notas": "Libre — texto opcional"
+        }
+    Server stores the raw JSON so the survey form can evolve without DDL.
+    """
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    groups = data.get('groups') or {}
+    notas = (data.get('notas') or '').strip()
+
+    if not isinstance(groups, dict) or not groups:
+        return error_response('Indicá al menos un grupo de alimentos.',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    target_name = data.get('patient') or user['nombre_apellido']
+    if target_name != user['nombre_apellido']:
+        if not check_patient_access(user, target_name):
+            return error_response('No tenés permisos sobre este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+    pat = resolve_patient_id(target_name)
+    if not pat:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        _ensure_weekly_diet_survey_table(cursor)
+        cursor.execute("""
+            INSERT INTO weekly_diet_survey (patient_id, fecha, survey_json, notas)
+            VALUES (?, DATE('now'), ?, ?)
+        """, [pat['patient_id'], json.dumps(groups, ensure_ascii=False), notas])
+        new_id = cursor.lastrowid
+        conn.commit()
+        cursor.execute("SELECT * FROM weekly_diet_survey WHERE id = ?", [new_id])
+        row = dict(cursor.fetchone())
+        conn.close()
+        row['groups'] = json.loads(row.pop('survey_json'))
+        return success_response(row, message='Encuesta guardada.', status_code=201)
+    except Exception as e:
+        return error_response(f'Error guardando encuesta: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@nutrition_bp.route('/diet-survey', methods=['GET'])
+@require_auth
+def get_diet_survey():
+    """
+    Return the patient's diet surveys (newest first).
+
+    Query params:
+        - patient: optional display_name (specialist viewing another patient).
+        - limit:   default 8.
+    """
+    user = get_current_user()
+    target_name = request.args.get('patient') or user['nombre_apellido']
+    if target_name != user['nombre_apellido']:
+        if not check_patient_access(user, target_name):
+            return error_response('No tenés permisos sobre este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+    pat = resolve_patient_id(target_name)
+    if not pat:
+        return success_response({'surveys': [], 'total': 0})
+    limit = request.args.get('limit', 8, type=int)
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        _ensure_weekly_diet_survey_table(cursor)
+        cursor.execute("""
+            SELECT * FROM weekly_diet_survey
+            WHERE patient_id = ?
+            ORDER BY fecha DESC, id DESC
+            LIMIT ?
+        """, [pat['patient_id'], limit])
+        rows = []
+        for r in cursor.fetchall():
+            d = dict(r)
+            try:
+                d['groups'] = json.loads(d.pop('survey_json'))
+            except Exception:
+                d['groups'] = {}
+            rows.append(d)
+        conn.close()
+        return success_response({'surveys': rows, 'total': len(rows)})
+    except Exception as e:
+        return error_response(f'Error leyendo encuestas: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)

@@ -2,7 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { UserMenuSheet } from './components/UserMenuSheet'
+import { EditConstitutionalSheet } from './components/EditConstitutionalSheet'
 import { MobilePageHeader } from './components/MobilePageHeader'
+import { Landing } from './screens/Landing'
+import { PublicPrograms } from './screens/PublicPrograms'
 import { Login } from './screens/Login'
 import { Register } from './screens/Register'
 import { RegisterSuccess } from './screens/RegisterSuccess'
@@ -158,8 +161,9 @@ export default function App() {
   const [screen, setScreen] = useState<string>('p-home')
   const [collapsed, setCollapsed] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
   // Auth flow state when there's no logged-in user
-  const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'register-success'>('login')
+  const [authScreen, setAuthScreen] = useState<'landing' | 'login' | 'register' | 'register-success' | 'programs'>('landing')
   const [registeredEmail, setRegisteredEmail] = useState<string>('')
   // ID of the patient whose detail screen is open (set when navigating to
   // d-patient-detail). null while no patient is selected.
@@ -210,15 +214,32 @@ export default function App() {
         />
       )
     }
+    if (authScreen === 'programs') {
+      return (
+        <PublicPrograms
+          onBack={() => setAuthScreen('landing')}
+          onCta={() => setAuthScreen('register')}
+        />
+      )
+    }
+    if (authScreen === 'login') {
+      return (
+        <Login
+          onLogin={(u) => {
+            const r = userRole(u)
+            setUser(u)
+            setRole(r)
+            setScreen(DEFAULT_SCREEN[r])
+          }}
+          onCreateAccount={() => setAuthScreen('register')}
+        />
+      )
+    }
     return (
-      <Login
-        onLogin={(u) => {
-          const r = userRole(u)
-          setUser(u)
-          setRole(r)
-          setScreen(DEFAULT_SCREEN[r])
-        }}
-        onCreateAccount={() => setAuthScreen('register')}
+      <Landing
+        onLogin={() => setAuthScreen('login')}
+        onRegister={() => setAuthScreen('register')}
+        onPrograms={() => setAuthScreen('programs')}
       />
     )
   }
@@ -268,8 +289,69 @@ export default function App() {
         setRole={switchRole}
         availableRoles={availableRoles}
         onLogout={handleLogout}
+        onEditProfile={role === 'patient' ? () => setEditProfileOpen(true) : undefined}
         userName={userName}
       />
+      {editProfileOpen && user?.id && (
+        <PatientProfileLoader
+          userId={user.id}
+          onClose={() => setEditProfileOpen(false)}
+        />
+      )}
     </div>
+  )
+}
+
+/** Loads the patient's static profile then opens EditConstitutionalSheet with
+ *  patient-only field set (the doctor uses the same sheet with admin perms). */
+function PatientProfileLoader({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [profile, setProfile] = useState<import('./types/api').StaticProfile | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    import('./services/userService').then(({ userService }) => userService.getStaticProfile(userId))
+      .then((p) => { if (!cancelled) setProfile(p) })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Error') })
+    return () => { cancelled = true }
+  }, [userId])
+
+  if (error) {
+    return (
+      <>
+        <div className="sheet-backdrop" onClick={onClose} />
+        <div className="sheet adm-sheet">
+          <div className="sheet-handle" />
+          <div className="adm-sheet-head">
+            <div style={{ flex: 1 }}>
+              <div className="adm-sheet-name">No pudimos cargar tu perfil</div>
+              <div className="adm-sheet-meta">{error}</div>
+            </div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-full" onClick={onClose}>Cerrar</button>
+        </div>
+      </>
+    )
+  }
+  if (!profile) {
+    return (
+      <>
+        <div className="sheet-backdrop" onClick={onClose} />
+        <div className="sheet adm-sheet">
+          <div className="sheet-handle" />
+          <div className="adm-sheet-head">
+            <div style={{ flex: 1 }}>
+              <div className="adm-sheet-name">Cargando perfil…</div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+  return (
+    <EditConstitutionalSheet
+      profile={profile}
+      onClose={onClose}
+      onSaved={onClose}
+    />
   )
 }

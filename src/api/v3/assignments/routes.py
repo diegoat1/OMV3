@@ -52,20 +52,36 @@ def _log_audit(user_id, user_name, action, details, ip=None):
 @require_auth
 def request_assignment():
     """
-    Specialist requests to be assigned to a patient by DNI.
+    Specialist requests to be assigned to a patient.
 
-    Body: { "patient_dni": "12345678" }
+    Body (any one of these identifies the patient):
+        - "patient_email": "name@example.com"
+        - "patient_name":  "Apellido, Nombre"   (display_name LIKE)
+        - "patient_dni":   "12345678"            (legacy fallback)
 
     The specialist must have a specialist role (doctor, nutricionista, entrenador).
-    The patient must exist in auth.db (via patient_user_link).
     Creates a pending request the patient must accept.
     """
     user = get_current_user()
     data = request.get_json() or {}
-    patient_dni = (data.get('patient_dni') or '').strip()
+    patient_email = (data.get('patient_email') or '').strip().lower()
+    patient_name  = (data.get('patient_name')  or '').strip()
+    patient_dni   = (data.get('patient_dni')   or '').strip()
+    # `query` is a unified search box from the UI: try as email, then name, then DNI.
+    query         = (data.get('query')         or '').strip()
+    if query and not (patient_email or patient_name or patient_dni):
+        if '@' in query:
+            patient_email = query.lower()
+        elif query.isdigit():
+            patient_dni = query
+        else:
+            patient_name = query
 
-    if not patient_dni:
-        return error_response('DNI del paciente es requerido', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    if not (patient_email or patient_name or patient_dni):
+        return error_response(
+            'Indicá email, nombre o DNI del paciente',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
 
     # Verify specialist has correct role
     try:
@@ -88,19 +104,41 @@ def request_assignment():
 
         spec_role = _get_specialist_role(spec['role'])
 
-        # Find patient by DNI
-        cursor.execute("""
-            SELECT u.id, u.display_name, u.is_active, l.patient_dni
-            FROM users u
-            JOIN patient_user_link l ON u.id = l.user_id
-            WHERE l.patient_dni = ?
-        """, [patient_dni])
-        patient = cursor.fetchone()
+        # Find patient by whichever identifier was provided. The auth users
+        # table holds the canonical email/display_name; the patient_user_link
+        # table still carries the legacy DNI for older accounts.
+        patient = None
+        if patient_email:
+            cursor.execute("""
+                SELECT u.id, u.display_name, u.is_active, l.patient_dni
+                FROM users u
+                LEFT JOIN patient_user_link l ON u.id = l.user_id
+                WHERE LOWER(u.email) = ?
+            """, [patient_email])
+            patient = cursor.fetchone()
+        if not patient and patient_name:
+            cursor.execute("""
+                SELECT u.id, u.display_name, u.is_active, l.patient_dni
+                FROM users u
+                LEFT JOIN patient_user_link l ON u.id = l.user_id
+                WHERE LOWER(u.display_name) = LOWER(?)
+                   OR LOWER(u.display_name) LIKE LOWER(?)
+                LIMIT 1
+            """, [patient_name, f'%{patient_name}%'])
+            patient = cursor.fetchone()
+        if not patient and patient_dni:
+            cursor.execute("""
+                SELECT u.id, u.display_name, u.is_active, l.patient_dni
+                FROM users u
+                JOIN patient_user_link l ON u.id = l.user_id
+                WHERE l.patient_dni = ?
+            """, [patient_dni])
+            patient = cursor.fetchone()
 
         if not patient:
             conn.close()
             return error_response(
-                'No se encontró un paciente con ese documento',
+                'No se encontró un paciente con ese dato',
                 code=ErrorCodes.NOT_FOUND, status_code=404
             )
 
@@ -129,11 +167,15 @@ def request_assignment():
 
         # Create the assignment request
         now = datetime.utcnow().isoformat()
+        # We keep the patient_dni column populated when the link exists for
+        # backwards-compat with the legacy reports, but identity is no longer
+        # dependent on it.
+        stored_dni = pat.get('patient_dni') or ''
         cursor.execute("""
             INSERT INTO specialist_assignments
                 (specialist_id, specialist_name, specialist_role, patient_id, patient_name, patient_dni, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, 'pending_patient', ?, ?)
-        """, [spec['id'], spec['display_name'], spec_role, pat['id'], pat['display_name'] or '', patient_dni, now, now])
+        """, [spec['id'], spec['display_name'], spec_role, pat['id'], pat['display_name'] or '', stored_dni, now, now])
 
         assignment_id = cursor.lastrowid
         conn.commit()
@@ -142,7 +184,7 @@ def request_assignment():
         _log_audit(
             spec['id'], spec['display_name'],
             'assignment_requested',
-            f'{spec["display_name"]} solicitó asignación al paciente {pat["display_name"]} (DNI {patient_dni})',
+            f'{spec["display_name"]} solicitó asignación al paciente {pat["display_name"]}',
             request.remote_addr
         )
 
@@ -208,7 +250,11 @@ def pending_for_patient():
 @require_auth
 def accept_assignment(assignment_id):
     """
-    Patient accepts a pending assignment request.
+    Accept a pending assignment.
+
+    Two flows are supported:
+      - status='pending_patient'    → only the patient can accept
+      - status='pending_specialist' → only the specialist can accept
     """
     user = get_current_user()
     try:
@@ -227,28 +273,32 @@ def accept_assignment(assignment_id):
 
         a = dict(row)
 
-        if str(a['patient_id']) != str(user['user_id']):
-            conn.close()
-            return error_response('No tenés permiso para esta acción', code=ErrorCodes.FORBIDDEN, status_code=403)
-
-        if a['status'] != 'pending_patient':
+        if a['status'] == 'pending_patient':
+            allowed = str(a['patient_id']) == str(user['user_id'])
+            actor_id, actor_name = a['patient_id'], a['patient_name']
+            audit_msg = f'{a["patient_name"]} aceptó a {a["specialist_name"]} como especialista'
+            ok_message = f'Aceptaste a {a["specialist_name"]} como tu especialista.'
+        elif a['status'] == 'pending_specialist':
+            allowed = str(a['specialist_id']) == str(user['user_id'])
+            actor_id, actor_name = a['specialist_id'], a['specialist_name']
+            audit_msg = f'{a["specialist_name"]} aceptó a {a["patient_name"]} como paciente'
+            ok_message = f'Aceptaste a {a["patient_name"]} como tu paciente.'
+        else:
             conn.close()
             return error_response('Esta solicitud ya fue procesada', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        if not allowed:
+            conn.close()
+            return error_response('No tenés permiso para esta acción', code=ErrorCodes.FORBIDDEN, status_code=403)
 
         now = datetime.utcnow().isoformat()
         cursor.execute("UPDATE specialist_assignments SET status = 'accepted', updated_at = ? WHERE id = ?", [now, assignment_id])
         conn.commit()
         conn.close()
 
-        _log_audit(
-            a['patient_id'], a['patient_name'],
-            'assignment_accepted',
-            f'{a["patient_name"]} aceptó a {a["specialist_name"]} como especialista',
-            request.remote_addr
-        )
+        _log_audit(actor_id, actor_name, 'assignment_accepted', audit_msg, request.remote_addr)
 
-        return success_response({'assignment_id': assignment_id, 'status': 'accepted'},
-                                message=f'Aceptaste a {a["specialist_name"]} como tu especialista.')
+        return success_response({'assignment_id': assignment_id, 'status': 'accepted'}, message=ok_message)
 
     except Exception as e:
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
@@ -258,7 +308,8 @@ def accept_assignment(assignment_id):
 @require_auth
 def reject_assignment(assignment_id):
     """
-    Patient rejects a pending assignment request.
+    Reject a pending assignment — symmetric to /accept: patient or specialist
+    depending on `status`.
     """
     user = get_current_user()
     try:
@@ -277,28 +328,30 @@ def reject_assignment(assignment_id):
 
         a = dict(row)
 
-        if str(a['patient_id']) != str(user['user_id']):
-            conn.close()
-            return error_response('No tenés permiso para esta acción', code=ErrorCodes.FORBIDDEN, status_code=403)
-
-        if a['status'] != 'pending_patient':
+        if a['status'] == 'pending_patient':
+            allowed = str(a['patient_id']) == str(user['user_id'])
+            actor_id, actor_name = a['patient_id'], a['patient_name']
+            audit_msg = f'{a["patient_name"]} rechazó a {a["specialist_name"]}'
+        elif a['status'] == 'pending_specialist':
+            allowed = str(a['specialist_id']) == str(user['user_id'])
+            actor_id, actor_name = a['specialist_id'], a['specialist_name']
+            audit_msg = f'{a["specialist_name"]} rechazó a {a["patient_name"]}'
+        else:
             conn.close()
             return error_response('Esta solicitud ya fue procesada', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        if not allowed:
+            conn.close()
+            return error_response('No tenés permiso para esta acción', code=ErrorCodes.FORBIDDEN, status_code=403)
 
         now = datetime.utcnow().isoformat()
         cursor.execute("UPDATE specialist_assignments SET status = 'rejected', updated_at = ? WHERE id = ?", [now, assignment_id])
         conn.commit()
         conn.close()
 
-        _log_audit(
-            a['patient_id'], a['patient_name'],
-            'assignment_rejected',
-            f'{a["patient_name"]} rechazó a {a["specialist_name"]}',
-            request.remote_addr
-        )
+        _log_audit(actor_id, actor_name, 'assignment_rejected', audit_msg, request.remote_addr)
 
-        return success_response({'assignment_id': assignment_id, 'status': 'rejected'},
-                                message='Solicitud rechazada.')
+        return success_response({'assignment_id': assignment_id, 'status': 'rejected'}, message='Solicitud rechazada.')
 
     except Exception as e:
         return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)

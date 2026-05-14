@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { AddFoodSheet } from '../../components/AddFoodSheet'
+import { DietSurveySheet } from '../../components/DietSurveySheet'
 import { nutritionService } from '../../services/nutritionService'
 import { dailyLogService } from '../../services/dailyLogService'
 import { ApiError } from '../../services/apiClient'
@@ -91,6 +92,7 @@ export function Nutrition() {
   const [logMeals, setLogMeals] = useState<DailyLogMeal[]>([])
   const [logLoading, setLogLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [surveyOpen, setSurveyOpen] = useState(false)
   const [savingLibertad, setSavingLibertad] = useState(false)
   const [editingMeal, setEditingMeal] = useState<MealKey | null>(null)
 
@@ -213,9 +215,19 @@ export function Nutrition() {
     <div className="nu-screen" data-mod="nutrition">
       <div className="row-between">
         <div className="module-pill">Nutrición</div>
-        <button type="button" className="nu-search-btn" aria-label="Buscar alimento">
-          <Icon name="search" size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '4px 10px', fontSize: 11 }}
+            onClick={() => setSurveyOpen(true)}
+          >
+            Hábitos semanales
+          </button>
+          <button type="button" className="nu-search-btn" aria-label="Buscar alimento">
+            <Icon name="search" size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="nu-week">
@@ -388,6 +400,13 @@ export function Nutrition() {
           existing={editing.foods}
           onClose={() => setEditingMeal(null)}
           onSave={(next) => handleSaveMeal(editing.key, next)}
+        />
+      )}
+
+      {surveyOpen && (
+        <DietSurveySheet
+          onClose={() => setSurveyOpen(false)}
+          onSaved={() => setSurveyOpen(false)}
         />
       )}
     </div>

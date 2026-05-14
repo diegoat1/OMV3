@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function AddPatientSheet({ subjectSingular = 'paciente', onClose, onCreated }: Props) {
-  const [dni, setDni] = useState('')
+  const [query, setQuery] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
@@ -19,14 +19,16 @@ export function AddPatientSheet({ subjectSingular = 'paciente', onClose, onCreat
   const submit = async () => {
     setError(null)
     setOkMsg(null)
-    const trimmed = dni.trim()
+    const trimmed = query.trim()
     if (!trimmed) {
-      setError('Ingresá el DNI del paciente.')
+      setError(`Indicá el email o nombre del ${subjectSingular}.`)
       return
     }
     setSubmitting(true)
     try {
-      const res = await assignmentService.specialistRequest({ patient_dni: trimmed })
+      // The backend's `query` field disambiguates: looks like an email → email;
+      // pure digits → legacy DNI; otherwise → display_name LIKE.
+      const res = await assignmentService.specialistRequest({ query: trimmed })
       setOkMsg(`Solicitud enviada a ${res.patient_name}. Tiene que aceptarla.`)
       setTimeout(() => { onCreated() }, 900)
     } catch (err) {
@@ -43,7 +45,7 @@ export function AddPatientSheet({ subjectSingular = 'paciente', onClose, onCreat
         <div className="adm-sheet-head">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="adm-sheet-name">
-              Agregar {subjectSingular} por DNI
+              Agregar {subjectSingular}
             </div>
             <div className="adm-sheet-meta">
               Le mandamos una solicitud para vincularse. Tiene que aceptarla desde su cuenta.
@@ -60,18 +62,20 @@ export function AddPatientSheet({ subjectSingular = 'paciente', onClose, onCreat
         </div>
 
         <div className="adm-field">
-          <label className="adm-field-label">DNI</label>
+          <label className="adm-field-label">Email o nombre</label>
           <input
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={dni}
-            onChange={(e) => setDni(e.target.value.replace(/[^0-9]/g, ''))}
-            placeholder="12345678"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ej: maria@email.com  ·  Pérez, María"
             className="adm-input"
             autoFocus
             disabled={submitting}
+            onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
           />
+          <p className="mono" style={{ fontSize: 10, color: 'var(--text-3)', margin: '6px 2px 0' }}>
+            Ingresá el email registrado o el nombre completo (apellido, nombre).
+          </p>
         </div>
 
         {error && <div className="adm-error">{error}</div>}

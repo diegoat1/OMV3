@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { RecipeWizardSheet } from '../../components/RecipeWizardSheet'
 import { nutritionService } from '../../services/nutritionService'
 import { ApiError } from '../../services/apiClient'
 import type {
@@ -70,9 +71,7 @@ function RecipesTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newDesc, setNewDesc] = useState('')
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [actingId, setActingId] = useState<number | null>(null)
 
   const reload = useCallback(async () => {
@@ -92,24 +91,6 @@ function RecipesTab() {
     const id = setTimeout(reload, 250)
     return () => clearTimeout(id)
   }, [reload])
-
-  const submitNew = async () => {
-    if (!newName.trim()) return
-    setCreating(true)
-    try {
-      await nutritionService.createRecipe({
-        nombre: newName.trim(),
-        descripcion: newDesc.trim() || undefined,
-      })
-      setNewName('')
-      setNewDesc('')
-      await reload()
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'No pudimos crear la receta')
-    } finally {
-      setCreating(false)
-    }
-  }
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar esta receta?')) return
@@ -149,34 +130,14 @@ function RecipesTab() {
         />
       </div>
 
-      {/* Quick create */}
-      <div className="card" style={{ padding: 10 }}>
-        <div className="section-label" style={{ marginBottom: 8 }}>Nueva receta</div>
-        <input
-          type="text"
-          className="adm-input"
-          placeholder="Nombre"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          style={{ marginBottom: 6 }}
-        />
-        <input
-          type="text"
-          className="adm-input"
-          placeholder="Descripción (opcional)"
-          value={newDesc}
-          onChange={(e) => setNewDesc(e.target.value)}
-          style={{ marginBottom: 8 }}
-        />
-        <button
-          type="button"
-          className="btn btn-primary btn-full"
-          onClick={submitNew}
-          disabled={creating || !newName.trim()}
-        >
-          <Icon name="plus" size={14} /> {creating ? ' Creando…' : ' Crear receta'}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn btn-primary btn-full"
+        onClick={() => setWizardOpen(true)}
+        style={{ marginBottom: 10 }}
+      >
+        <Icon name="plus" size={14} /> Nueva receta (wizard)
+      </button>
 
       {error && (
         <div className="card" style={{ borderColor: 'rgba(226,62,74,0.3)' }}>
@@ -242,6 +203,13 @@ function RecipesTab() {
           </div>
         )}
       </div>
+
+      {wizardOpen && (
+        <RecipeWizardSheet
+          onClose={() => setWizardOpen(false)}
+          onSaved={() => { setWizardOpen(false); reload() }}
+        />
+      )}
     </>
   )
 }
@@ -527,6 +495,8 @@ function CatalogTab() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editor, setEditor] = useState<{ kind: 'new' } | { kind: 'edit'; food: Food } | null>(null)
+  const [actingId, setActingId] = useState<number | null>(null)
 
   // Load groups once
   useEffect(() => {
@@ -559,6 +529,19 @@ function CatalogTab() {
     return () => clearTimeout(id)
   }, [reload])
 
+  const handleDelete = async (food: Food) => {
+    if (!confirm(`¿Eliminar "${food.Largadescripcion}" del catálogo?`)) return
+    setActingId(food.ID)
+    try {
+      await nutritionService.deleteFood(food.ID)
+      await reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos eliminar')
+    } finally {
+      setActingId(null)
+    }
+  }
+
   return (
     <>
       <div className="dp-search">
@@ -571,6 +554,15 @@ function CatalogTab() {
           onChange={(e) => { setQ(e.target.value); setPage(1) }}
         />
       </div>
+
+      <button
+        type="button"
+        className="btn btn-primary btn-full"
+        onClick={() => setEditor({ kind: 'new' })}
+        style={{ marginBottom: 10 }}
+      >
+        <Icon name="plus" size={14} /> Nuevo alimento
+      </button>
 
       {groups.length > 0 && (
         <div className="dp-filters">
@@ -620,20 +612,36 @@ function CatalogTab() {
                 style={{
                   borderTop: i === 0 ? 0 : '1px solid var(--line)',
                   padding: '8px 14px',
-                  display: 'flex', alignItems: 'center', gap: 10,
+                  display: 'flex', alignItems: 'center', gap: 8,
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ph-link-name" style={{ fontSize: 13 }}>{f.Largadescripcion}</div>
                   <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>
                     P {f.P} · G {f.G} · CH {f.CH} · F {f.F} /100g
+                    {f.Gramo1 != null && f.Medidacasera1 != null && ` · ${f.Gramo1}g ${String(f.Medidacasera1)}`}
                   </div>
                 </div>
-                {f.Gramo1 != null && f.Medidacasera1 != null && (
-                  <span className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                    {f.Gramo1}g {String(f.Medidacasera1)}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => setEditor({ kind: 'edit', food: f })}
+                  disabled={actingId === f.ID}
+                  aria-label="Editar"
+                >
+                  <Icon name="edit" size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 8px', fontSize: 11, color: 'var(--omega)' }}
+                  onClick={() => handleDelete(f)}
+                  disabled={actingId === f.ID}
+                  aria-label="Eliminar"
+                >
+                  <Icon name="x" size={12} />
+                </button>
               </div>
             ))}
           </div>
@@ -658,6 +666,132 @@ function CatalogTab() {
             >Sig <Icon name="chevR" size={14} /></button>
           </div>
         )}
+      </div>
+
+      {editor && (
+        <FoodEditorSheet
+          initial={editor.kind === 'edit' ? editor.food : null}
+          onClose={() => setEditor(null)}
+          onSaved={() => { setEditor(null); reload() }}
+        />
+      )}
+    </>
+  )
+}
+
+/** Create/edit a food row. Wraps `nutritionService.createFood` / `updateFood`. */
+function FoodEditorSheet({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial: Food | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [nombre, setNombre] = useState(initial?.Largadescripcion ?? '')
+  const [P, setP] = useState<number>(initial?.P ?? 0)
+  const [G, setG] = useState<number>(initial?.G ?? 0)
+  const [CH, setCH] = useState<number>(initial?.CH ?? 0)
+  const [F, setF] = useState<number>(initial?.F ?? 0)
+  const [gramo1, setGramo1] = useState<number>(Number(initial?.Gramo1 ?? 0))
+  const [medida1, setMedida1] = useState<string>(String(initial?.Medidacasera1 ?? ''))
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    setError(null)
+    if (!nombre.trim()) {
+      setError('El nombre es obligatorio.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload = {
+        Largadescripcion: nombre.trim(),
+        P, G, CH, F,
+        Gramo1: gramo1,
+        Medidacasera1: medida1 ? Number(medida1) : 0,
+      }
+      if (initial) await nutritionService.updateFood(initial.ID, payload)
+      else await nutritionService.createFood(payload)
+      onSaved()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos guardar el alimento.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={onClose} />
+      <div className="sheet adm-sheet" role="dialog" aria-label={initial ? 'Editar alimento' : 'Nuevo alimento'}>
+        <div className="sheet-handle" />
+        <div className="adm-sheet-head">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="adm-sheet-name">{initial ? 'Editar alimento' : 'Nuevo alimento'}</div>
+            <div className="adm-sheet-meta">Valores por cada 100g.</div>
+          </div>
+          <button type="button" className="adm-sheet-close" onClick={onClose} aria-label="Cerrar">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+
+        <div className="adm-field">
+          <label className="adm-field-label">Nombre</label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="adm-input"
+            autoFocus
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <div className="adm-field"><label className="adm-field-label">Proteína (g)</label>
+            <input type="number" step={0.1} value={P} onChange={(e) => setP(Number(e.target.value))} className="adm-input" />
+          </div>
+          <div className="adm-field"><label className="adm-field-label">Grasa (g)</label>
+            <input type="number" step={0.1} value={G} onChange={(e) => setG(Number(e.target.value))} className="adm-input" />
+          </div>
+          <div className="adm-field"><label className="adm-field-label">Carbohidratos (g)</label>
+            <input type="number" step={0.1} value={CH} onChange={(e) => setCH(Number(e.target.value))} className="adm-input" />
+          </div>
+          <div className="adm-field"><label className="adm-field-label">Fibra (g)</label>
+            <input type="number" step={0.1} value={F} onChange={(e) => setF(Number(e.target.value))} className="adm-input" />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <div className="adm-field"><label className="adm-field-label">Medida casera (g)</label>
+            <input type="number" step={1} value={gramo1} onChange={(e) => setGramo1(Number(e.target.value))} className="adm-input" />
+          </div>
+          <div className="adm-field"><label className="adm-field-label">Descripción medida</label>
+            <input type="text" value={medida1} onChange={(e) => setMedida1(e.target.value)} className="adm-input" placeholder="1 unidad" />
+          </div>
+        </div>
+
+        {error && <div className="adm-error">{error}</div>}
+
+        <button
+          type="button"
+          className="btn btn-primary btn-full adm-submit"
+          onClick={submit}
+          disabled={submitting}
+        >
+          <Icon name="check" size={14} />
+          {submitting ? ' Guardando…' : initial ? ' Actualizar' : ' Crear'}
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-full"
+          onClick={onClose}
+          disabled={submitting}
+          style={{ marginTop: 8 }}
+        >
+          Cancelar
+        </button>
       </div>
     </>
   )

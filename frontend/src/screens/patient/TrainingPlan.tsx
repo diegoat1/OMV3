@@ -4,6 +4,7 @@ import { Avatar } from '../../components/atoms'
 import { trainingService } from '../../services/trainingService'
 import { ApiError } from '../../services/apiClient'
 import type { TodayExercise, TodaySession } from '../../types/api'
+import { ActiveTrainingSession } from './ActiveTrainingSession'
 
 interface Props {
   userName?: string
@@ -37,6 +38,7 @@ export function TrainingPlan({ userName = '' }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [registering, setRegistering] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
+  const [activeMode, setActiveMode] = useState(false)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -101,6 +103,20 @@ export function TrainingPlan({ userName = '' }: Props) {
     } finally {
       setRegistering(false)
     }
+  }
+
+  if (activeMode && session) {
+    return (
+      <ActiveTrainingSession
+        session={session}
+        onClose={() => setActiveMode(false)}
+        onCompleted={() => {
+          setActiveMode(false)
+          setInfo('Sesión registrada. ¡Bien hecho!')
+          reload()
+        }}
+      />
+    )
   }
 
   return (
@@ -230,21 +246,28 @@ export function TrainingPlan({ userName = '' }: Props) {
         )}
       </div>
 
-      {/* Action: register session */}
+      {/* Action: start active session OR quick-register */}
       {!loading && session && session.ejercicios.length > 0 && !session.already_done && (
         <>
           <button
             type="button"
             className="btn btn-full"
-            onClick={handleRegisterSession}
-            disabled={registering}
+            onClick={() => setActiveMode(true)}
             style={{
               background: 'var(--omega)', color: '#fff', fontWeight: 600,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
           >
-            <Icon name="check" size={14} />
-            {registering ? 'Registrando…' : 'Registrar sesión y avanzar día'}
+            <Icon name="play" size={14} /> Iniciar entrenamiento
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-full"
+            onClick={handleRegisterSession}
+            disabled={registering}
+            style={{ marginTop: 8 }}
+          >
+            {registering ? 'Registrando…' : 'Registrar como completada (sin detalle)'}
           </button>
           <button
             type="button"

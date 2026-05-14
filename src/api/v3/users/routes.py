@@ -5,7 +5,7 @@ USERS Routes - Endpoints de usuarios y perfiles
 from flask import request
 from . import users_bp
 from ..common.responses import success_response, error_response, paginated_response, ErrorCodes
-from ..common.auth import require_auth, require_admin, require_owner_or_admin, get_current_user, is_assigned_professional
+from ..common.auth import require_auth, require_admin, require_owner_or_admin, get_current_user, is_assigned_professional, check_patient_access
 from ..common.database import get_db_connection, execute_query, resolve_user_identity, get_clinical_connection, resolve_patient_id
 import sqlite3
 import math
@@ -199,79 +199,94 @@ def create_user():
 
 
 @users_bp.route('/<user_id>', methods=['PUT'])
-@require_owner_or_admin
+@require_auth
 def update_user(user_id):
     """
-    Actualiza un usuario (perfil estático).
+    Update the static profile (perfil estático).
+
+    Allowed for: the patient themselves, the patient's assigned specialist
+    (any role), or admin. Constitutional fields the patient is allowed to
+    self-edit: altura, envergadura, circ_cuello, circ_muneca, circ_tobillo,
+    telefono, sexo, fecha_nacimiento. Everything else here is shared with the
+    professional.
     """
+    user = get_current_user()
+    if not check_patient_access(user, user_id):
+        return error_response(
+            'No tenés permisos sobre este paciente',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+
     identity = resolve_user_identity(user_id)
     resolved_dni = identity['dni'] if identity else user_id
-    
+
     data = request.get_json() or {}
-    
+
     if not data:
         return error_response(
             'No hay datos para actualizar',
             code=ErrorCodes.VALIDATION_ERROR,
-            status_code=400
+            status_code=400,
         )
-    
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-        
-        # Verificar que existe
+
         cursor.execute("SELECT dni FROM patients WHERE dni = ?", [resolved_dni])
         if not cursor.fetchone():
             conn.close()
             return error_response(
                 'Usuario no encontrado',
                 code=ErrorCodes.NOT_FOUND,
-                status_code=404
+                status_code=404,
             )
-        
-        # Campos actualizables (map legacy names to clinical.db)
+
+        # All clinical.db `patients` columns the static profile knows about.
         field_map = {
-            'nombre_apellido': 'nombre', 'email': 'email', 'sexo': 'sexo',
-            'altura': 'altura', 'telefono': 'telefono', 'fecha_nacimiento': 'fecha_nacimiento'
+            'nombre_apellido': 'nombre',
+            'nombre': 'nombre',
+            'email': 'email',
+            'telefono': 'telefono',
+            'sexo': 'sexo',
+            'fecha_nacimiento': 'fecha_nacimiento',
+            'altura': 'altura',
+            'circ_cuello': 'circ_cuello',
+            'circ_muneca': 'circ_muneca',
+            'circ_tobillo': 'circ_tobillo',
         }
         updates = []
         values = []
-        
         for key, col in field_map.items():
             if key in data:
                 updates.append(f"{col} = ?")
                 values.append(data[key])
-        
+
         if not updates:
             conn.close()
             return error_response(
                 'No hay campos validos para actualizar',
                 code=ErrorCodes.VALIDATION_ERROR,
-                status_code=400
+                status_code=400,
             )
-        
+
+        updates.append("updated_at = CURRENT_TIMESTAMP")
         values.append(resolved_dni)
-        
-        cursor.execute(f"""
-            UPDATE patients 
-            SET {', '.join(updates)}
-            WHERE dni = ?
-        """, values)
-        
+        cursor.execute(f"UPDATE patients SET {', '.join(updates)} WHERE dni = ?", values)
+
         conn.commit()
         conn.close()
-        
+
         return success_response(
             {'dni': resolved_dni, 'updated_fields': list(data.keys())},
-            message='Usuario actualizado exitosamente'
+            message='Perfil actualizado.',
         )
-        
+
     except Exception as e:
         return error_response(
             f'Error actualizando usuario: {str(e)}',
             code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            status_code=500,
         )
 
 
@@ -560,6 +575,122 @@ def create_measurement(user_id):
             code=ErrorCodes.INTERNAL_ERROR,
             status_code=500
         )
+
+
+@users_bp.route('/<user_id>/measurements/<int:measurement_id>', methods=['PUT'])
+@require_auth
+def update_measurement(user_id, measurement_id):
+    """
+    Edit an already-saved measurement.
+
+    Permissions: assigned specialist (any role) or admin. The patient
+    themselves CANNOT edit their own measurements — they can only register
+    new ones via POST. The reasoning is dynamic anthropometrics (peso,
+    cintura, abdomen, cadera, …) should only be corrected by the professional
+    who supervises the case.
+
+    Body — any subset of: peso, circ_abdomen, circ_cintura, circ_cadera,
+    fecha. Calculated columns (bf_percent, imc, ffmi, peso_magro, peso_graso)
+    are recomputed from the new dynamic + the patient's static profile.
+    """
+    user = get_current_user()
+    if not check_patient_access(user, user_id):
+        return error_response('No tenés permisos sobre este paciente',
+                              code=ErrorCodes.FORBIDDEN, status_code=403)
+
+    # Block the patient themselves: only specialist or admin can edit.
+    identity = resolve_user_identity(user_id)
+    resolved_dni = identity['dni'] if identity else user_id
+    is_self = (
+        str(user.get('dni') or '') == str(resolved_dni)
+        or (identity and str(user.get('user_id') or '') == str(identity.get('auth_user_id') or ''))
+        or str(user.get('nombre_apellido') or '') == str((identity or {}).get('nombre') or '')
+    )
+    if is_self and not user.get('is_admin'):
+        return error_response(
+            'Solo el profesional asignado o un administrador pueden editar mediciones ya cargadas.',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+
+    data = request.get_json() or {}
+    if not data:
+        return error_response('Nada que actualizar', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    try:
+        conn = get_clinical_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, patient_id FROM measurements WHERE id = ?", [measurement_id])
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return error_response('Medición no encontrada', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        editable = {
+            'peso': 'peso',
+            'circ_abdomen': 'circ_abdomen',
+            'circ_cintura': 'circ_cintura',
+            'circ_cadera': 'circ_cadera',
+            'fecha': 'fecha',
+        }
+        updates = []
+        values = []
+        for key, col in editable.items():
+            if key in data:
+                updates.append(f"{col} = ?")
+                values.append(data[key])
+        if not updates:
+            conn.close()
+            return error_response('No hay campos válidos para actualizar',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        # Recompute derived columns if any anthropometric changed.
+        cursor.execute(
+            "SELECT m.peso, m.circ_abdomen, m.circ_cintura, m.circ_cadera, p.altura, p.circ_cuello, p.sexo "
+            "FROM measurements m JOIN patients p ON p.id = m.patient_id WHERE m.id = ?",
+            [measurement_id],
+        )
+        cur_row = cursor.fetchone()
+        peso     = data.get('peso',         cur_row[0])
+        c_abd    = data.get('circ_abdomen', cur_row[1])
+        c_cint   = data.get('circ_cintura', cur_row[2])
+        c_cad    = data.get('circ_cadera',  cur_row[3])
+        altura   = cur_row[4]
+        c_cuello = cur_row[5]
+        sexo     = cur_row[6]
+
+        if peso and altura and c_cuello and sexo and (c_abd or (c_cint and c_cad)):
+            import math
+            try:
+                if sexo == 'M':
+                    bf = 86.010 * math.log10((c_abd or 0) - c_cuello) - 70.041 * math.log10(altura) + 36.76
+                else:
+                    bf = 163.205 * math.log10((c_cint or 0) + (c_cad or 0) - c_cuello) - 97.684 * math.log10(altura) - 78.387
+                bf = max(2.0, min(60.0, bf))
+                imc = peso / ((altura / 100) ** 2)
+                peso_graso = peso * bf / 100
+                peso_magro = peso - peso_graso
+                ffmi = peso_magro / ((altura / 100) ** 2) + 6.1 * (1.8 - altura / 100)
+                for col, val in [('bf_percent', round(bf, 2)), ('imc', round(imc, 2)),
+                                 ('peso_magro', round(peso_magro, 2)), ('peso_graso', round(peso_graso, 2)),
+                                 ('ffmi', round(ffmi, 2))]:
+                    updates.append(f"{col} = ?")
+                    values.append(val)
+            except Exception:
+                pass  # leave derived columns untouched
+
+        values.append(measurement_id)
+        cursor.execute(f"UPDATE measurements SET {', '.join(updates)} WHERE id = ?", values)
+        conn.commit()
+        cursor.execute("SELECT * FROM measurements WHERE id = ?", [measurement_id])
+        cursor.row_factory = None
+        col_names = [d[0] for d in cursor.description]
+        cursor.execute("SELECT * FROM measurements WHERE id = ?", [measurement_id])
+        record = dict(zip(col_names, cursor.fetchone()))
+        conn.close()
+        return success_response(record, message='Medición actualizada.')
+
+    except Exception as e:
+        return error_response(f'Error actualizando medición: {e}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
 @users_bp.route('/<user_id>/measurements/<int:measurement_id>', methods=['DELETE'])

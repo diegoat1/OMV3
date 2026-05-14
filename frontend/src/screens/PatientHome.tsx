@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
 import { Avatar, Progress } from '../components/atoms'
+import { analyticsService } from '../services/analyticsService'
 import { assignmentService } from '../services/assignmentService'
 import { checkinService } from '../services/checkinService'
 import { engagementService } from '../services/engagementService'
@@ -11,6 +12,7 @@ import { ApiError } from '../services/apiClient'
 import type {
   EngagementInsight,
   Goal,
+  GoalProjection,
   HealthIndex,
   MyRequest,
   MySpecialist,
@@ -80,6 +82,7 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
   const [actingId, setActingId] = useState<number | null>(null)
   const [linksError, setLinksError] = useState<string | null>(null)
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null)
+  const [projection, setProjection] = useState<GoalProjection | null>(null)
   const [healthIndex, setHealthIndex] = useState<HealthIndex | null>(null)
   const [healthDelta, setHealthDelta] = useState<number | null>(null)
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -109,8 +112,12 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
 
   const reloadGoal = useCallback(async () => {
     if (!userId) return
-    const gp = await goalService.getActive(userId).catch(() => ({ user_id: '', goal: null }))
+    const [gp, proj] = await Promise.all([
+      goalService.getActive(userId).catch(() => ({ user_id: '', goal: null })),
+      analyticsService.projection().catch(() => null),
+    ])
     setActiveGoal(gp.goal)
+    setProjection(proj)
     // Fire-and-forget — keeps the latest measurement around for any other UI
     // that needs it. The home doesn't render it itself anymore.
     measurementService.list(userId, 1).catch(() => null)
@@ -250,6 +257,62 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
           ))}
         </div>
       </div>
+
+      {/* Proyección hacia el objetivo */}
+      {projection && projection.goal && (
+        <div className="ph-section">
+          <div
+            className="card"
+            style={{
+              background: 'linear-gradient(160deg, rgba(232,169,58,0.10), rgba(125,140,255,0.04)), var(--bg-1)',
+              border: '1px solid rgba(232,169,58,0.30)',
+            }}
+          >
+            <div className="row-between" style={{ marginBottom: 6 }}>
+              <div
+                className="mono"
+                style={{
+                  color: 'var(--warn)',
+                  fontSize: 10,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Proyección
+              </div>
+              <div style={{ fontSize: 14 }}>
+                {'★'.repeat(projection.stars)}<span style={{ color: 'var(--text-3)' }}>{'★'.repeat(Math.max(0, 5 - projection.stars))}</span>
+              </div>
+            </div>
+            {projection.estimates ? (
+              <>
+                <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-1)' }}>
+                  {projection.estimates.dias} días
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', margin: '4px 0' }}>
+                  para llegar a tu objetivo · ETA{' '}
+                  {new Date(projection.estimates.fecha_estimada).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 6 }}>
+                  Score {Math.round(projection.score)}/100
+                  {projection.rates?.peso_kg_per_week != null && ` · Ritmo ${projection.rates.peso_kg_per_week > 0 ? '+' : ''}${projection.rates.peso_kg_per_week.toFixed(2)} kg/sem`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>
+                  Aún no puedo proyectar
+                </div>
+                <div className="mono" style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
+                  Necesito más mediciones para estimar tu plazo
+                  {projection.samples != null ? ` (tenés ${projection.samples})` : ''}.
+                </div>
+              </>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '8px 0 0' }}>{projection.narrative}</p>
+          </div>
+        </div>
+      )}
 
       {/* Objetivo activo — read-only display */}
       {activeGoal && (
