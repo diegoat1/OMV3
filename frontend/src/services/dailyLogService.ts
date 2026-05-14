@@ -32,4 +32,11 @@ export const dailyLogService = {
     if (q) params.set('q', q)
     return api.get<FoodsListResponse>(`/nutrition/foods?${params.toString()}`)
   },
+
+  /** GET /nutrition/daily-log/history?days=N — daily summaries for the last N days. */
+  history(days = 14, patient?: string): Promise<{ history: Array<{ fecha: string; total_cal: number; meals_completed: number; meals_total: number; daily_score: number }> }> {
+    const params = new URLSearchParams({ days: String(days) })
+    if (patient) params.set('nombre_apellido', patient)
+    return api.get(`/nutrition/daily-log/history?${params.toString()}`)
+  },
 }

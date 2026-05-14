@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Avatar, Progress } from '../../components/atoms'
+import { Icon } from '../../components/Icon'
 import { assignmentService } from '../../services/assignmentService'
 import { ApiError } from '../../services/apiClient'
 import type { MyPatient, PendingAssignment, Role } from '../../types/api'
@@ -36,6 +37,7 @@ export function DoctorHome({ role = 'doctor' }: Props) {
   const [incoming, setIncoming] = useState<PendingAssignment[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actingId, setActingId] = useState<number | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -72,6 +74,29 @@ export function DoctorHome({ role = 'doctor' }: Props) {
   }, [])
 
   useEffect(() => { reload() }, [reload])
+
+  const handleAccept = async (id: number) => {
+    setActingId(id)
+    try {
+      await assignmentService.accept(id)
+      await reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos aceptar la solicitud')
+    } finally {
+      setActingId(null)
+    }
+  }
+  const handleReject = async (id: number) => {
+    setActingId(id)
+    try {
+      await assignmentService.reject(id)
+      await reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos rechazar la solicitud')
+    } finally {
+      setActingId(null)
+    }
+  }
 
   const pendingCount = incoming?.length ?? 0
   const patientsCount = patients.length
@@ -134,15 +159,25 @@ export function DoctorHome({ role = 'doctor' }: Props) {
                     Pidió vincularse {r.patient_dni ? `· DNI ${r.patient_dni}` : ''}
                   </div>
                 </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="ph-link-btn ph-link-accept"
+                    onClick={() => handleAccept(r.id)}
+                    disabled={actingId === r.id}
+                    aria-label="Aceptar"
+                  ><Icon name="check" size={14} /></button>
+                  <button
+                    type="button"
+                    className="ph-link-btn ph-link-reject"
+                    onClick={() => handleReject(r.id)}
+                    disabled={actingId === r.id}
+                    aria-label="Rechazar"
+                  ><Icon name="x" size={14} /></button>
+                </div>
               </div>
             ))}
           </div>
-          <p
-            className="mono"
-            style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center', margin: 0 }}
-          >
-            Aceptar / rechazar desde la sección {subject.charAt(0).toUpperCase() + subject.slice(1)}.
-          </p>
         </div>
       )}
 

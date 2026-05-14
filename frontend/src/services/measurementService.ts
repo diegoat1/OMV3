@@ -12,11 +12,10 @@ export const measurementService = {
   create(userId: number | string, payload: NewMeasurementPayload): Promise<Measurement> {
     return api.post<Measurement>(`/users/${userId}/measurements`, payload)
   },
-  update(
-    userId: number | string,
-    measurementId: number,
-    payload: Partial<NewMeasurementPayload>,
-  ): Promise<Measurement> {
-    return api.put<Measurement>(`/users/${userId}/measurements/${measurementId}`, payload)
+  /** Delete one measurement row (specialist/admin or owner).
+   *  Backend exposes DELETE only — there is no PUT/PATCH for individual
+   *  measurements; create a new one if values changed. */
+  delete(userId: number | string, measurementId: number): Promise<{ id: number }> {
+    return api.delete<{ id: number }>(`/users/${userId}/measurements/${measurementId}`)
   },
 }

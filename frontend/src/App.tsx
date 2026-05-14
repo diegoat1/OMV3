@@ -17,6 +17,10 @@ import { Progress as PatientProgress } from './screens/patient/Progress'
 import { AdminHome } from './screens/AdminHome'
 import { AdminAudit } from './screens/admin/AdminAudit'
 import { AdminPending } from './screens/admin/AdminPending'
+import { AdminUsers } from './screens/admin/AdminUsers'
+import { AdminDatabase } from './screens/admin/AdminDatabase'
+import { DoctorResources } from './screens/doctor/DoctorResources'
+import { DoctorTrainingLab } from './screens/doctor/DoctorTrainingLab'
 import { DoctorHome } from './screens/doctor/DoctorHome'
 import { DoctorPatients } from './screens/doctor/DoctorPatients'
 import { DoctorPatientDetail } from './screens/doctor/DoctorPatientDetail'
@@ -59,6 +63,12 @@ function resolveScreen(
             userId={userId}
             onCheckIn={() => setScreen('p-checkin')}
             onBrowseSpecialists={() => setScreen('p-browse-specialists')}
+            onOpenModule={(m: 'training' | 'nutrition' | 'medicine' | 'performance') => {
+              if (m === 'training') setScreen('p-training')
+              else if (m === 'nutrition') setScreen('p-nutrition')
+              else if (m === 'medicine') setScreen('p-medicine')
+              else if (m === 'performance') setScreen('p-progress')
+            }}
           />
         ),
         crumbs: ['Omega Medicina', 'Inicio'],
@@ -68,7 +78,7 @@ function resolveScreen(
     case 'p-browse-specialists':
       return { node: <BrowseSpecialists onClose={() => setScreen('p-home')} />, crumbs: ['Omega Medicina', 'Inicio', 'Buscar profesional'] }
     case 'p-progress':
-      return { node: <PatientProgress />, crumbs: ['Omega Medicina', 'Progreso'] }
+      return { node: <PatientProgress userId={userId} />, crumbs: ['Omega Medicina', 'Progreso'] }
     case 'p-appointments':
       return { node: <Appointments />, crumbs: ['Omega Medicina', 'Consultas'] }
     case 'p-training':
@@ -105,22 +115,29 @@ function resolveScreen(
     case 'd-agenda':
       return { node: <Placeholder title="Agenda" />, crumbs: ['Omega Medicina', 'Agenda'] }
     case 'd-files':
-      return { node: <Placeholder title="Archivos" />, crumbs: ['Omega Medicina', 'Archivos'] }
+      return { node: <DoctorResources />, crumbs: ['Omega Medicina', 'Recursos'] }
     case 'd-templates':
-      return { node: <Placeholder title="Plantillas" />, crumbs: ['Omega Medicina', 'Plantillas'] }
+      return { node: <DoctorTrainingLab />, crumbs: ['Omega Medicina', 'Training Lab'] }
     case 'a-home':
       return {
-        node: <AdminHome onOpenPending={() => setScreen('a-pending')} />,
+        node: (
+          <AdminHome
+            onOpenPending={() => setScreen('a-pending')}
+            onOpenAudit={() => setScreen('a-audit')}
+            onOpenUsers={() => setScreen('a-users')}
+            onOpenDb={() => setScreen('a-db')}
+          />
+        ),
         crumbs: ['Omega Medicina', 'Sistema'],
       }
     case 'a-pending':
       return { node: <AdminPending />, crumbs: ['Omega Medicina', 'Pendientes'] }
     case 'a-users':
-      return { node: <Placeholder title="Usuarios" />, crumbs: ['Omega Medicina', 'Usuarios'] }
+      return { node: <AdminUsers />, crumbs: ['Omega Medicina', 'Usuarios'] }
     case 'a-audit':
       return { node: <AdminAudit />, crumbs: ['Omega Medicina', 'Auditoría'] }
     case 'a-db':
-      return { node: <Placeholder title="Base de datos" />, crumbs: ['Omega Medicina', 'Base de datos'] }
+      return { node: <AdminDatabase />, crumbs: ['Omega Medicina', 'Base de datos'] }
     default:
       return { node: <Placeholder title="Sección no encontrada" />, crumbs: ['Omega Medicina'] }
   }

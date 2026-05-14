@@ -87,7 +87,12 @@ export interface PendingUsersResponse {
   }
 }
 
-/** POST /admin/auth-users/{id}/approve body */
+/** POST /admin/auth-users/{id}/approve body.
+ *
+ *  Today the backend ignores everything besides the id (it just runs
+ *  `UPDATE users SET status='active'`). The richer fields stay declared as
+ *  optional so the contract is forwards-compatible the day the server adds
+ *  membership/payment handling. */
 export interface ApprovePayload {
   payment?: {
     amount?: number
@@ -104,14 +109,103 @@ export interface ApprovePayload {
 export interface ApproveResponse {
   user_id: number
   status: string
-  membership_expires_at?: string
-  payment_id?: number | null
-  email_queued_id?: number | null
 }
 
 /** POST /admin/auth-users/{id}/reject body */
 export interface RejectPayload {
   reason: string
+}
+
+/** GET /admin/dashboard-stats — KPIs desde auth.db. */
+export interface AdminDashboardStats {
+  total_users: number
+  active_users: number
+  doctors: number
+  admins: number
+  nutricionistas: number
+  entrenadores: number
+  pending_verification: number
+}
+
+/** GET /admin/stats — contadores por módulo desde clinical.db + telemedicina.db. */
+export interface AdminModuleStats {
+  usuarios: { total: number; activos_30_dias: number }
+  nutricion: { alimentos: number; recetas: number; planes_nutricionales: number }
+  entrenamiento: { planes_activos: number }
+  telemedicina: { pacientes: number; situaciones: number; documentos: number }
+}
+
+/** Row from GET /admin/auth-users (listado completo de cuentas). */
+export interface AdminAuthUser {
+  id: number
+  email: string
+  display_name: string
+  role: string
+  status: string
+  is_active: boolean
+  telefono?: string
+  desired_role?: string
+  patient_dni?: string
+  created_at: string
+}
+
+export interface AdminAuthUsersResponse {
+  users: AdminAuthUser[]
+  total: number
+}
+
+/** Row from GET /admin/audit. */
+export interface AdminAuditEntry {
+  id: number
+  user_id: number | null
+  user_name: string | null
+  action: string
+  details: string | null
+  ip_address: string | null
+  created_at: string
+}
+
+export interface AdminAuditResponse {
+  entries: AdminAuditEntry[]
+  total: number
+}
+
+/** A SQLite database the admin viewer can target. */
+export type AdminDatabaseName = 'main' | 'clinical' | 'telemedicina'
+
+export interface AdminTableEntry {
+  name: string
+  rows: number
+  database?: AdminDatabaseName
+}
+
+export interface AdminTablesResponse {
+  main_database: AdminTableEntry[]
+  clinical_database: AdminTableEntry[]
+  telemedicina_database: AdminTableEntry[]
+}
+
+export interface AdminTableColumn {
+  name: string
+  type: string
+}
+
+export interface AdminTableDataResponse {
+  table: string
+  columns: AdminTableColumn[]
+  data: Array<Record<string, unknown>>
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+    total_pages: number
+  }
+}
+
+export interface AdminTableExport {
+  table: string
+  total_rows: number
+  data: Array<Record<string, unknown>>
 }
 
 /* ────────────── Assignments (specialist ↔ patient links) ────────────── */
@@ -195,6 +289,17 @@ export interface AvailableSpecialistsResponse {
 export interface PatientRequestPayload {
   specialist_id: number
   specialist_role?: string  // 'doctor' | 'nutricionista' | 'entrenador'
+}
+
+/** POST /assignments/request body — specialist initiates a link by DNI. */
+export interface SpecialistRequestPayload {
+  patient_dni: string
+}
+
+export interface SpecialistRequestResponse {
+  assignment_id: number
+  patient_name: string
+  status: AssignmentStatus
 }
 
 /* ────────────── Static profile + measurements (Paso 3) ────────────── */
@@ -329,6 +434,8 @@ export interface GoalsResponse {
   breakdown?: Record<GoalStatus, number>
 }
 
+/** Fields the backend's POST /users/<id>/goals actually persists. Anything
+ *  outside this list is silently dropped by `users/routes.py:692-738`. */
 export interface ProposeGoalPayload {
   peso_objetivo?: number | null
   bf_objetivo?: number | null
@@ -336,13 +443,8 @@ export interface ProposeGoalPayload {
   circ_abdomen_objetivo?: number | null
   circ_cintura_objetivo?: number | null
   circ_cadera_objetivo?: number | null
-  fecha_objetivo?: string            // YYYY-MM-DD
-  meses_estimados?: number
   notas?: string
-  categoria?: string                 // 'recomposicion'|'volumen'|'definicion'|'mantenimiento'
-  source?: string                    // 'manual' | 'auto-roadmap' | 'auto-genetic'
-  source_roadmap_id?: number
-  source_phase_index?: number
+  tipo?: 'manual' | 'auto'
 }
 
 /** Una fase del roadmap auto-calculado. */
@@ -746,6 +848,90 @@ export interface FoodsListResponse {
   }
 }
 
+/** Optional household-measure overrides for a food (`/foods/<id>/portions`). */
+export interface FoodPortion {
+  gramos: number
+  descripcion: string
+}
+
+/** A food-group row from `/nutrition/food-groups`. */
+export interface FoodGroup {
+  id: number
+  nombre: string
+  descripcion?: string | null
+  color?: string | null
+}
+
+/** `GET /nutrition/recipes` row. Free-form on the backend — covers what the
+ *  frontend actually consumes. */
+export interface Recipe {
+  id: number
+  nombre: string
+  descripcion?: string | null
+  ingredientes_json?: string | null
+  preparacion?: string | null
+  proteina?: number | null
+  grasa?: number | null
+  carbohidratos?: number | null
+  calorias?: number | null
+  porciones?: number | null
+  meal_keys?: string | null
+  is_public?: number | null
+}
+
+export interface RecipesResponse {
+  recipes: Recipe[]
+  total: number
+}
+
+/** Bloque-alimentario preset (`/nutrition/meal-plans/blocks`). The exact shape
+ *  is opaque to the frontend; we only need the id + name for selection. */
+export interface MealPlanBlock {
+  id: number
+  nombre: string
+  meal_key?: string
+  size?: string
+  proteina?: number | null
+  grasa?: number | null
+  carbohidratos?: number | null
+  calorias?: number | null
+  alimentos_json?: string | null
+}
+
+export interface MealPlanBlocksResponse {
+  blocks: MealPlanBlock[]
+  total: number
+}
+
+/** Library preset (`/nutrition/meal-plans/library`). */
+export interface MealPlanLibraryItem {
+  id: number
+  nombre: string
+  descripcion?: string | null
+  calorias?: number | null
+  is_favorite?: boolean
+}
+
+export interface MealPlanLibraryResponse {
+  presets: MealPlanLibraryItem[]
+  total: number
+}
+
+/** `/meal-plans/<id>/shopping-list` row. Aggregates required quantity per food
+ *  across all meals of the plan. */
+export interface ShoppingListItem {
+  food_id: number
+  nombre: string
+  gramos_totales: number
+  grupos?: string[]
+}
+
+export interface ShoppingListResponse {
+  plan_id: number
+  items: ShoppingListItem[]
+  total: number
+}
+
 /* ─────────────────── Daily nutrition log ─────────────────── */
 
 /** A single food entry inside a meal's foods_json array. Free-form on the
@@ -943,6 +1129,146 @@ export interface CreateSessionPayload {
   nombre_apellido?: string
 }
 
+/** Single ejercicio from `/training/exercises`. */
+export interface ExerciseDef {
+  key: string
+  nombre: string
+  categoria?: string
+  musculo_principal?: string
+  musculos_secundarios?: string[]
+  equipamiento?: string
+  descripcion?: string
+}
+
+export interface ExercisesResponse {
+  exercises: ExerciseDef[]
+  total: number
+}
+
+export interface LiftRow {
+  id: number
+  patient_id: number
+  fecha: string
+  ejercicio: string
+  peso: number
+  reps: number
+  rm?: number | null
+}
+
+export interface LiftsResponse {
+  lifts: LiftRow[]
+  total: number
+}
+
+export interface StrengthStandard {
+  categoria: string                  // 'principiante' | 'intermedio' | 'avanzado' | 'elite'
+  ejercicio: string
+  multiplicador: number              // RM as fraction of body weight
+}
+
+export interface StrengthStandardsResponse {
+  standards: StrengthStandard[]
+  user_category?: string
+}
+
+export interface TrainingProgram {
+  id: string
+  nombre: string
+  descripcion?: string
+  duracion_semanas?: number
+  dias_por_semana?: number
+}
+
+export interface TrainingProgramsResponse {
+  programs: TrainingProgram[]
+  total: number
+}
+
+/* ──────────── training v2 (`/training/v2/*`) ──────────── */
+
+export interface V2Exercise {
+  key: string
+  nombre: string
+  categoria?: string
+  musculo?: string
+  equipamiento?: string
+  unilateral?: boolean
+  tested?: boolean
+}
+
+export interface V2Progression {
+  key: string
+  nombre: string
+  exercise_keys?: string[]
+  step_pattern?: string
+}
+
+export interface V2Distribution {
+  key: string
+  nombre: string
+  days?: number
+  blocks?: Array<{ name: string; exercise_keys: string[] }>
+}
+
+export interface V2Plan {
+  id: number
+  patient_id: number
+  name?: string
+  current_day: number
+  cycle_week: number
+  active: boolean
+  total_days: number
+  distribution_key?: string
+  progression_key?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface V2PlansResponse {
+  plans: V2Plan[]
+  total: number
+}
+
+export interface V2ProgressRow {
+  exercise_key: string
+  current_level?: string
+  current_weight?: number | null
+  last_test_reps?: number | null
+  last_session_at?: string | null
+  sessions_count?: number
+}
+
+export interface V2ProgressResponse {
+  progress: V2ProgressRow[]
+  total: number
+}
+
+export interface V2Session {
+  id: number
+  patient_id: number
+  plan_id: number
+  fecha: string
+  duracion_minutos?: number
+  completed: boolean
+  ejercicios?: Array<{
+    exercise_key: string
+    sets: Array<{ reps: number; weight: number; rir?: number; rpe?: number }>
+  }>
+  notas?: string
+}
+
+export interface V2SessionsHistoryResponse {
+  sessions: V2Session[]
+  total: number
+}
+
+export interface V2Stats {
+  weeks_trained: number
+  total_sessions: number
+  total_volume_kg: number
+  per_exercise?: Record<string, { sessions: number; volume_kg: number }>
+}
+
 /* ────────────── Check-in diario + Health Index (Fase 7) ────────────── */
 
 /** Daily check-in row (clinical.db.daily_checkins). All fields optional —
@@ -1013,6 +1339,317 @@ export interface HealthIndexTrendPoint {
 export interface HealthIndexTrendResponse {
   trend: HealthIndexTrendPoint[]
   total: number
+}
+
+/** Row from /checkin/history — every saved checkin. */
+export interface CheckinHistoryRow extends CheckinRow {
+  health_index?: HealthIndex
+}
+
+export interface CheckinHistoryResponse {
+  history: CheckinHistoryRow[]
+  total: number
+}
+
+/** Aggregated counters from /checkin/stats. */
+export interface CheckinStats {
+  days_filled: number
+  days_total: number
+  current_streak: number
+  longest_streak: number
+  avg_score?: number
+  avg_energy?: number
+  avg_sleep?: number
+  avg_stress?: number
+}
+
+/** Symptom report row from /checkin/symptoms. */
+export interface SymptomRow {
+  id: number
+  patient_id: number
+  fecha: string
+  tipo: string
+  severidad?: number
+  descripcion?: string
+}
+
+export interface SymptomsResponse {
+  symptoms: SymptomRow[]
+  total: number
+}
+
+export interface CreateSymptomPayload {
+  tipo: string
+  severidad?: number
+  descripcion?: string
+  fecha?: string
+}
+
+/* ────────────── Telemedicine (citas, historial, situaciones) ────────────── */
+
+/** Estado del ciclo de vida de una cita médica. */
+export type AppointmentStatus =
+  | 'programada'
+  | 'confirmada'
+  | 'realizada'
+  | 'cancelada'
+  | 'reagendada'
+
+/** Una cita de /telemedicine/appointments (tabla CITAS_MEDICAS en telemedicina.db). */
+export interface Appointment {
+  id: number
+  user_id: string
+  fecha_cita: string                // ISO datetime
+  tipo_cita: string                 // e.g. 'consulta', 'control', 'video'
+  especialidad?: string | null
+  medico_nombre?: string | null
+  medico_especialidad?: string | null
+  institucion?: string | null
+  direccion?: string | null
+  telefono?: string | null
+  modalidad?: 'presencial' | 'video' | string | null
+  link_videollamada?: string | null
+  motivo_consulta?: string | null
+  estado: AppointmentStatus
+}
+
+export interface AppointmentsResponse {
+  appointments: Appointment[]
+  total: number
+}
+
+export interface CreateAppointmentPayload {
+  fecha_cita: string                // ISO datetime
+  tipo_cita: string
+  especialidad?: string
+  medico_nombre?: string
+  medico_especialidad?: string
+  institucion?: string
+  direccion?: string
+  telefono?: string
+  modalidad?: string
+  link_videollamada?: string
+  motivo_consulta?: string
+}
+
+/** Una situación clínica de /telemedicine/situations. Forma libre — el backend
+ *  devuelve los campos crudos de la tabla SITUACIONES_CLINICAS. */
+export interface ClinicalSituation {
+  id: number
+  user_id: string
+  tipo_situacion?: string
+  nombre?: string
+  descripcion?: string
+  fecha_inicio?: string | null
+  fecha_fin?: string | null
+  activa?: number
+  severidad?: string | null
+  diagnosticos?: string | null
+  tags?: string | null
+  created_at?: string
+  updated_at?: string | null
+}
+
+export interface SituationsResponse {
+  situations: ClinicalSituation[]
+  total: number
+}
+
+/** Un registro de historia médica de /telemedicine/records. */
+export interface MedicalRecord {
+  id: number
+  user_id: string
+  tipo_registro: string             // e.g. 'consulta', 'diagnostico', 'tratamiento'
+  categoria?: string | null
+  descripcion: string
+  fecha_evento?: string | null
+  fecha_registro: string
+  notas?: string | null
+}
+
+export interface MedicalRecordsResponse {
+  records: MedicalRecord[]
+  total: number
+}
+
+export interface CreateMedicalRecordPayload {
+  tipo_registro: string
+  descripcion: string
+  categoria?: string
+  fecha_evento?: string
+  notas?: string
+}
+
+/** Documento adjunto (recetas, estudios) de /telemedicine/documents. */
+export interface MedicalDocument {
+  id: number
+  user_id: string
+  tipo_documento: string
+  nombre: string
+  descripcion?: string | null
+  url?: string | null
+  fecha_documento?: string | null
+  created_at?: string
+}
+
+export interface MedicalDocumentsResponse {
+  documents: MedicalDocument[]
+  total: number
+}
+
+/** Signo vital de /telemedicine/vitals. */
+export interface VitalSign {
+  id: number
+  user_id: string
+  fecha_registro: string
+  presion_sistolica?: number | null
+  presion_diastolica?: number | null
+  frecuencia_cardiaca?: number | null
+  temperatura?: number | null
+  saturacion_oxigeno?: number | null
+  glucosa?: number | null
+  notas?: string | null
+}
+
+export interface VitalsResponse {
+  vitals: VitalSign[]
+  total: number
+}
+
+/* ────────────── Analytics ────────────── */
+
+/** Resumen rápido del paciente (`/analytics/summary`). */
+export interface AnalyticsSummary {
+  user: string
+  patient_id?: number
+  peso?: number | null
+  bf?: number | null
+  ffmi?: number | null
+  fecha_registro?: string | null
+  tiene_plan?: boolean
+  calorias_plan?: number | null
+}
+
+/** Composición corporal completa de `/analytics/body-composition`. */
+export interface BodyComposition {
+  id: number
+  nombre_apellido: string
+  fecha_registro: string
+  circ_abdomen?: number | null
+  circ_cadera?: number | null
+  circ_cintura?: number | null
+  peso?: number | null
+  bf?: number | null
+  imc?: number | null
+  immc?: number | null               // FFMI
+  peso_graso?: number | null
+  peso_magro?: number | null
+  altura?: number | null
+  sexo?: 'M' | 'F' | null
+}
+
+/** GET /analytics/body-composition/history → multiple rows. */
+export interface BodyCompositionHistoryResponse {
+  user: string
+  history: BodyComposition[]
+  total: number
+}
+
+/** Scores agregados por `/analytics/scores`. */
+export interface AnalyticsScores {
+  user: string
+  ffmi_score?: number | null
+  ffmi_categoria?: string | null
+  bf_score?: number | null
+  bf_categoria?: string | null
+  imc_score?: number | null
+  imc_categoria?: string | null
+  composition_score?: number | null
+}
+
+/** Dashboard agregado (la respuesta es generosa; sólo declaramos los campos
+ *  que el frontend consume). */
+export interface AnalyticsDashboard {
+  user: string
+  patient_id?: number
+  body_composition?: BodyComposition | null
+  scores?: AnalyticsScores | null
+  summary?: AnalyticsSummary | null
+  // Backend devuelve mucho más (performance_clock, diagnóstico, etc.); se
+  // accede ad-hoc a través de un cast cuando se necesite.
+  [key: string]: unknown
+}
+
+/* ────────────── Engagement (reminders / tasks / insights) ────────────── */
+
+export type ReminderStatus = 'pending' | 'completed' | 'cancelled' | 'snoozed'
+
+export interface Reminder {
+  id: number
+  user_id: string
+  titulo: string
+  descripcion?: string | null
+  fecha_recordatorio: string
+  status: ReminderStatus
+  prioridad?: 'baja' | 'media' | 'alta' | null
+  categoria?: string | null
+  created_at: string
+  completed_at?: string | null
+}
+
+export interface RemindersResponse {
+  reminders: Reminder[]
+  total: number
+}
+
+export interface CreateReminderPayload {
+  titulo: string
+  fecha_recordatorio: string
+  descripcion?: string
+  prioridad?: 'baja' | 'media' | 'alta'
+  categoria?: string
+}
+
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface UserTask {
+  id: number
+  user_id: string
+  titulo: string
+  descripcion?: string | null
+  fecha_limite?: string | null
+  status: TaskStatus
+  prioridad?: 'baja' | 'media' | 'alta' | null
+  category?: string | null
+  created_at: string
+  completed_at?: string | null
+}
+
+export interface TasksResponse {
+  tasks: UserTask[]
+  total: number
+}
+
+export interface CreateTaskPayload {
+  titulo: string
+  descripcion?: string
+  fecha_limite?: string
+  prioridad?: 'baja' | 'media' | 'alta'
+  category?: string
+}
+
+export interface EngagementInsight {
+  type: string
+  titulo: string
+  descripcion: string
+  prioridad?: 'baja' | 'media' | 'alta'
+  data?: Record<string, unknown>
+}
+
+export interface InsightsResponse {
+  insights: EngagementInsight[]
+  total: number
+  generated_at?: string
 }
 
 /** Map the backend's `rol` string (which can be 'user', 'doctor', 'admin' or

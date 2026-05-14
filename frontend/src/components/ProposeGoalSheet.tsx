@@ -113,14 +113,22 @@ export function ProposeGoalSheet({ profile, latestMeasurement, onClose, onSaved 
       return
     }
 
+    // The backend only persists peso/bf/ffmi/abdomen/cintura/cadera/notas/tipo
+    // (no `categoria`, `meses_estimados`, `source*`). We still keep `meses`
+    // in the UI as a planning aid and append it to notas so the info isn't
+    // lost on the server.
+    const notasFinal = [
+      notas.trim(),
+      meses ? `Plazo estimado: ${meses} ${meses === 1 ? 'mes' : 'meses'}` : '',
+      `Categoría: ${tipo}`,
+    ].filter(Boolean).join(' · ')
+
     const payload: ProposeGoalPayload = {
-      categoria: tipo,
-      meses_estimados: meses,
-      source: 'manual',
+      tipo: 'manual',
       ...(peso !== null ? { peso_objetivo: peso } : {}),
       ...(bf !== null ? { bf_objetivo: bf } : {}),
       ...(ffmi !== null ? { ffmi_objetivo: ffmi } : {}),
-      ...(notas.trim() ? { notas: notas.trim() } : {}),
+      notas: notasFinal,
     }
 
     setSubmitting(true)
@@ -140,19 +148,21 @@ export function ProposeGoalSheet({ profile, latestMeasurement, onClose, onSaved 
     const phase = roadmap.objetivos_parciales[selectedIdx]
     setSubmitting(true)
     try {
-      // 1) Guardar el roadmap completo (archiva el activo anterior)
-      const saved = await goalService.saveAutoRoadmap(profile.user_id, roadmap)
-      // 2) Proponer la fase elegida como goal, vinculada al roadmap
+      // Backend has no persisted roadmap; we just save the chosen phase as
+      // the active goal and preserve provenance in the notas field.
+      const notasAuto = [
+        phase.descripcion,
+        phase.fase,
+        `Fase ${selectedIdx + 1}/${roadmap.objetivos_parciales.length}`,
+        phase.tiempo_meses ? `~${phase.tiempo_meses} ${phase.tiempo_meses === 1 ? 'mes' : 'meses'}` : '',
+      ].filter(Boolean).join(' · ')
+
       const payload: ProposeGoalPayload = {
-        categoria: phase.tipo,
-        meses_estimados: phase.tiempo_meses || 3,
+        tipo: 'auto',
         peso_objetivo: phase.peso_objetivo,
         bf_objetivo: phase.bf_objetivo,
         ffmi_objetivo: phase.ffmi_objetivo,
-        source: 'auto-roadmap',
-        source_roadmap_id: saved.roadmap_id,
-        source_phase_index: selectedIdx,
-        notas: `${phase.descripcion} · ${phase.fase}`,
+        notas: notasAuto,
       }
       await goalService.propose(profile.user_id, payload)
       onSaved()

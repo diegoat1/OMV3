@@ -7,6 +7,7 @@ import { ApiError } from '../../services/apiClient'
 import type { MyPatient, MyRequest, Role, StaticProfile } from '../../types/api'
 import { EditConstitutionalSheet } from '../../components/EditConstitutionalSheet'
 import { NewMeasurementSheet } from '../../components/NewMeasurementSheet'
+import { AddPatientSheet } from '../../components/AddPatientSheet'
 
 const FILTERS = ['Todos', 'Hoy', 'Alta adherencia', 'Necesitan atención', 'Nuevos'] as const
 
@@ -31,6 +32,7 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
   // profile so the sheets can render without a second screen navigation.
   const [sheetTarget, setSheetTarget] = useState<{ profile: StaticProfile; kind: 'edit' | 'measure' } | null>(null)
   const [loadingSheet, setLoadingSheet] = useState<number | null>(null)
+  const [showAddSheet, setShowAddSheet] = useState(false)
 
   const subjectPlural = role === 'trainer' ? 'atletas' : 'pacientes'
   const subjectAct = role === 'trainer' ? 'Atletas' : 'Pacientes'
@@ -66,10 +68,41 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
   // Specialist-initiated requests still waiting on patient
   const outgoingRequests = requests.filter((r) => r.status === 'pending_patient')
 
+  /** Returns true if the patient was linked within the last 14 days. */
+  const isNewPatient = (p: MyPatient): boolean => {
+    if (!p.created_at) return false
+    const d = new Date(p.created_at.replace(' ', 'T')).getTime()
+    if (isNaN(d)) return false
+    return Date.now() - d < 14 * 24 * 60 * 60 * 1000
+  }
+
+  /** Returns true if the patient updated their assignment in the last 24h. */
+  const isToday = (p: MyPatient): boolean => {
+    const src = p.updated_at || p.created_at
+    if (!src) return false
+    const d = new Date(src.replace(' ', 'T')).getTime()
+    if (isNaN(d)) return false
+    return Date.now() - d < 24 * 60 * 60 * 1000
+  }
+
   const filteredPatients = patients.filter((p) => {
-    if (!q) return true
-    const hay = (p.patient_name || '').toLowerCase() + ' ' + (p.patient_email || '').toLowerCase()
-    return hay.includes(q.toLowerCase())
+    if (q) {
+      const hay = (p.patient_name || '').toLowerCase() + ' ' + (p.patient_email || '').toLowerCase()
+      if (!hay.includes(q.toLowerCase())) return false
+    }
+    switch (filter) {
+      case 'Hoy': return isToday(p)
+      case 'Nuevos': return isNewPatient(p)
+      // 'Alta adherencia' y 'Necesitan atención' requieren engagement.performance
+      // por paciente (no expuesto desde el listado). Hasta que se cablee, no
+      // filtramos para no esconder pacientes.
+      case 'Alta adherencia':
+      case 'Necesitan atención':
+        return true
+      case 'Todos':
+      default:
+        return true
+    }
   })
 
   const handleAccept = async (id: number) => {
@@ -99,6 +132,17 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
       setActingId(null)
     }
   }
+  /** Desvinculación definitiva para asignaciones ya aceptadas. */
+  const handleUnassign = async (p: MyPatient) => {
+    setActingId(p.id)
+    try {
+      await assignmentService.unassignPatient(p.patient_id)
+      setExpandedId(null)
+      await reload()
+    } finally {
+      setActingId(null)
+    }
+  }
   const openSheetFor = async (patientId: number, kind: 'edit' | 'measure') => {
     setLoadingSheet(patientId)
     try {
@@ -116,7 +160,12 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
       {/* Page title — module pill + plus icon */}
       <div className="row-between">
         <div className="module-pill">{subjectAct}</div>
-        <button type="button" className="dp-add" aria-label={`Agregar ${subjectPlural.slice(0, -1)}`}>
+        <button
+          type="button"
+          className="dp-add"
+          aria-label={`Agregar ${subjectPlural.slice(0, -1)}`}
+          onClick={() => setShowAddSheet(true)}
+        >
           <Icon name="plus" size={22} />
         </button>
       </div>
@@ -324,8 +373,7 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
                         className="dp-action dp-action-danger"
                         onClick={() => {
                           if (confirm(`¿Desvincular a ${p.patient_name}?`)) {
-                            handleCancel(p.id)
-                            setExpandedId(null)
+                            handleUnassign(p)
                           }
                         }}
                         disabled={actingId === p.id}
@@ -355,6 +403,14 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
           profile={sheetTarget.profile}
           onClose={() => setSheetTarget(null)}
           onSaved={() => { setSheetTarget(null); reload() }}
+        />
+      )}
+
+      {showAddSheet && (
+        <AddPatientSheet
+          subjectSingular={subjectPlural.slice(0, -1)}
+          onClose={() => setShowAddSheet(false)}
+          onCreated={() => { setShowAddSheet(false); reload() }}
         />
       )}
     </div>

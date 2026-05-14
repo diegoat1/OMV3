@@ -6,6 +6,8 @@ import type {
   MySpecialist,
   PatientRequestPayload,
   PendingAssignment,
+  SpecialistRequestPayload,
+  SpecialistRequestResponse,
 } from '../types/api'
 
 export const assignmentService = {
@@ -27,6 +29,10 @@ export const assignmentService = {
   myRequests(): Promise<{ requests: MyRequest[] }> {
     return api.get<{ requests: MyRequest[] }>('/assignments/my-requests')
   },
+  /** Specialist initiates a link to a patient by DNI. */
+  specialistRequest(payload: SpecialistRequestPayload): Promise<SpecialistRequestResponse> {
+    return api.post<SpecialistRequestResponse>('/assignments/request', payload)
+  },
 
   // Either side, depending on who's accepting
   accept(assignmentId: number): Promise<{ assignment_id: number; status: string }> {
@@ -43,6 +49,14 @@ export const assignmentService = {
   cancel(assignmentId: number): Promise<{ assignment_id: number; status: string }> {
     return api.post<{ assignment_id: number; status: string }>(
       `/assignments/${assignmentId}/cancel`,
+    )
+  },
+  /** Permanently unlinks a specialist↔patient relationship that was previously
+   *  accepted. `cancel()` only works on pending requests, so use this for
+   *  active patients on the specialist side. */
+  unassignPatient(patientId: number): Promise<{ patient_id: number; status: string }> {
+    return api.post<{ patient_id: number; status: string }>(
+      `/assignments/unassign-patient/${patientId}`,
     )
   },
 

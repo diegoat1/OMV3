@@ -22,4 +22,15 @@ export const authService = {
       tokenStore.clear()
     }
   },
+  /** Cheap token-validity probe (no body). Returns the decoded user when
+   *  the token is still good, or throws ApiError(401) when it isn't. */
+  validate(): Promise<{ valid: boolean; user: AuthUser }> {
+    return api.get<{ valid: boolean; user: AuthUser }>('/auth/validate')
+  },
+  /** Mint a fresh token from the current one (extends the expiry). */
+  async refresh(): Promise<AuthUser> {
+    const data = await api.post<{ token: string; user: AuthUser }>('/auth/refresh')
+    tokenStore.set(data.token)
+    return data.user
+  },
 }

@@ -56,4 +56,9 @@ export const userService = {
   update(userId: number | string, payload: UpdateUserPayload): Promise<unknown> {
     return api.put<unknown>(`/users/${userId}`, payload)
   },
+
+  /** Hard delete on the clinical patient row + cascade. Admin only. */
+  delete(userId: number | string): Promise<{ user_id: string }> {
+    return api.delete<{ user_id: string }>(`/users/${userId}`)
+  },
 }

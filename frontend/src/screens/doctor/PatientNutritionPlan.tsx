@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { nutritionService } from '../../services/nutritionService'
 import { ApiError } from '../../services/apiClient'
@@ -6,6 +6,7 @@ import type {
   AutoCalculateResponse,
   ComidaConfig,
   EntrenoIntensidad,
+  Food,
   MealKey,
   MealSize,
   NutritionPlan,
@@ -179,6 +180,8 @@ export function PatientNutritionPlan({ patientId: _patientId, patientName }: Pro
             </div>
             <MealRows plan={plan} onSolve={(mk) => setSolverFor(mk)} />
           </div>
+
+          <PlanExtras plan={plan} />
         </>
       )}
 
@@ -775,13 +778,19 @@ function SolveMealSheet({ mealKey, onClose }: SolveMealSheetProps) {
         <>
           {rows.map((r) => (
             <div key={r.uid} className="card" style={{ marginBottom: 6, padding: 10 }}>
-              <input
-                type="text"
-                placeholder="Nombre del alimento"
+              <FoodTypeahead
                 value={r.nombre}
-                onChange={(e) => updateRow(r.uid, { nombre: e.target.value })}
-                className="adm-input"
-                style={{ marginBottom: 6 }}
+                onChange={(name) => updateRow(r.uid, { nombre: name })}
+                onPick={(food) => updateRow(r.uid, {
+                  nombre: food.Largadescripcion,
+                  proteina_100g: food.P,
+                  grasa_100g: food.G,
+                  carbohidratos_100g: food.CH,
+                  medida_casera_g: food.Gramo1 ?? r.medida_casera_g,
+                  medida_desc: food.Medidacasera1
+                    ? String(food.Medidacasera1)
+                    : r.medida_desc,
+                })}
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
                 <FieldSmall label="P/100g">
@@ -930,11 +939,190 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+/** Plan-level extras: lista de compras + recálculo de bloques de la comida.
+ *  Cubre `GET /meal-plans/<id>/shopping-list` y `GET /meal-plans/<id>/calculate`. */
+function PlanExtras({ plan }: { plan: NutritionPlan }) {
+  const [shoppingLoading, setShoppingLoading] = useState(false)
+  const [recalcLoading, setRecalcLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [shoppingPreview, setShoppingPreview] = useState<{ items: number; bytes: number } | null>(null)
+
+  const handleShopping = async () => {
+    setShoppingLoading(true)
+    setError(null)
+    try {
+      const res = await nutritionService.shoppingList(plan.id)
+      // Download the JSON so the doctor can hand it to the patient.
+      const text = JSON.stringify(res, null, 2)
+      const blob = new Blob([text], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `plan-${plan.id}-shopping-list.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setShoppingPreview({ items: res.items.length, bytes: text.length })
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos generar la lista')
+    } finally {
+      setShoppingLoading(false)
+    }
+  }
+
+  const handleRecalc = async () => {
+    setRecalcLoading(true)
+    setError(null)
+    try {
+      await nutritionService.calculatePlan(plan.id)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos recalcular')
+    } finally {
+      setRecalcLoading(false)
+    }
+  }
+
+  return (
+    <div className="ph-section">
+      <div className="section-label">Acciones extra</div>
+      <div className="card">
+        <button
+          type="button"
+          className="btn btn-full"
+          onClick={handleShopping}
+          disabled={shoppingLoading}
+          style={{ marginBottom: 8 }}
+        >
+          <Icon name="upload" size={14} />
+          {shoppingLoading ? ' Generando lista…' : ' Descargar lista de compras'}
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-full"
+          onClick={handleRecalc}
+          disabled={recalcLoading}
+        >
+          <Icon name="target" size={14} />
+          {recalcLoading ? ' Recalculando…' : ' Recalcular bloques'}
+        </button>
+        {shoppingPreview && (
+          <p className="mono" style={{ fontSize: 11, color: 'var(--text-3)', margin: '8px 0 0' }}>
+            Lista generada — {shoppingPreview.items} ítems · {Math.round(shoppingPreview.bytes / 1024)} KB
+          </p>
+        )}
+        {error && (
+          <p style={{ fontSize: 12, color: 'var(--omega)', margin: '8px 0 0' }}>{error}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function FieldSmall({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="adm-field" style={{ marginBottom: 0 }}>
       <label className="adm-field-label" style={{ fontSize: 10 }}>{label}</label>
       {children}
+    </div>
+  )
+}
+
+/** Search-as-you-type input for the ALIMENTOS catalog. Calling onPick fills
+ *  the row's macros from the selected food so the user doesn't have to type
+ *  P/G/C/100g by hand. */
+function FoodTypeahead({
+  value,
+  onChange,
+  onPick,
+}: {
+  value: string
+  onChange: (name: string) => void
+  onPick: (food: Food) => void
+}) {
+  const [suggestions, setSuggestions] = useState<Food[]>([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!value || value.length < 2) {
+      setSuggestions([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const res = await nutritionService.listFoods({ q: value, per_page: 8 })
+        setSuggestions(res.data)
+      } catch {
+        setSuggestions([])
+      } finally {
+        setLoading(false)
+      }
+    }, 250)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [value])
+
+  return (
+    <div style={{ position: 'relative', marginBottom: 6 }}>
+      <input
+        type="text"
+        placeholder="Nombre del alimento (escribí para buscar)"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="adm-input"
+        style={{ width: '100%' }}
+      />
+      {open && (loading || suggestions.length > 0) && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%', left: 0, right: 0,
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line-strong)',
+            borderRadius: 8,
+            marginTop: 4,
+            maxHeight: 220,
+            overflowY: 'auto',
+            zIndex: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}
+        >
+          {loading && (
+            <div className="mono" style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-3)' }}>
+              Buscando…
+            </div>
+          )}
+          {!loading && suggestions.map((food) => (
+            <button
+              key={food.ID}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onPick(food); setOpen(false) }}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 0,
+                borderTop: '1px solid var(--line)',
+                padding: '8px 10px',
+                textAlign: 'left',
+                color: 'var(--text-1)',
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              <div style={{ fontWeight: 500 }}>{food.Largadescripcion}</div>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
+                P {food.P} · G {food.G} · CH {food.CH} (/100g)
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

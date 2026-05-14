@@ -3,8 +3,15 @@ import { Icon } from '../../components/Icon'
 import { userService } from '../../services/userService'
 import { measurementService } from '../../services/measurementService'
 import { goalService } from '../../services/goalService'
+import { analyticsService } from '../../services/analyticsService'
 import { ApiError } from '../../services/apiClient'
-import type { Goal, Measurement, NextStepResponse, SavedRoadmap, StaticProfile } from '../../types/api'
+import type {
+  AnalyticsScores,
+  BodyComposition,
+  Goal,
+  Measurement,
+  StaticProfile,
+} from '../../types/api'
 import { EditConstitutionalSheet } from '../../components/EditConstitutionalSheet'
 import { NewMeasurementSheet } from '../../components/NewMeasurementSheet'
 import { ProposeGoalSheet } from '../../components/ProposeGoalSheet'
@@ -62,15 +69,14 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
   const [profile, setProfile] = useState<StaticProfile | null>(null)
   const [measurements, setMeasurements] = useState<Measurement[]>([])
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null)
-  const [proposedGoal, setProposedGoal] = useState<Goal | null>(null)
-  const [roadmap, setRoadmap] = useState<SavedRoadmap | null>(null)
-  const [nextStep, setNextStep] = useState<NextStepResponse | null>(null)
+  const [scores, setScores] = useState<AnalyticsScores | null>(null)
+  const [bodyComp, setBodyComp] = useState<BodyComposition | null>(null)
+  const [history, setHistory] = useState<BodyComposition[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editProfile, setEditProfile] = useState(false)
   const [newMeasurement, setNewMeasurement] = useState(false)
   const [proposeGoal, setProposeGoal] = useState(false)
-  const [completingGoal, setCompletingGoal] = useState(false)
   const [planesSubTab, setPlanesSubTab] = useState<'nutricion' | 'entreno'>('nutricion')
 
   const reload = useCallback(async () => {
@@ -78,23 +84,30 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
     setLoading(true)
     setError(null)
     try {
-      const [p, m, gActive, gProposed, rm, ns] = await Promise.all([
+      const [p, m, gActive] = await Promise.all([
         userService.getStaticProfile(patientId),
         measurementService.list(patientId).catch((e) => {
           if (e instanceof ApiError) return { user_id: '', nombre_apellido: '', measurements: [], total: 0 }
           throw e
         }),
         goalService.getActive(patientId).catch(() => ({ user_id: '', goal: null })),
-        goalService.getProposed(patientId).catch(() => ({ user_id: '', goal: null })),
-        goalService.getActiveRoadmap(patientId).catch(() => ({ roadmap: null })),
-        goalService.getNextStep(patientId).catch(() => null),
       ])
       setProfile(p)
       setMeasurements(m.measurements)
       setActiveGoal(gActive.goal)
-      setProposedGoal(gProposed.goal)
-      setRoadmap(rm.roadmap)
-      setNextStep(ns)
+      // Second wave — analytics requires the patient's display name. Fire
+      // these in parallel after the profile so we know who to query for.
+      if (p?.nombre) {
+        const [sc, bc, hist] = await Promise.all([
+          analyticsService.scores({ user: p.nombre }).catch(() => null),
+          analyticsService.bodyComposition({ user: p.nombre }).catch(() => null),
+          analyticsService.bodyCompositionHistory({ user: p.nombre, limit: 12 })
+            .catch(() => ({ user: '', history: [], total: 0 })),
+        ])
+        setScores(sc)
+        setBodyComp(bc)
+        setHistory(hist.history)
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando paciente')
     } finally {
@@ -108,17 +121,6 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
   const previous = measurements[1] ?? null
   const isEmpty = patientId === null
 
-  const handleCompleteGoal = async () => {
-    if (!patientId || !activeGoal) return
-    if (!confirm('¿Marcar el objetivo como completado?')) return
-    setCompletingGoal(true)
-    try {
-      await goalService.complete(patientId, activeGoal.id)
-      await reload()
-    } finally {
-      setCompletingGoal(false)
-    }
-  }
 
   return (
     <div className="dpd-screen" data-mod="medicine">
@@ -295,34 +297,57 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
             )}
           </div>
 
+          {/* Composición + scores del analytics blueprint */}
+          {(scores || bodyComp) && (
+            <div className="ph-section">
+              <div className="row-between" style={{ marginBottom: 10 }}>
+                <div className="section-label">Análisis composición</div>
+                <div className="mono" style={{ color: 'var(--text-3)' }}>
+                  {history.length > 0 ? `${history.length} registros` : '—'}
+                </div>
+              </div>
+              <div className="card">
+                <div className="dpd-const-grid">
+                  <Field
+                    label="FFMI"
+                    value={scores?.ffmi_score != null
+                      ? `${scores.ffmi_score.toFixed(1)}${scores.ffmi_categoria ? ` · ${scores.ffmi_categoria}` : ''}`
+                      : null}
+                  />
+                  <Field
+                    label="% Grasa"
+                    value={scores?.bf_score != null
+                      ? `${scores.bf_score.toFixed(1)}${scores.bf_categoria ? ` · ${scores.bf_categoria}` : ''}`
+                      : null}
+                  />
+                  <Field
+                    label="IMC"
+                    value={scores?.imc_score != null
+                      ? `${scores.imc_score.toFixed(1)}${scores.imc_categoria ? ` · ${scores.imc_categoria}` : ''}`
+                      : bodyComp?.imc != null ? bodyComp.imc.toFixed(1) : null}
+                  />
+                  <Field
+                    label="Score global"
+                    value={scores?.composition_score != null
+                      ? `${scores.composition_score.toFixed(0)} / 100`
+                      : null}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Objetivo activo */}
           <div className="ph-section">
             <div className="row-between" style={{ marginBottom: 10 }}>
               <div className="section-label">Objetivo</div>
-              {proposedGoal && (
-                <span className="dpd-incomplete-badge mono" style={{ background: 'rgba(125,140,255,0.15)', color: 'var(--analytic)', borderColor: 'rgba(125,140,255,0.3)' }}>
-                  esperando paciente
-                </span>
-              )}
             </div>
             {activeGoal ? (
-              <GoalCard
-                goal={activeGoal}
-                latest={latest}
-                onComplete={handleCompleteGoal}
-                completing={completingGoal}
-              />
-            ) : proposedGoal ? (
-              <div className="card">
-                <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-                  Hay una propuesta en espera. El paciente debe aceptarla para activarla.
-                </p>
-                <GoalSummary goal={proposedGoal} latest={latest} />
-              </div>
+              <GoalCard goal={activeGoal} latest={latest} />
             ) : (
               <div className="card">
                 <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-                  Sin objetivo activo. Proponé uno para que el paciente lo acepte.
+                  Sin objetivo activo. Definí uno desde la propuesta.
                 </p>
               </div>
             )}
@@ -330,37 +355,12 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
               type="button"
               className="btn btn-full dpd-new-meas-btn"
               onClick={() => setProposeGoal(true)}
-              disabled={!profile || !!proposedGoal}
-              title={proposedGoal ? 'Ya hay una propuesta en espera' : ''}
+              disabled={!profile}
               style={{ background: 'var(--analytic)', color: '#fff' }}
             >
-              <Icon name="target" size={14} /> {activeGoal ? 'Proponer nuevo objetivo' : 'Proponer objetivo'}
+              <Icon name="target" size={14} /> {activeGoal ? 'Actualizar objetivo' : 'Definir objetivo'}
             </button>
           </div>
-
-          {/* Roadmap activo (auto-calculado y persistido) */}
-          {roadmap && roadmap.fases && roadmap.fases.length > 0 && (
-            <div className="ph-section">
-              <div className="row-between" style={{ marginBottom: 10 }}>
-                <div className="section-label">Plan multi-fase</div>
-                <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  {nextStep && !nextStep.completed
-                    ? `${(nextStep.completed_phases ?? 0)} / ${nextStep.total_phases ?? roadmap.fases.length}`
-                    : `${roadmap.fases.length} fases`}
-                </span>
-              </div>
-              <RoadmapTimeline
-                roadmap={roadmap}
-                activePhaseIdx={
-                  activeGoal?.source_roadmap_id === roadmap.id
-                    ? activeGoal.source_phase_index ?? null
-                    : null
-                }
-                nextPhaseIdx={nextStep?.next_phase_index ?? null}
-                completedCount={nextStep?.completed_phases ?? 0}
-              />
-            </div>
-          )}
 
           {/* Planes activos placeholder */}
           <div className="ph-section">
@@ -495,48 +495,18 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
 // Goal display helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-function GoalCard({
-  goal,
-  latest,
-  onComplete,
-  completing,
-}: {
-  goal: Goal
-  latest: Measurement | null
-  onComplete: () => void
-  completing: boolean
-}) {
+function GoalCard({ goal, latest }: { goal: Goal; latest: Measurement | null }) {
   return (
     <div className="card goal-card">
       <div className="row-between" style={{ marginBottom: 6 }}>
         <div className="mono" style={{ color: 'var(--analytic)' }}>
-          {goal.categoria || goal.tipo || 'Objetivo'}
+          {goal.tipo || 'Objetivo'}
         </div>
-        {goal.meses_estimados && (
-          <div className="mono" style={{ color: 'var(--text-3)' }}>
-            {goal.meses_estimados} {goal.meses_estimados === 1 ? 'mes' : 'meses'}
-          </div>
-        )}
       </div>
       <GoalSummary goal={goal} latest={latest} />
       {goal.notas && (
         <p className="goal-notas">{goal.notas}</p>
       )}
-      <button
-        type="button"
-        className="btn btn-full"
-        onClick={onComplete}
-        disabled={completing}
-        style={{
-          marginTop: 10,
-          background: 'var(--ok)',
-          color: '#0a1a0a',
-          fontWeight: 600,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}
-      >
-        <Icon name="check" size={14} /> {completing ? 'Marcando…' : 'Marcar como completado'}
-      </button>
     </div>
   )
 }
@@ -573,58 +543,6 @@ function GoalSummary({ goal, latest }: { goal: Goal; latest: Measurement | null 
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function RoadmapTimeline({
-  roadmap,
-  activePhaseIdx,
-  nextPhaseIdx,
-  completedCount,
-}: {
-  roadmap: SavedRoadmap
-  activePhaseIdx: number | null
-  nextPhaseIdx: number | null
-  completedCount: number
-}) {
-  return (
-    <div className="card roadmap-card">
-      <ol className="roadmap-list">
-        {roadmap.fases.map((p, i) => {
-          const isActive = activePhaseIdx === i
-          const isNext = !isActive && nextPhaseIdx === i
-          const isDone = i < completedCount
-          const cls = ['roadmap-step']
-          if (isActive) cls.push('is-active')
-          else if (isNext) cls.push('is-next')
-          else if (isDone) cls.push('is-done')
-          return (
-            <li key={i} className={cls.join(' ')}>
-              <div className="roadmap-step-marker">{isDone ? '✓' : i + 1}</div>
-              <div className="roadmap-step-body">
-                <div className="roadmap-step-head">
-                  <span className={'goal-auto-phase-tag goal-auto-phase-tag--' + p.tipo}>
-                    {p.tipo === 'definicion' ? 'Corte' : 'Volumen'}
-                  </span>
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    ~{p.tiempo_meses} m
-                  </span>
-                </div>
-                <div className="roadmap-step-desc">{p.descripcion}</div>
-                <div className="roadmap-step-meta mono">
-                  {p.peso_objetivo} kg · {p.bf_objetivo}% BF · FFMI {p.ffmi_objetivo}
-                </div>
-              </div>
-            </li>
-          )
-        })}
-      </ol>
-      {nextPhaseIdx != null && roadmap.fases[nextPhaseIdx] && (
-        <div className="roadmap-footer mono">
-          Próxima fase pendiente: <strong>#{nextPhaseIdx + 1} · {roadmap.fases[nextPhaseIdx].descripcion}</strong>
-        </div>
-      )}
     </div>
   )
 }

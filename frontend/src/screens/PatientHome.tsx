@@ -2,34 +2,32 @@ import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
 import { Avatar, Progress } from '../components/atoms'
-import { AcceptGoalSheet } from '../components/AcceptGoalSheet'
 import { assignmentService } from '../services/assignmentService'
 import { checkinService } from '../services/checkinService'
+import { engagementService } from '../services/engagementService'
 import { goalService } from '../services/goalService'
 import { measurementService } from '../services/measurementService'
 import { ApiError } from '../services/apiClient'
 import type {
+  EngagementInsight,
   Goal,
   HealthIndex,
-  Measurement,
   MyRequest,
   MySpecialist,
   PendingAssignment,
+  Reminder,
+  UserTask,
 } from '../types/api'
 
+type ModuleKey = 'training' | 'nutrition' | 'medicine' | 'performance'
+
 interface ModuleTile {
+  key: ModuleKey
   label: string
   sub: string
   icon: IconName
   color: string
 }
-
-const MODULES: ModuleTile[] = [
-  { label: 'Entrenamiento', sub: 'Sin plan activo', icon: 'training', color: 'var(--omega)' },
-  { label: 'Nutrición', sub: 'Sin plan alimentario', icon: 'nutrition', color: 'var(--nutri)' },
-  { label: 'Medicina', sub: 'Sin médico vinculado', icon: 'medicine', color: 'var(--medic)' },
-  { label: 'Performance', sub: 'Clock semanal', icon: 'target', color: 'var(--analytic)' },
-]
 
 /** Health-Index has 7 components weighted 35/20/15/10/10/5/5. For the home
  *  card we collapse them into 4 conceptual buckets matching the design. */
@@ -71,20 +69,24 @@ interface Props {
   userId?: string | null
   onCheckIn?: () => void
   onBrowseSpecialists?: () => void
+  onOpenModule?: (m: ModuleKey) => void
 }
 
-export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = {}) {
+export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModule }: Props = {}) {
   const [specialists, setSpecialists] = useState<MySpecialist[]>([])
   const [incoming, setIncoming] = useState<PendingAssignment[]>([])
   const [outgoing, setOutgoing] = useState<MyRequest[]>([])
   const [loadingLinks, setLoadingLinks] = useState(true)
   const [actingId, setActingId] = useState<number | null>(null)
   const [linksError, setLinksError] = useState<string | null>(null)
-  const [proposedGoal, setProposedGoal] = useState<Goal | null>(null)
-  const [latestMeasurement, setLatestMeasurement] = useState<Measurement | null>(null)
-  const [acceptGoalOpen, setAcceptGoalOpen] = useState(false)
+  const [activeGoal, setActiveGoal] = useState<Goal | null>(null)
   const [healthIndex, setHealthIndex] = useState<HealthIndex | null>(null)
   const [healthDelta, setHealthDelta] = useState<number | null>(null)
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [tasks, setTasks] = useState<UserTask[]>([])
+  const [insights, setInsights] = useState<EngagementInsight[]>([])
+  const [completingReminder, setCompletingReminder] = useState<number | null>(null)
+  const [completingTask, setCompletingTask] = useState<number | null>(null)
 
   const reloadLinks = useCallback(async () => {
     setLoadingLinks(true)
@@ -107,12 +109,11 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
 
   const reloadGoal = useCallback(async () => {
     if (!userId) return
-    const [gp, m] = await Promise.all([
-      goalService.getProposed(userId).catch(() => ({ user_id: '', goal: null })),
-      measurementService.list(userId, 1).catch(() => ({ user_id: '', nombre_apellido: '', measurements: [], total: 0 })),
-    ])
-    setProposedGoal(gp.goal)
-    setLatestMeasurement(m.measurements[0] ?? null)
+    const gp = await goalService.getActive(userId).catch(() => ({ user_id: '', goal: null }))
+    setActiveGoal(gp.goal)
+    // Fire-and-forget — keeps the latest measurement around for any other UI
+    // that needs it. The home doesn't render it itself anymore.
+    measurementService.list(userId, 1).catch(() => null)
   }, [userId])
 
   const reloadHealth = useCallback(async () => {
@@ -134,9 +135,45 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
     }
   }, [])
 
+  const reloadEngagement = useCallback(async () => {
+    const [remRes, taskRes, insRes] = await Promise.all([
+      engagementService.listReminders({ status: 'pending', limit: 5 }).catch(() => ({ reminders: [], total: 0 })),
+      engagementService.listTasks({ status: 'pending', limit: 5 }).catch(() => ({ tasks: [], total: 0 })),
+      engagementService.insights().catch(() => ({ insights: [], total: 0 })),
+    ])
+    setReminders(remRes.reminders)
+    setTasks(taskRes.tasks)
+    setInsights(insRes.insights.slice(0, 3))
+  }, [])
+
   useEffect(() => { reloadLinks() }, [reloadLinks])
   useEffect(() => { reloadGoal() }, [reloadGoal])
   useEffect(() => { reloadHealth() }, [reloadHealth])
+  useEffect(() => { reloadEngagement() }, [reloadEngagement])
+
+  const handleCompleteReminder = async (id: number) => {
+    setCompletingReminder(id)
+    try {
+      await engagementService.completeReminder(id)
+      await reloadEngagement()
+    } catch {
+      // swallow — list stays as-is
+    } finally {
+      setCompletingReminder(null)
+    }
+  }
+
+  const handleCompleteTask = async (id: number) => {
+    setCompletingTask(id)
+    try {
+      await engagementService.updateTask(id, { status: 'completed' })
+      await reloadEngagement()
+    } catch {
+      // swallow
+    } finally {
+      setCompletingTask(null)
+    }
+  }
 
   const handleAccept = async (id: number) => {
     setActingId(id)
@@ -214,65 +251,206 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
         </div>
       </div>
 
-      {/* Proposed goal — patient must accept or reject */}
-      {proposedGoal && (
+      {/* Objetivo activo — read-only display */}
+      {activeGoal && (
         <div className="ph-section">
           <div
             className="card"
             style={{
-              background: 'linear-gradient(160deg, rgba(125,140,255,0.16), rgba(79,184,168,0.06)), var(--bg-1)',
-              border: '1px solid rgba(125,140,255,0.4)',
-              cursor: 'pointer',
-            }}
-            onClick={() => setAcceptGoalOpen(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setAcceptGoalOpen(true)
-              }
+              background: 'linear-gradient(160deg, rgba(79,184,168,0.12), rgba(125,140,255,0.04)), var(--bg-1)',
+              border: '1px solid rgba(79,184,168,0.3)',
             }}
           >
             <div className="row-between" style={{ marginBottom: 6 }}>
               <div
                 className="mono"
                 style={{
-                  color: 'var(--analytic)',
+                  color: 'var(--ok)',
                   fontSize: 10,
                   letterSpacing: '0.14em',
                   textTransform: 'uppercase',
                 }}
               >
-                Objetivo propuesto
+                Tu objetivo
               </div>
-              <Icon name="chevR" size={16} />
             </div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-1)' }}>
-              Tu profesional armó un plan para vos
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4 }}>
+              {activeGoal.peso_objetivo != null && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>PESO</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{activeGoal.peso_objetivo.toFixed(1)} kg</div>
+                </div>
+              )}
+              {activeGoal.bf_objetivo != null && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>% GRASA</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{activeGoal.bf_objetivo.toFixed(1)}%</div>
+                </div>
+              )}
+              {activeGoal.ffmi_objetivo != null && (
+                <div>
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>FFMI</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{activeGoal.ffmi_objetivo.toFixed(1)}</div>
+                </div>
+              )}
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '6px 0 0' }}>
-              Revisalo y aceptalo para activarlo, o pedile cambios.
-            </p>
+            {activeGoal.notas && (
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '10px 0 0' }}>{activeGoal.notas}</p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Modules quick-access */}
+      {/* Modules quick-access — counts derived from real link state */}
       <div className="ph-section">
         <div className="section-label">Módulos</div>
         <div className="ph-modules">
-          {MODULES.map((m) => (
-            <button key={m.label} className="ph-module-card" type="button">
-              <div className="ph-module-ic" style={{ background: `${m.color}22`, color: m.color }}>
-                <Icon name={m.icon} size={18} />
-              </div>
-              <div className="ph-module-label">{m.label}</div>
-              <div className="ph-module-sub">{m.sub}</div>
-            </button>
-          ))}
+          {(() => {
+            const hasMedicalSpecialist = specialists.some(
+              (s) => (s.specialist_role || '').toLowerCase().includes('doctor')
+                  || (s.specialist_role || '').toLowerCase().includes('medic'),
+            )
+            const hasNutritionist = specialists.some(
+              (s) => (s.specialist_role || '').toLowerCase().includes('nutri'),
+            )
+            const hasTrainer = specialists.some(
+              (s) => (s.specialist_role || '').toLowerCase().includes('entren')
+                  || (s.specialist_role || '').toLowerCase().includes('train'),
+            )
+            const tiles: ModuleTile[] = [
+              {
+                key: 'training',
+                label: 'Entrenamiento',
+                sub: hasTrainer ? 'Plan activo' : 'Sin entrenador',
+                icon: 'training',
+                color: 'var(--omega)',
+              },
+              {
+                key: 'nutrition',
+                label: 'Nutrición',
+                sub: hasNutritionist ? 'Plan activo' : 'Sin nutricionista',
+                icon: 'nutrition',
+                color: 'var(--nutri)',
+              },
+              {
+                key: 'medicine',
+                label: 'Medicina',
+                sub: hasMedicalSpecialist ? 'Médico vinculado' : 'Sin médico vinculado',
+                icon: 'medicine',
+                color: 'var(--medic)',
+              },
+              {
+                key: 'performance',
+                label: 'Performance',
+                sub: healthIndex ? `Score ${Math.round(healthIndex.score)}/100` : 'Clock semanal',
+                icon: 'target',
+                color: 'var(--analytic)',
+              },
+            ]
+            return tiles.map((m) => (
+              <button
+                key={m.key}
+                className="ph-module-card"
+                type="button"
+                onClick={() => onOpenModule?.(m.key)}
+                disabled={!onOpenModule}
+              >
+                <div className="ph-module-ic" style={{ background: `${m.color}22`, color: m.color }}>
+                  <Icon name={m.icon} size={18} />
+                </div>
+                <div className="ph-module-label">{m.label}</div>
+                <div className="ph-module-sub">{m.sub}</div>
+              </button>
+            ))
+          })()}
         </div>
       </div>
+
+      {/* Engagement insights — pull from /api/v3/engagement/insights */}
+      {insights.length > 0 && (
+        <div className="ph-section">
+          <div className="section-label">Para tu día</div>
+          <div className="card" style={{ padding: 0 }}>
+            {insights.map((ins, i) => (
+              <div
+                key={`${ins.type}-${i}`}
+                className="ph-link-row"
+                style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+              >
+                <div
+                  style={{
+                    width: 32, height: 32, borderRadius: 10,
+                    background: ins.prioridad === 'alta' ? 'rgba(226,62,74,0.12)' : 'rgba(125,140,255,0.12)',
+                    color: ins.prioridad === 'alta' ? 'var(--omega)' : 'var(--analytic)',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                >
+                  <Icon name="target" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ph-link-name">{ins.titulo}</div>
+                  <div className="ph-link-meta">{ins.descripcion}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tareas (lista + creación rápida) */}
+      <TasksBlock
+        tasks={tasks}
+        completingTask={completingTask}
+        onComplete={handleCompleteTask}
+        onCreated={reloadEngagement}
+      />
+
+
+      {/* Reminders próximos */}
+      {reminders.length > 0 && (
+        <div className="ph-section">
+          <div className="row-between" style={{ marginBottom: 10 }}>
+            <div className="section-label">Recordatorios</div>
+            <div className="mono" style={{ color: 'var(--text-3)' }}>
+              {reminders.length} pendiente{reminders.length === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {reminders.map((r, i) => (
+              <div
+                key={r.id}
+                className="ph-link-row"
+                style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+              >
+                <div
+                  style={{
+                    width: 32, height: 32, borderRadius: 10,
+                    background: 'rgba(232,169,58,0.12)', color: 'var(--warn)',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                >
+                  <Icon name="bell" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ph-link-name">{r.titulo}</div>
+                  {r.descripcion && (
+                    <div className="ph-link-meta">{r.descripcion}</div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="ph-link-btn ph-link-accept"
+                  onClick={() => handleCompleteReminder(r.id)}
+                  disabled={completingReminder === r.id}
+                  aria-label="Marcar como completado"
+                >
+                  <Icon name="check" size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Solicitudes recibidas — patient must accept/reject */}
       {!loadingLinks && incoming.length > 0 && (
@@ -461,23 +639,141 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists }: Props = 
           <Progress value={0} color="var(--text-3)" />
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Accept-goal sheet */}
-      {proposedGoal && acceptGoalOpen && userId && (
-        <AcceptGoalSheet
-          goal={proposedGoal}
-          userId={userId}
-          latestMeasurement={latestMeasurement}
-          onClose={() => setAcceptGoalOpen(false)}
-          onAccepted={() => {
-            setAcceptGoalOpen(false)
-            reloadGoal()
-          }}
-          onRejected={() => {
-            setAcceptGoalOpen(false)
-            reloadGoal()
-          }}
-        />
+/** Inline tasks list + quick-add form. Wraps `engagementService.createTask` so
+ *  the patient can add their own follow-up reminders without leaving home. */
+function TasksBlock({
+  tasks,
+  completingTask,
+  onComplete,
+  onCreated,
+}: {
+  tasks: UserTask[]
+  completingTask: number | null
+  onComplete: (id: number) => void
+  onCreated: () => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    if (!draft.trim()) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await engagementService.createTask({ titulo: draft.trim() })
+      setDraft('')
+      setAdding(false)
+      onCreated()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos crear la tarea')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (tasks.length === 0 && !adding) {
+    return (
+      <div className="ph-section">
+        <div className="row-between" style={{ marginBottom: 10 }}>
+          <div className="section-label">Tus tareas</div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '4px 10px', fontSize: 11 }}
+            onClick={() => setAdding(true)}
+          >
+            <Icon name="plus" size={12} /> Agregar
+          </button>
+        </div>
+        <div className="card">
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+            Sin tareas pendientes.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="ph-section">
+      <div className="row-between" style={{ marginBottom: 10 }}>
+        <div className="section-label">Tus tareas</div>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ padding: '4px 10px', fontSize: 11 }}
+          onClick={() => setAdding((v) => !v)}
+        >
+          {adding ? 'Cerrar' : (<><Icon name="plus" size={12} /> Agregar</>)}
+        </button>
+      </div>
+
+      {adding && (
+        <div className="card" style={{ padding: 10, marginBottom: 10 }}>
+          <input
+            type="text"
+            className="adm-input"
+            placeholder="¿Qué necesitás recordar?"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+            style={{ marginBottom: 8 }}
+          />
+          <button
+            type="button"
+            className="btn btn-primary btn-full"
+            onClick={submit}
+            disabled={submitting || !draft.trim()}
+          >
+            <Icon name="check" size={14} /> {submitting ? ' Guardando…' : ' Crear tarea'}
+          </button>
+          {error && (
+            <p style={{ fontSize: 12, color: 'var(--omega)', margin: '6px 0 0' }}>{error}</p>
+          )}
+        </div>
+      )}
+
+      {tasks.length > 0 && (
+        <div className="card" style={{ padding: 0 }}>
+          {tasks.map((t, i) => (
+            <div
+              key={t.id}
+              className="ph-link-row"
+              style={{ borderTop: i === 0 ? 0 : '1px solid var(--line)' }}
+            >
+              <div
+                style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: 'rgba(79,184,168,0.12)', color: 'var(--ok)',
+                  display: 'grid', placeItems: 'center',
+                }}
+              >
+                <Icon name="check" size={16} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="ph-link-name">{t.titulo}</div>
+                {t.descripcion && (
+                  <div className="ph-link-meta">{t.descripcion}</div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="ph-link-btn ph-link-accept"
+                onClick={() => onComplete(t.id)}
+                disabled={completingTask === t.id}
+                aria-label="Marcar como completada"
+              >
+                <Icon name="check" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

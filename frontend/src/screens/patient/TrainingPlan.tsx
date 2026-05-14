@@ -3,7 +3,7 @@ import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/atoms'
 import { trainingService } from '../../services/trainingService'
 import { ApiError } from '../../services/apiClient'
-import type { CreateSessionPayload, TodayExercise, TodaySession } from '../../types/api'
+import type { TodayExercise, TodaySession } from '../../types/api'
 
 interface Props {
   userName?: string
@@ -63,21 +63,41 @@ export function TrainingPlan({ userName = '' }: Props) {
     setRegistering(true)
     setError(null)
     try {
-      const payload: CreateSessionPayload = {
-        plan_id: session.plan_id,
-        day_number: session.dia_actual,
-        completed: true,
-        ejercicios_completados: session.ejercicios.map((ex) => ({
+      // /sessions/complete marks the session done AND advances progression in
+      // a single round-trip. This replaces the legacy two-step pattern
+      // (createSession + advanceDay).
+      const res = await trainingService.completeSession({
+        ejercicios: session.ejercicios.map((ex) => ({
           exercise_key: ex.exercise_key,
           ejercicio: ex.ejercicio || ex.exercise_key,
-          sets: ex.sets ?? null,
+          completed: true,
         })),
-      }
-      await trainingService.createSession(payload)
-      setInfo('Sesión registrada.')
+        advance_day: true,
+      })
+      const nextDay = res.current_day
+      const advanced = res.advanced !== false
+      setInfo(advanced && nextDay != null
+        ? `Sesión registrada. Próximo día: ${nextDay}.`
+        : 'Sesión registrada.')
       reload()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No pudimos registrar la sesión.')
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  const handleSkipDay = async () => {
+    if (!session) return
+    if (!confirm('¿Saltar este día sin registrar la sesión?')) return
+    setRegistering(true)
+    setError(null)
+    try {
+      const res = await trainingService.advanceDay()
+      setInfo(`Día saltado. Próximo día: ${res.current_day}.`)
+      reload()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No pudimos avanzar el día.')
     } finally {
       setRegistering(false)
     }
@@ -212,19 +232,30 @@ export function TrainingPlan({ userName = '' }: Props) {
 
       {/* Action: register session */}
       {!loading && session && session.ejercicios.length > 0 && !session.already_done && (
-        <button
-          type="button"
-          className="btn btn-full"
-          onClick={handleRegisterSession}
-          disabled={registering}
-          style={{
-            background: 'var(--omega)', color: '#fff', fontWeight: 600,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}
-        >
-          <Icon name="check" size={14} />
-          {registering ? 'Registrando…' : 'Registrar sesión completada'}
-        </button>
+        <>
+          <button
+            type="button"
+            className="btn btn-full"
+            onClick={handleRegisterSession}
+            disabled={registering}
+            style={{
+              background: 'var(--omega)', color: '#fff', fontWeight: 600,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <Icon name="check" size={14} />
+            {registering ? 'Registrando…' : 'Registrar sesión y avanzar día'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-full"
+            onClick={handleSkipDay}
+            disabled={registering}
+            style={{ marginTop: 8 }}
+          >
+            Saltar día sin registrar
+          </button>
+        </>
       )}
       {session?.already_done && (
         <div className="card" style={{ borderColor: 'rgba(111,207,111,0.3)' }}>

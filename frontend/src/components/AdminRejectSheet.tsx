@@ -53,7 +53,8 @@ export function AdminRejectSheet({ user, onClose, onRejected }: Props) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="adm-sheet-name">Rechazar a {user.display_name || user.email}</div>
             <div className="adm-sheet-meta">
-              El usuario recibirá un email con el motivo.
+              La cuenta queda marcada como rechazada. (El envío automático de
+              email todavía no está implementado en backend.)
             </div>
           </div>
           <button type="button" className="adm-sheet-close" onClick={onClose} aria-label="Cerrar">
@@ -62,7 +63,7 @@ export function AdminRejectSheet({ user, onClose, onRejected }: Props) {
         </div>
 
         <div className="adm-field">
-          <label className="adm-field-label">Motivo</label>
+          <label className="adm-field-label">Motivo (registro interno)</label>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}

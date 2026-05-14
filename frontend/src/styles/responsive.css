@@ -296,9 +296,13 @@ select.adm-input { appearance: none; -webkit-appearance: none; cursor: pointer; 
   .sheet {
     display: block;
     position: fixed;
+    top: auto;
     left: 0; right: 0; bottom: 0;
+    transform: none;
+    width: auto;
     z-index: 90;
     background: var(--bg-2);
+    border: 0;
     border-top: 1px solid var(--line-strong);
     border-radius: 16px 16px 0 0;
     padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);

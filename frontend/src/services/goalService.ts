@@ -2,75 +2,44 @@ import { api } from './apiClient'
 import type {
   AutoRoadmapResponse,
   Goal,
-  GoalStatus,
-  GoalsResponse,
-  NextStepResponse,
   ProposeGoalPayload,
-  SavedRoadmap,
   SingleGoalResponse,
 } from '../types/api'
 
+/** Goals endpoints — aligned strictly with what /api/v3/users/<id>/goals
+ *  actually exposes today:
+ *    - GET    /users/<id>/goals
+ *    - POST   /users/<id>/goals
+ *    - GET    /users/<id>/goals/auto
+ *    - GET    /users/<id>/goals/auto-roadmap
+ *
+ *  The legacy lifecycle (status=proposed/accept/reject/complete/roadmap
+ *  persistence/next-step) was removed because the backend has no schema for
+ *  it (single `activo` boolean) and no endpoints. Callers should treat any
+ *  returned goal as the patient's currently-active goal.
+ */
 export const goalService = {
-  /** GET /users/<id>/goals?status=...
-   *  - With a specific status, the backend returns a single `goal` (or null).
-   *  - With status='all' or omitted, returns `goals[]`. */
+  /** Fetch the patient's active goal (or null if none). */
   getActive(userId: number | string): Promise<SingleGoalResponse> {
-    return api.get<SingleGoalResponse>(`/users/${userId}/goals?status=active`)
-  },
-  getProposed(userId: number | string): Promise<SingleGoalResponse> {
-    return api.get<SingleGoalResponse>(`/users/${userId}/goals?status=proposed`)
-  },
-  list(userId: number | string, status?: GoalStatus | 'all'): Promise<GoalsResponse> {
-    const qs = status ? `?status=${status}` : ''
-    return api.get<GoalsResponse>(`/users/${userId}/goals${qs}`)
-  },
-  history(userId: number | string): Promise<GoalsResponse> {
-    return api.get<GoalsResponse>(`/users/${userId}/goals/history`)
+    return api.get<SingleGoalResponse>(`/users/${userId}/goals`)
   },
 
-  /** Propose a new goal. The backend decides status based on the caller:
-   *  owner/admin → active; specialist → proposed (awaits patient accept). */
-  propose(userId: number | string, payload: ProposeGoalPayload): Promise<{ goal: Goal; message: string }> {
-    return api.post<{ goal: Goal; message: string }>(`/users/${userId}/goals`, payload)
-  },
-
-  accept(userId: number | string, goalId: number): Promise<{ goal_id: number; status: string }> {
-    return api.post<{ goal_id: number; status: string }>(`/users/${userId}/goals/${goalId}/accept`)
-  },
-  reject(userId: number | string, goalId: number, reason?: string): Promise<{ goal_id: number; status: string }> {
-    return api.post<{ goal_id: number; status: string }>(
-      `/users/${userId}/goals/${goalId}/reject`,
-      reason ? { reason } : {},
-    )
-  },
-  complete(userId: number | string, goalId: number): Promise<{ goal_id: number; status: string }> {
-    return api.post<{ goal_id: number; status: string }>(`/users/${userId}/goals/${goalId}/complete`)
-  },
-
-  /** Calcula (en memoria, no persiste) el roadmap multi-fase desde el estado
-   *  actual del paciente hasta el límite genético. */
-  getAutoRoadmap(userId: number | string): Promise<AutoRoadmapResponse> {
-    return api.get<AutoRoadmapResponse>(`/users/${userId}/goals/auto-roadmap`)
-  },
-
-  /** Persiste el roadmap calculado (archiva los anteriores activos del paciente). */
-  saveAutoRoadmap(
-    userId: number | string,
-    payload: AutoRoadmapResponse,
-  ): Promise<{ roadmap_id: number; total_phases: number; active: boolean; patient_id: number }> {
-    return api.post<{ roadmap_id: number; total_phases: number; active: boolean; patient_id: number }>(
-      `/users/${userId}/goals/auto-roadmap/save`,
+  /** Propose (= create-or-update) a goal. Owner/admin/professional all hit
+   *  the same endpoint; whichever role calls it becomes the active goal. */
+  propose(userId: number | string, payload: ProposeGoalPayload): Promise<{ user_id: string; action: 'created' | 'updated' }> {
+    return api.post<{ user_id: string; action: 'created' | 'updated' }>(
+      `/users/${userId}/goals`,
       payload,
     )
   },
 
-  /** Roadmap activo persistido del paciente (con sus fases). */
-  getActiveRoadmap(userId: number | string): Promise<{ roadmap: SavedRoadmap | null }> {
-    return api.get<{ roadmap: SavedRoadmap | null }>(`/users/${userId}/goals/roadmap`)
+  /** Auto-calculated single-shot target (e.g. genetic ceiling). */
+  getAutoTargets(userId: number | string): Promise<{ goal: Goal }> {
+    return api.get<{ goal: Goal }>(`/users/${userId}/goals/auto`)
   },
 
-  /** Próxima fase pendiente del roadmap activo. */
-  getNextStep(userId: number | string): Promise<NextStepResponse> {
-    return api.get<NextStepResponse>(`/users/${userId}/goals/next-step`)
+  /** Multi-phase roadmap calculated on the fly (not persisted server-side). */
+  getAutoRoadmap(userId: number | string): Promise<AutoRoadmapResponse> {
+    return api.get<AutoRoadmapResponse>(`/users/${userId}/goals/auto-roadmap`)
   },
 }
