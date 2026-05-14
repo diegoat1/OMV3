@@ -425,7 +425,7 @@ def optimize_plan_for_patient(
                 SELECT id, patient_id, lift_inputs_json, lifts_results_json, categories_results_json
                 FROM strength_tests
                 WHERE patient_id = ?
-                ORDER BY fecha DESC LIMIT 1
+                ORDER BY fecha DESC , id DESC LIMIT 1
             """, [patient_id])
         row = cur.fetchone()
     finally:
@@ -642,7 +642,7 @@ def get_active_plan(patient_id: int) -> Optional[dict]:
         cur.execute("""
             SELECT * FROM training_plans_v2
             WHERE patient_id = ? AND active = 1
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC , id DESC LIMIT 1
         """, [patient_id])
         r = cur.fetchone()
         return _normalize_plan_row(r) if r else None
@@ -700,7 +700,7 @@ def advance_plan_day(patient_id: int) -> Optional[dict]:
             SELECT id, current_day, total_days, cycle_week
             FROM training_plans_v2
             WHERE patient_id = ? AND active = 1
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC , id DESC LIMIT 1
         """, [patient_id])
         plan = cur.fetchone()
         if not plan:

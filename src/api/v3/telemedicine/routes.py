@@ -13,6 +13,34 @@ import json
 from datetime import datetime
 
 
+# OMV-8: helper de control de rol para escrituras clínicas. Los POST de
+# /records, /situations, /vitals, /body-measurements, /performance/*,
+# /prevention solo pueden ser ejecutados por un profesional asignado o admin
+# (los pacientes auto-reportan vía /checkin, no acá).
+_PROFESSIONAL_ROLES = {'doctor', 'medico', 'médico', 'nutricionista', 'nutritionist', 'entrenador', 'trainer'}
+
+
+def _is_clinical_writer(user) -> bool:
+    """True if the current user can write clinical records (specialist or admin)."""
+    if not user:
+        return False
+    if user.get('is_admin') or user.get('rol') == 'admin':
+        return True
+    parts = {p.strip().lower() for p in (user.get('rol') or '').split(',')}
+    return bool(parts & _PROFESSIONAL_ROLES)
+
+
+def _require_clinical_writer():
+    """Inline guard — returns (response, 403) tuple when blocked, else None."""
+    user = get_current_user()
+    if not _is_clinical_writer(user):
+        return error_response(
+            'Solo profesionales o administradores pueden escribir registros clínicos',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+    return None
+
+
 # ============================================
 # HELPER FUNCTIONS (migrated from legacy)
 # ============================================
@@ -299,6 +327,9 @@ def get_medical_records():
 @telemedicine_bp.route('/records', methods=['POST'])
 @require_auth
 def create_medical_record():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Create a new medical history record."""
     user = get_current_user()
     data = request.get_json() or {}
@@ -561,6 +592,9 @@ def get_situations():
 @telemedicine_bp.route('/situations', methods=['POST'])
 @require_auth
 def create_or_update_situation():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """
     Create or update a clinical situation record.
     If body contains 'id', it updates; otherwise creates.
@@ -688,6 +722,9 @@ def get_vitals():
 @telemedicine_bp.route('/vitals', methods=['POST'])
 @require_auth
 def create_vital_sign():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record new vital signs."""
     user = get_current_user()
     data = request.get_json() or {}
@@ -938,6 +975,9 @@ def get_prevention_programs():
 @telemedicine_bp.route('/prevention', methods=['POST'])
 @require_auth
 def create_prevention_program():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Create a new prevention program."""
     user = get_current_user()
     user_dni = user.get('dni') or user['nombre_apellido']
@@ -1026,6 +1066,9 @@ def get_body_measurements():
 @telemedicine_bp.route('/body-measurements', methods=['POST'])
 @require_auth
 def create_body_measurement():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record new body measurements."""
     return _generic_performance_post('MEDIDAS_CORPORALES', 'legacy', 'Medidas registradas')
 
@@ -1040,6 +1083,9 @@ def get_speed_tests():
 @telemedicine_bp.route('/performance/speed', methods=['POST'])
 @require_auth
 def create_speed_test():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record a new speed test."""
     return _generic_performance_post('RENDIMIENTO_VELOCIDAD', 'legacy', 'Prueba de velocidad registrada')
 
@@ -1054,6 +1100,9 @@ def get_flexibility_tests():
 @telemedicine_bp.route('/performance/flexibility', methods=['POST'])
 @require_auth
 def create_flexibility_test():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record a new flexibility test."""
     return _generic_performance_post('RENDIMIENTO_FLEXIBILIDAD', 'legacy', 'Prueba de flexibilidad registrada')
 
@@ -1068,6 +1117,9 @@ def get_mobility_tests():
 @telemedicine_bp.route('/performance/mobility', methods=['POST'])
 @require_auth
 def create_mobility_test():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record a new mobility test."""
     return _generic_performance_post('RENDIMIENTO_MOVILIDAD', 'legacy', 'Evaluación de movilidad registrada')
 
@@ -1082,6 +1134,9 @@ def get_endurance_tests():
 @telemedicine_bp.route('/performance/endurance', methods=['POST'])
 @require_auth
 def create_endurance_test():
+    _guard = _require_clinical_writer()
+    if _guard is not None:
+        return _guard
     """Record a new endurance test."""
     return _generic_performance_post('RENDIMIENTO_RESISTENCIA', 'telemed', 'Prueba de resistencia registrada')
 

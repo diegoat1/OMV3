@@ -104,7 +104,7 @@ def _clinical_has_patients():
         return False
 
 
-def resolve_patient_id(user_id_or_name):
+def resolve_patient_id(user_id_or_name, auto_create=False):
     """
     Resolves any user identifier (auth.db numeric ID, DNI, nombre_apellido)
     into a dict with {patient_id, dni, nombre}.
@@ -116,6 +116,12 @@ def resolve_patient_id(user_id_or_name):
     4. Try clinical.db: direct patient_id (last resort — IDs may collide with auth.db)
     5. FALLBACK: legacy Basededatos (safety net)
 
+    Args:
+        user_id_or_name: auth user_id, DNI, or nombre.
+        auto_create: si True, cuando el usuario está vinculado en auth.db pero no
+            tiene fila en clinical.db.patients, se la crea (OMV-89). Si tampoco hay
+            datos en legacy, igual se crea con el `display_name` de auth.db.
+
     Returns dict {patient_id, dni, nombre} or None.
     """
     if not user_id_or_name:
@@ -123,6 +129,7 @@ def resolve_patient_id(user_id_or_name):
 
     uid = str(user_id_or_name).strip()
     resolved_dni = None
+    auth_display_name = None
 
     try:
         conn = get_clinical_connection(sqlite3.Row)
@@ -132,47 +139,76 @@ def resolve_patient_id(user_id_or_name):
         try:
             auth_conn = get_auth_connection(sqlite3.Row)
             auth_cursor = auth_conn.cursor()
-            auth_cursor.execute("SELECT patient_dni FROM patient_user_link WHERE user_id = ?", [uid])
+            auth_cursor.execute(
+                "SELECT l.patient_dni, u.display_name "
+                "FROM patient_user_link l JOIN users u ON u.id = l.user_id "
+                "WHERE l.user_id = ?",
+                [uid],
+            )
             link = auth_cursor.fetchone()
             auth_conn.close()
             if link:
                 resolved_dni = str(link[0])
+                auth_display_name = link[1]
         except Exception:
             pass
 
         if resolved_dni:
             cursor.execute("SELECT id, dni, nombre FROM patients WHERE dni = ?", [resolved_dni])
             row = cursor.fetchone()
+            conn.close()
+            if row:
+                return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
+            # SEGURIDAD: si auth.db resolvió un DNI pero no hay fila clínica, NO
+            # caer a lookups por "uid" como nombre / dni / id, porque uid es un
+            # auth.db user_id que puede colisionar con un patients.id arbitrario
+            # (caso real: user_id=66 → otro paciente con patient_id=66 ≠ Oliver).
+            # Saltar directo al fallback legacy + auto-provisión de abajo.
+
+        else:
+            # uid es un identificador externo (nombre, DNI o patient_id)
+            # 2. Try as nombre (NOMBRE_APELLIDO) — used by dashboard endpoint
+            cursor.execute("SELECT id, dni, nombre FROM patients WHERE nombre = ?", [uid])
+            row = cursor.fetchone()
             if row:
                 conn.close()
                 return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
 
-        # 2. Try as nombre (NOMBRE_APELLIDO) — used by dashboard endpoint
-        cursor.execute("SELECT id, dni, nombre FROM patients WHERE nombre = ?", [uid])
-        row = cursor.fetchone()
-        if row:
-            conn.close()
-            return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
+            # 3. Try as DNI
+            cursor.execute("SELECT id, dni, nombre FROM patients WHERE dni = ?", [uid])
+            row = cursor.fetchone()
+            if row:
+                conn.close()
+                return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
 
-        # 3. Try as DNI
-        cursor.execute("SELECT id, dni, nombre FROM patients WHERE dni = ?", [uid])
-        row = cursor.fetchone()
-        if row:
+            # 4. Direct patient_id (último recurso — solo si NO había DNI resuelto vía auth)
+            cursor.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [uid])
+            row = cursor.fetchone()
             conn.close()
-            return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
-
-        # 4. Direct patient_id (last — avoids auth.db ID collision)
-        cursor.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [uid])
-        row = cursor.fetchone()
-        conn.close()
-        if row:
-            return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
+            if row:
+                return {'patient_id': row[0], 'dni': row[1], 'nombre': row[2]}
 
     except Exception:
         pass
 
     # 5. FALLBACK: legacy Basededatos (safety net if clinical.db is somehow empty)
-    return _resolve_patient_legacy(uid, resolved_dni)
+    legacy = _resolve_patient_legacy(uid, resolved_dni)
+    if legacy:
+        return legacy
+
+    # 6. AUTO-PROVISION (OMV-89): el paciente está válidamente registrado en auth.db
+    # pero nunca se creó su fila clínica. Si auto_create=True, la creamos ahora.
+    if auto_create and resolved_dni:
+        nombre_para_crear = auth_display_name or f'Usuario {uid}'
+        new_patient_id = _ensure_clinical_patient(resolved_dni, nombre_para_crear)
+        if new_patient_id:
+            return {
+                'patient_id': new_patient_id,
+                'dni': resolved_dni,
+                'nombre': nombre_para_crear,
+            }
+
+    return None
 
 
 def _ensure_clinical_patient(dni, nombre):

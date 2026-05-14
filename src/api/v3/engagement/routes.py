@@ -470,7 +470,7 @@ def get_insights():
         cursor.execute("""
             SELECT CALORIAS, PROTEINA, GRASA, CH, FECHA_CREACION
             FROM DIETA WHERE NOMBRE_APELLIDO = ?
-            ORDER BY FECHA_CREACION DESC LIMIT 1
+            ORDER BY FECHA_CREACION DESC , id DESC LIMIT 1
         """, [user['nombre_apellido']])
         dieta = cursor.fetchone()
 

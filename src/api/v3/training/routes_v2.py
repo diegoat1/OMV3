@@ -320,7 +320,7 @@ def v2_create_plan():
 
         # Insert new plan
         source_strength = None
-        cursor.execute("SELECT id FROM strength_tests WHERE patient_id = ? ORDER BY fecha DESC LIMIT 1",
+        cursor.execute("SELECT id FROM strength_tests WHERE patient_id = ? ORDER BY fecha DESC , id DESC LIMIT 1",
                        [patient['patient_id']])
         st = cursor.fetchone()
         if st:
@@ -1048,7 +1048,7 @@ def _generate_weakness_plan(cursor, patient_id, total_days, ex_per_day, all_exer
     cursor.execute("""
         SELECT categories_results_json, lifts_results_json
         FROM strength_tests WHERE patient_id = ?
-        ORDER BY fecha DESC LIMIT 1
+        ORDER BY fecha DESC , id DESC LIMIT 1
     """, [patient_id])
     st = cursor.fetchone()
 

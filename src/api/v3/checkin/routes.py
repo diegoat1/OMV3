@@ -5,7 +5,7 @@ CHECKIN Routes - Daily health check-in, symptoms by system, Health Index
 from flask import request
 from . import checkin_bp
 from ..common.responses import success_response, error_response, ErrorCodes
-from ..common.auth import require_auth, get_current_user
+from ..common.auth import require_auth, get_current_user, check_patient_access
 from ..common.database import get_clinical_connection, resolve_patient_id
 import sqlite3
 import json
@@ -381,7 +381,7 @@ def _calculate_and_save_health_index(patient_id, fecha_str):
     # --- 1. Composicion corporal (35%) ---
     cursor.execute("""
         SELECT score_ffmi, score_bf FROM measurements
-        WHERE patient_id = ? ORDER BY fecha DESC LIMIT 1
+        WHERE patient_id = ? ORDER BY fecha DESC , id DESC LIMIT 1
     """, [patient_id])
     meas = cursor.fetchone()
     if meas and meas['score_ffmi'] is not None and meas['score_bf'] is not None:
@@ -397,7 +397,7 @@ def _calculate_and_save_health_index(patient_id, fecha_str):
     # --- 2. Perimetro cintura (20%) ---
     cursor.execute("""
         SELECT circ_abdomen, circ_cintura FROM measurements
-        WHERE patient_id = ? ORDER BY fecha DESC LIMIT 1
+        WHERE patient_id = ? ORDER BY fecha DESC , id DESC LIMIT 1
     """, [patient_id])
     circ = cursor.fetchone()
     cursor.execute("SELECT sexo FROM patients WHERE id = ?", [patient_id])
@@ -548,3 +548,112 @@ def _calculate_and_save_health_index(patient_id, fecha_str):
         'comp_digestivo': comp_digestivo,
         'comp_habitos': comp_habitos,
     }
+
+
+@checkin_bp.route('/patient-summary', methods=['GET'])
+@require_auth
+def patient_summary():
+    """
+    Consolidated weekly summary for the professional. Returns last checkin,
+    last 7 daily-logs, last measurement, active goal, and health-index trend
+    in a single round-trip.
+
+    Query params:
+        - patient: display_name (required when the caller is not the patient)
+        - days:    window for trend/logs (default 7)
+    """
+    user = get_current_user()
+    target_name = request.args.get('patient') or user.get('nombre_apellido')
+    days = request.args.get('days', 7, type=int)
+    days = max(1, min(60, days))
+
+    if target_name != user.get('nombre_apellido'):
+        if not check_patient_access(user, target_name):
+            return error_response('No tenés permisos sobre este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+
+    pat = resolve_patient_id(target_name)
+    if not pat:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    pid = pat['patient_id']
+    out = {
+        'patient': {'nombre': pat['nombre'], 'patient_id': pid, 'dni': pat.get('dni')},
+        'last_checkin': None,
+        'last_measurement': None,
+        'active_goal': None,
+        'health_index_today': None,
+        'health_index_trend': [],
+        'daily_logs': [],
+    }
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM daily_checkins
+            WHERE patient_id = ?
+            ORDER BY fecha DESC, id DESC LIMIT 1
+        """, [pid])
+        row = cursor.fetchone()
+        if row:
+            out['last_checkin'] = dict(row)
+
+        cursor.execute("""
+            SELECT * FROM measurements
+            WHERE patient_id = ?
+            ORDER BY fecha DESC, id DESC LIMIT 1
+        """, [pid])
+        row = cursor.fetchone()
+        if row:
+            out['last_measurement'] = dict(row)
+
+        cursor.execute("""
+            SELECT * FROM goals
+            WHERE patient_id = ? AND activo = 1
+            ORDER BY id DESC LIMIT 1
+        """, [pid])
+        row = cursor.fetchone()
+        if row:
+            out['active_goal'] = dict(row)
+
+        # health index trend (last N days)
+        try:
+            cursor.execute("""
+                SELECT fecha, score, comp_corporal, comp_cintura, comp_actividad,
+                       comp_sueno, comp_recuperacion, comp_digestivo, comp_habitos
+                FROM health_index_history
+                WHERE patient_id = ?
+                ORDER BY fecha DESC LIMIT ?
+            """, [pid, days])
+            trend = [dict(r) for r in cursor.fetchall()]
+            trend.reverse()
+            out['health_index_trend'] = trend
+            if trend:
+                out['health_index_today'] = trend[-1]
+        except Exception:
+            pass
+
+        # last N daily logs (summary rows)
+        try:
+            cursor.execute("""
+                SELECT fecha, meals_completed, meals_total,
+                       total_p, total_g, total_c, total_cal,
+                       target_p, target_g, target_c, target_cal,
+                       daily_score
+                FROM nutrition_daily_summary
+                WHERE patient_id = ?
+                ORDER BY fecha DESC LIMIT ?
+            """, [pid, days])
+            logs = [dict(r) for r in cursor.fetchall()]
+            logs.reverse()
+            out['daily_logs'] = logs
+        except Exception:
+            pass
+
+        conn.close()
+        return success_response(out)
+    except Exception as e:
+        return error_response(f'Error armando resumen: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)

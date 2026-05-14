@@ -1514,12 +1514,31 @@ def solve_meal():
         )
 
     # Call solver — Fix 18 — OMV-52: wrapper local
-    resultado = _v3_solve_meal(
-        alimentos=all_alimentos,
-        objetivo=objetivo,
-        libertad=libertad_val,
-        dependencias=all_dependencias if all_dependencias else None,
-    )
+    try:
+        resultado = _v3_solve_meal(
+            alimentos=all_alimentos,
+            objetivo=objetivo,
+            libertad=libertad_val,
+            dependencias=all_dependencias if all_dependencias else None,
+        )
+    except Exception as e:
+        return error_response(
+            f'El solver falló: {e}',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500,
+        )
+
+    # OMV-3: si el solver no encontró solución factible, devolver 422 con
+    # detalle utilizable por el cliente (sugerir aumentar `libertad` o agregar
+    # alimentos), en vez de un payload silencioso con valores cero.
+    status = (resultado.get('status') if isinstance(resultado, dict) else None) or ''
+    if isinstance(status, str) and status.lower() in {'infeasible', 'unbounded', 'undefined', 'not solved'}:
+        return error_response(
+            f'No hay solución factible para los macros pedidos (solver status={status}). '
+            f'Probá aumentar `libertad` ({libertad_val}%) o agregar más alimentos.',
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=422,
+            details={'solver_status': status, 'libertad': libertad_val, 'objetivo': objetivo},
+        )
 
     return success_response(resultado)
 
@@ -2602,7 +2621,7 @@ def auto_calculate_plan():
             FROM measurements m
             JOIN patients p ON m.patient_id = p.id
             WHERE m.patient_id = ?
-            ORDER BY m.fecha DESC LIMIT 1
+            ORDER BY m.fecha DESC, id DESC LIMIT 1
         """, [patient['patient_id']])
 
         datos = cursor.fetchone()
@@ -3692,6 +3711,43 @@ def save_daily_log():
         _ensure_daily_log_tables(conn)
         cursor = conn.cursor()
 
+        # OMV-66: exigir plan nutricional activo + OMV-64: targets vienen del
+        # plan, no del cliente. Esto evita logs huérfanos y manipulación de
+        # objetivos a través del payload.
+        cursor.execute("""
+            SELECT id, proteina, grasa, carbohidratos, calorias,
+                   desayuno_p, desayuno_g, desayuno_c,
+                   media_man_p, media_man_g, media_man_c,
+                   almuerzo_p, almuerzo_g, almuerzo_c,
+                   merienda_p, merienda_g, merienda_c,
+                   media_tar_p, media_tar_g, media_tar_c,
+                   cena_p, cena_g, cena_c
+            FROM nutrition_plans
+            WHERE patient_id = ?
+            ORDER BY id DESC LIMIT 1
+        """, [patient['patient_id']])
+        plan_row = cursor.fetchone()
+        if not plan_row:
+            conn.close()
+            return error_response(
+                'El paciente no tiene un plan nutricional activo. Definí uno antes de registrar logs.',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+            )
+        plan = dict(plan_row)
+
+        # Mapeo meal_key → (col_p, col_g, col_c) — porcentajes 0..1 del plan
+        _meal_cols = {
+            'desayuno':     ('desayuno_p', 'desayuno_g', 'desayuno_c'),
+            'media_manana': ('media_man_p', 'media_man_g', 'media_man_c'),
+            'almuerzo':     ('almuerzo_p', 'almuerzo_g', 'almuerzo_c'),
+            'merienda':     ('merienda_p', 'merienda_g', 'merienda_c'),
+            'media_tarde':  ('media_tar_p', 'media_tar_g', 'media_tar_c'),
+            'cena':         ('cena_p', 'cena_g', 'cena_c'),
+        }
+        plan_p = plan.get('proteina') or 0
+        plan_g = plan.get('grasa') or 0
+        plan_c = plan.get('carbohidratos') or 0
+
         saved_meals = []
         for meal in meals:
             meal_key = meal.get('meal_key')
@@ -3703,9 +3759,14 @@ def save_daily_log():
             total_g = meal.get('total_g', 0) or 0
             total_c = meal.get('total_c', 0) or 0
             total_cal = meal.get('total_cal', 0) or 0
-            target_p = meal.get('target_p', 0) or 0
-            target_g = meal.get('target_g', 0) or 0
-            target_c = meal.get('target_c', 0) or 0
+            # OMV-64: target_* del plan, ignorando lo que mande el cliente.
+            cols = _meal_cols.get(meal_key)
+            if cols:
+                target_p = round(plan_p * (plan.get(cols[0]) or 0), 1)
+                target_g = round(plan_g * (plan.get(cols[1]) or 0), 1)
+                target_c = round(plan_c * (plan.get(cols[2]) or 0), 1)
+            else:
+                target_p = target_g = target_c = 0
 
             meal_score = _calc_meal_score(total_p, total_g, total_c, target_p, target_g, target_c) if completed else 0
 

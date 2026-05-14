@@ -441,3 +441,86 @@ def get_me():
             code=ErrorCodes.INTERNAL_ERROR,
             status_code=500
         )
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@require_auth
+def change_password():
+    """
+    Change the authenticated user's password.
+
+    Body: { "current_password": "...", "new_password": "..." }
+    Validates the current password (bcrypt) before re-hashing the new one.
+    """
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    current = (data.get('current_password') or '').strip()
+    new = (data.get('new_password') or '').strip()
+
+    if not current or not new:
+        return error_response(
+            'current_password y new_password son requeridos',
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400,
+        )
+    if len(new) < 8:
+        return error_response(
+            'La nueva contraseña debe tener al menos 8 caracteres',
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400,
+        )
+    if current == new:
+        return error_response(
+            'La nueva contraseña debe ser distinta a la actual',
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400,
+        )
+
+    try:
+        conn = get_auth_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, password_hash FROM users WHERE id = ?", [user['user_id']])
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        stored_hash = dict(row)['password_hash']
+        if not bcrypt.checkpw(current.encode('utf-8'), stored_hash.encode('utf-8')):
+            conn.close()
+            return error_response(
+                'La contraseña actual no es correcta',
+                code=ErrorCodes.UNAUTHORIZED,
+                status_code=401,
+            )
+
+        new_hash = bcrypt.hashpw(new.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", [new_hash, user['user_id']])
+        conn.commit()
+        conn.close()
+
+        try:
+            _log_audit_safe(user['user_id'], user.get('nombre_apellido', ''), 'password_changed',
+                            'Cambio de contraseña', request.remote_addr)
+        except Exception:
+            pass
+
+        return success_response({'changed': True}, message='Contraseña actualizada.')
+    except Exception as e:
+        return error_response(f'Error: {e}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+def _log_audit_safe(user_id, user_name, action, details, ip):
+    """Best-effort audit log write — never raises into the caller."""
+    try:
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO audit_log (user_id, user_name, action, details, ip_address, created_at)
+               VALUES (?, ?, ?, ?, ?, datetime('now'))""",
+            [user_id, user_name, action, details, ip or ''],
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass

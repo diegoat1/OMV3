@@ -207,14 +207,14 @@ def get_user_detail(user_id):
         cursor.execute("""
             SELECT * FROM measurements 
             WHERE patient_id = ?
-            ORDER BY fecha DESC LIMIT 1
+            ORDER BY fecha DESC , id DESC LIMIT 1
         """, [patient_id])
         perfil_dinamico = cursor.fetchone()
         
         # Plan nutricional
         cursor.execute("""
             SELECT * FROM nutrition_plans WHERE patient_id = ?
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC , id DESC LIMIT 1
         """, [patient_id])
         dieta = cursor.fetchone()
         
@@ -391,7 +391,7 @@ def list_tables():
 def get_table_data(table_name):
     """
     Obtiene los datos de una tabla específica.
-    
+
     Query Params:
         page: Página
         per_page: Items por página
@@ -400,9 +400,16 @@ def get_table_data(table_name):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     database = request.args.get('database', 'main')
-    
-    # Validar nombre de tabla (prevenir SQL injection)
-    if not table_name.replace('_', '').isalnum():
+
+    # OMV-4: nombre de tabla debe ser un identificador SQL puro Y existir en
+    # sqlite_master con prefix seguro (no `sqlite_*` internals, no nombres
+    # vacíos). El check `isalnum` original dejaba pasar `sqlite_master` y
+    # cualquier tabla del sistema; ahora bloqueamos prefix `sqlite_`.
+    if (
+        not table_name
+        or not table_name.replace('_', '').isalnum()
+        or table_name.lower().startswith('sqlite_')
+    ):
         return error_response(
             'Nombre de tabla inválido',
             code=ErrorCodes.VALIDATION_ERROR,
@@ -493,15 +500,19 @@ def update_table_row(table_name, row_id):
             status_code=400
         )
     
-    # Validar nombres (prevenir SQL injection)
-    if not table_name.replace('_', '').isalnum():
+    # OMV-4: validar nombres + bloquear sqlite_* y nombres vacíos.
+    if (
+        not table_name
+        or not table_name.replace('_', '').isalnum()
+        or table_name.lower().startswith('sqlite_')
+    ):
         return error_response(
             'Nombre de tabla inválido',
             code=ErrorCodes.VALIDATION_ERROR,
             status_code=400
         )
-    
-    if not column.replace('_', '').isalnum():
+
+    if not column or not column.replace('_', '').isalnum():
         return error_response(
             'Nombre de columna inválido',
             code=ErrorCodes.VALIDATION_ERROR,
@@ -563,14 +574,19 @@ def export_table(table_name):
     Exporta una tabla completa en formato JSON.
     """
     database = request.args.get('database', 'main')
-    
-    if not table_name.replace('_', '').isalnum():
+
+    # OMV-4: bloquear nombres no-identificador, vacíos y tablas internas sqlite_*.
+    if (
+        not table_name
+        or not table_name.replace('_', '').isalnum()
+        or table_name.lower().startswith('sqlite_')
+    ):
         return error_response(
             'Nombre de tabla inválido',
             code=ErrorCodes.VALIDATION_ERROR,
             status_code=400
         )
-    
+
     try:
         if database == 'telemedicina':
             conn = get_telemed_connection(sqlite3.Row)
@@ -578,9 +594,16 @@ def export_table(table_name):
             conn = get_clinical_connection(sqlite3.Row)
         else:
             conn = get_db_connection(sqlite3.Row)
-        
+
         cursor = conn.cursor()
-        
+
+        # Verificar que la tabla existe (segunda barrera contra SQLi).
+        cursor.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?", [table_name])
+        if not cursor.fetchone():
+            conn.close()
+            return error_response('Tabla no encontrada',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+
         cursor.execute(f"SELECT * FROM {table_name}")
         rows = [dict(row) for row in cursor.fetchall()]
         

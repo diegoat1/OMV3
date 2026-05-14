@@ -33,4 +33,11 @@ export const authService = {
     tokenStore.set(data.token)
     return data.user
   },
+  /** Change the current user's password. Requires the old password. */
+  changePassword(currentPassword: string, newPassword: string): Promise<{ changed: true }> {
+    return api.post<{ changed: true }>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+  },
 }

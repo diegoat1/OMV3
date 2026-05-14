@@ -327,7 +327,7 @@ def get_body_composition():
             FROM measurements m
             JOIN patients p ON m.patient_id = p.id
             WHERE m.patient_id = ?
-            ORDER BY m.fecha DESC LIMIT 1
+            ORDER BY m.fecha DESC, id DESC LIMIT 1
         """, [patient['patient_id']])
         
         medicion = cursor.fetchone()

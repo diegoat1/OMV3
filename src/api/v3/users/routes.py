@@ -95,7 +95,7 @@ def get_user(user_id):
         cursor.execute("""
             SELECT * FROM measurements 
             WHERE patient_id = ?
-            ORDER BY fecha DESC LIMIT 1
+            ORDER BY fecha DESC , id DESC LIMIT 1
         """, [patient_id])
         
         perfil_dinamico = cursor.fetchone()
@@ -730,158 +730,548 @@ def delete_measurement(user_id, measurement_id):
 
 
 # ============================================
-# OBJETIVOS
+# OBJETIVOS — lifecycle propose → accept/reject → complete/archive (Fix 13)
 # ============================================
+#
+# Estados (`status`):
+#   proposed   — cargado por el profesional, esperando que el paciente acepte
+#   accepted   — aceptado (activo). Solo uno por paciente a la vez.
+#   rejected   — el paciente lo rechazó (terminal)
+#   completed  — alcanzado (terminal). Marca completed_at.
+#   archived   — reemplazado por uno nuevo (terminal). Marca archived_at.
+#
+# Origen (`source`):
+#   manual         — escrito a mano por el profesional
+#   auto-accepted  — propuesta del sistema aceptada sin cambios
+#   auto-modified  — propuesta del sistema editada antes de guardar
+# ============================================
+
+# Campos REST → columnas clinical.db.goals
+_GOAL_FIELD_MAP = {
+    'peso_objetivo': 'goal_peso',
+    'bf_objetivo': 'goal_bf',
+    'ffmi_objetivo': 'goal_ffmi',
+    'circ_abdomen_objetivo': 'goal_abdomen',
+    'circ_cintura_objetivo': 'goal_cintura',
+    'circ_cadera_objetivo': 'goal_cadera',
+    'circ_hombro_objetivo': 'goal_hombro',
+    'circ_pecho_objetivo': 'goal_pecho',
+    'circ_brazo_objetivo': 'goal_brazo',
+    'circ_antebrazo_objetivo': 'goal_antebrazo',
+    'circ_muslo_objetivo': 'goal_muslo',
+    'circ_pantorrilla_objetivo': 'goal_pantorrilla',
+    'tiempo_estimado_meses': 'tiempo_estimado_meses',
+    'fecha_objetivo': 'fecha_objetivo',
+    'notas': 'notas',
+    'source_roadmap_id': 'source_roadmap_id',
+    'source_phase_index': 'source_phase_index',
+}
+
+_GOAL_VALID_STATUS = {'proposed', 'accepted', 'rejected', 'completed', 'archived'}
+_GOAL_VALID_SOURCE = {'manual', 'auto-accepted', 'auto-modified'}
+
+
+def _resolve_patient_for_goals(user_id):
+    """Resuelve el paciente con auto_create=True (OMV-89). Devuelve (patient_dict, error_response|None)."""
+    patient = resolve_patient_id(user_id, auto_create=True)
+    if not patient:
+        return None, error_response(
+            'Usuario no encontrado',
+            code=ErrorCodes.NOT_FOUND,
+            status_code=404,
+        )
+    return patient, None
+
+
+def _patient_auth_user_id(dni):
+    """Devuelve el auth.db user_id vinculado a este DNI, o None."""
+    try:
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM patient_user_link WHERE patient_dni = ?", [str(dni)])
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
+def _archive_active_goals(cursor, patient_id, exclude_id=None):
+    """
+    Marca como archivados los goals activos (status proposed o accepted) del paciente.
+    Usado por POST /goals para no perder histórico al crear uno nuevo (OMV-39).
+    """
+    sql = (
+        "UPDATE goals SET status='archived', activo=0, "
+        "archived_at=datetime('now','localtime'), updated_at=datetime('now','localtime') "
+        "WHERE patient_id = ? AND status IN ('proposed','accepted')"
+    )
+    params = [patient_id]
+    if exclude_id is not None:
+        sql += " AND id != ?"
+        params.append(exclude_id)
+    cursor.execute(sql, params)
+    return cursor.rowcount
+
+
+def _compute_fecha_objetivo(tiempo_meses, base_fecha=None):
+    """Devuelve fecha_objetivo (YYYY-MM-DD) sumando `tiempo_meses` a base_fecha (default: hoy)."""
+    if tiempo_meses is None:
+        return None
+    try:
+        meses = float(tiempo_meses)
+    except (TypeError, ValueError):
+        return None
+    if meses <= 0:
+        return None
+    base = base_fecha or datetime.now()
+    delta = timedelta(days=meses * 30.44)
+    return (base + delta).date().isoformat()
+
+
+def _serialize_goal(goal_row):
+    """Convierte una fila sqlite de goals a dict serializable."""
+    if goal_row is None:
+        return None
+    return dict(goal_row)
+
 
 @users_bp.route('/<user_id>/goals', methods=['GET'])
 @require_owner_or_admin
 def get_goals(user_id):
     """
-    Obtiene los objetivos del usuario.
+    Obtiene el objetivo activo del usuario.
+
+    Query params:
+        status: filtra por status (default: 'accepted'). Use 'proposed' para ver
+                propuestas del profesional pendientes de aceptación.
+        include_pending: si '1' o 'true', incluye también el goal 'proposed' además del 'accepted'.
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
-    
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    status_filter = request.args.get('status', 'accepted').strip().lower()
+    include_pending = request.args.get('include_pending', '').lower() in ('1', 'true', 'yes')
+
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        # Obtener paciente
-        cursor.execute("SELECT id FROM patients WHERE dni = ?", [resolved_dni])
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return error_response(
-                'Usuario no encontrado',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
+
+        cursor.execute(
+            "SELECT * FROM goals WHERE patient_id = ? AND status = ? "
+            "ORDER BY created_at DESC LIMIT 1",
+            [patient['patient_id'], status_filter],
+        )
+        active = _serialize_goal(cursor.fetchone())
+
+        pending = None
+        if include_pending and status_filter != 'proposed':
+            cursor.execute(
+                "SELECT * FROM goals WHERE patient_id = ? AND status = 'proposed' "
+                "ORDER BY created_at DESC LIMIT 1",
+                [patient['patient_id']],
             )
-        
-        patient_id = user[0]
-        
-        cursor.execute("SELECT * FROM goals WHERE patient_id = ? AND activo = 1", [patient_id])
-        goal = cursor.fetchone()
+            pending = _serialize_goal(cursor.fetchone())
+
         conn.close()
-        
-        return success_response({
+
+        payload = {
             'user_id': user_id,
-            'goal': dict(goal) if goal else None
-        })
-        
+            'patient_id': patient['patient_id'],
+            'goal': active,
+        }
+        if include_pending:
+            payload['proposed'] = pending
+        return success_response(payload)
+
     except Exception as e:
         return error_response(
             f'Error obteniendo objetivos: {str(e)}',
             code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            status_code=500,
         )
 
 
 @users_bp.route('/<user_id>/goals', methods=['POST'])
 @require_owner_or_admin
-def create_or_update_goal(user_id):
+def create_goal(user_id):
     """
-    Crea o actualiza el objetivo del usuario.
-    
-    Request Body:
-        {
-            "peso_objetivo": 70,
-            "bf_objetivo": 12,
-            "ffmi_objetivo": 22,
-            "circ_abdomen_objetivo": 80,
-            "circ_cintura_objetivo": 75,
-            "circ_cadera_objetivo": 90
-        }
+    Crea un objetivo nuevo (siempre INSERT — OMV-39 sin pisar histórico).
+
+    Lifecycle:
+      - Si quien postea es el paciente mismo → status default = 'accepted'
+      - Si quien postea es admin/profesional asignado → status default = 'proposed'
+      - El body puede sobreescribir con `status` explícito ('proposed'|'accepted').
+
+    Request Body (todos opcionales salvo notar):
+        peso_objetivo, bf_objetivo, ffmi_objetivo,
+        circ_{abdomen|cintura|cadera|hombro|pecho|brazo|antebrazo|muslo|pantorrilla}_objetivo,
+        tiempo_estimado_meses, fecha_objetivo, notas,
+        status ('proposed'|'accepted'),
+        source ('manual'|'auto-accepted'|'auto-modified'),
+        source_roadmap_id, source_phase_index
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
-    
-    data = request.get_json() or {}
-    
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    current = get_current_user() or {}
+    poster_user_id = current.get('user_id')
+
+    # Determinar status default según quien postea
+    patient_auth_uid = _patient_auth_user_id(patient['dni'])
+    poster_is_patient = (
+        poster_user_id is not None
+        and patient_auth_uid is not None
+        and str(poster_user_id) == str(patient_auth_uid)
+    )
+    default_status = 'accepted' if poster_is_patient else 'proposed'
+    status = (data.get('status') or default_status).strip().lower()
+    if status not in {'proposed', 'accepted'}:
+        return error_response(
+            f"status debe ser 'proposed' o 'accepted' al crear (got: {status})",
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400,
+        )
+
+    source = (data.get('source') or data.get('tipo') or 'manual').strip().lower()
+    # Mapeo legacy: tipo='auto' (sin más detalle) → 'auto-accepted'
+    if source == 'auto':
+        source = 'auto-accepted'
+    if source not in _GOAL_VALID_SOURCE:
+        return error_response(
+            f"source inválido: {source}. Permitidos: {sorted(_GOAL_VALID_SOURCE)}",
+            code=ErrorCodes.VALIDATION_ERROR,
+            status_code=400,
+        )
+
+    # Derivar fecha_objetivo si no vino y sí vino tiempo_estimado_meses
+    tiempo_meses = data.get('tiempo_estimado_meses')
+    fecha_objetivo = data.get('fecha_objetivo') or _compute_fecha_objetivo(tiempo_meses)
+
+    # Construir map de columnas a insertar
+    cols = {
+        'patient_id': patient['patient_id'],
+        'status': status,
+        'source': source,
+        'tipo': 'auto' if source.startswith('auto') else 'manual',  # legacy mirror
+        'activo': 1 if status == 'accepted' else 0,
+        'created_by_user_id': poster_user_id,
+        'fecha_objetivo': fecha_objetivo,
+    }
+    if status == 'accepted':
+        cols['accepted_by_user_id'] = poster_user_id
+
+    for body_key, db_col in _GOAL_FIELD_MAP.items():
+        if body_key in data:
+            cols[db_col] = data[body_key]
+    # tiempo_estimado_meses ya viene en el map; reasignar para asegurar
+    if tiempo_meses is not None:
+        cols['tiempo_estimado_meses'] = tiempo_meses
+
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        # Obtener paciente
-        cursor.execute("SELECT id FROM patients WHERE dni = ?", [resolved_dni])
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return error_response(
-                'Usuario no encontrado',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
+
+        # Encontrar previous active para encadenar
+        cursor.execute(
+            "SELECT id FROM goals WHERE patient_id = ? AND status IN ('proposed','accepted') "
+            "ORDER BY created_at DESC LIMIT 1",
+            [patient['patient_id']],
+        )
+        prev = cursor.fetchone()
+        if prev:
+            cols['previous_goal_id'] = prev['id']
+
+        # Si el nuevo es 'accepted' → archivar prior activos (OMV-39)
+        if status == 'accepted':
+            _archive_active_goals(cursor, patient['patient_id'])
+
+        # Si el nuevo es 'proposed' → archivar otra propuesta abierta del mismo paciente
+        # (no archiva el accepted vigente; puede convivir hasta que el paciente decida)
+        elif status == 'proposed':
+            cursor.execute(
+                "UPDATE goals SET status='archived', activo=0, "
+                "archived_at=datetime('now','localtime'), updated_at=datetime('now','localtime') "
+                "WHERE patient_id = ? AND status = 'proposed'",
+                [patient['patient_id']],
             )
-        
-        patient_id = user[0]
-        
-        # Verificar si ya existe objetivo activo
-        cursor.execute("SELECT id FROM goals WHERE patient_id = ? AND activo = 1", [patient_id])
-        existing = cursor.fetchone()
-        
-        # Map request fields to clinical.db column names
-        field_map = {
-            'peso_objetivo': 'goal_peso', 'bf_objetivo': 'goal_bf',
-            'ffmi_objetivo': 'goal_ffmi',
-            'circ_abdomen_objetivo': 'goal_abdomen',
-            'circ_cintura_objetivo': 'goal_cintura',
-            'circ_cadera_objetivo': 'goal_cadera',
-            'notas': 'notas',
-            'tipo': 'tipo',
-        }
 
-        if existing:
-            # Actualizar
-            fields = ["updated_at = datetime('now', 'localtime')"]
-            values = []
+        col_names = list(cols.keys())
+        placeholders = ', '.join('?' * len(col_names))
+        sql = f"INSERT INTO goals ({', '.join(col_names)}) VALUES ({placeholders})"
+        cursor.execute(sql, [cols[c] for c in col_names])
+        new_id = cursor.lastrowid
 
-            for key, value in data.items():
-                if value is not None and key in field_map:
-                    fields.append(f"{field_map[key]} = ?")
-                    values.append(value)
+        cursor.execute("SELECT * FROM goals WHERE id = ?", [new_id])
+        new_goal = _serialize_goal(cursor.fetchone())
 
-            values.append(existing[0])
-            cursor.execute(f"""
-                UPDATE goals
-                SET {', '.join(fields)}
-                WHERE id = ?
-            """, values)
-
-            action = 'updated'
-        else:
-            # Insertar
-            cursor.execute("""
-                INSERT INTO goals
-                (patient_id, goal_peso, goal_bf, goal_ffmi,
-                 goal_abdomen, goal_cintura, goal_cadera, notas, tipo, activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            """, [
-                patient_id,
-                data.get('peso_objetivo'),
-                data.get('bf_objetivo'),
-                data.get('ffmi_objetivo'),
-                data.get('circ_abdomen_objetivo'),
-                data.get('circ_cintura_objetivo'),
-                data.get('circ_cadera_objetivo'),
-                data.get('notas'),
-                data.get('tipo', 'manual'),
-            ])
-            action = 'created'
-        
         conn.commit()
         conn.close()
-        
+
         return success_response(
-            {'user_id': user_id, 'action': action},
-            message=f'Objetivo {action} exitosamente'
+            {
+                'user_id': user_id,
+                'patient_id': patient['patient_id'],
+                'goal': new_goal,
+                'action': 'created',
+                'status': status,
+            },
+            message=f"Objetivo creado con status='{status}'",
+            status_code=201,
         )
-        
+
     except Exception as e:
         return error_response(
             f'Error guardando objetivo: {str(e)}',
             code=ErrorCodes.INTERNAL_ERROR,
-            status_code=500
+            status_code=500,
+        )
+
+
+# ============================================
+# Lifecycle: accept / reject / complete (OMV-35, OMV-40)
+# ============================================
+
+def _load_goal_for_user(cursor, patient_id, goal_id):
+    cursor.execute(
+        "SELECT * FROM goals WHERE id = ? AND patient_id = ?",
+        [goal_id, patient_id],
+    )
+    return cursor.fetchone()
+
+
+@users_bp.route('/<user_id>/goals/<int:goal_id>/accept', methods=['POST'])
+@require_owner_or_admin
+def accept_goal(user_id, goal_id):
+    """
+    El paciente (o admin) acepta una propuesta. status: 'proposed' → 'accepted'.
+    Archiva cualquier otro 'accepted' activo.
+    """
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    current = get_current_user() or {}
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        goal = _load_goal_for_user(cursor, patient['patient_id'], goal_id)
+        if not goal:
+            conn.close()
+            return error_response('Goal no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        if goal['status'] != 'proposed':
+            conn.close()
+            return error_response(
+                f"Solo se puede aceptar un goal con status='proposed' (este tiene '{goal['status']}')",
+                code=ErrorCodes.CONFLICT,
+                status_code=409,
+            )
+
+        # Archivar otros activos
+        _archive_active_goals(cursor, patient['patient_id'], exclude_id=goal_id)
+
+        cursor.execute(
+            "UPDATE goals SET status='accepted', activo=1, "
+            "accepted_by_user_id=?, updated_at=datetime('now','localtime') "
+            "WHERE id = ?",
+            [current.get('user_id'), goal_id],
+        )
+
+        cursor.execute("SELECT * FROM goals WHERE id = ?", [goal_id])
+        updated = _serialize_goal(cursor.fetchone())
+
+        conn.commit()
+        conn.close()
+
+        return success_response(
+            {'user_id': user_id, 'goal': updated, 'action': 'accepted'},
+            message='Objetivo aceptado',
+        )
+
+    except Exception as e:
+        return error_response(
+            f'Error aceptando objetivo: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR,
+            status_code=500,
+        )
+
+
+@users_bp.route('/<user_id>/goals/<int:goal_id>/reject', methods=['POST'])
+@require_owner_or_admin
+def reject_goal(user_id, goal_id):
+    """
+    El paciente rechaza una propuesta. status: 'proposed' → 'rejected'.
+    Acepta `notas` en el body para registrar motivo.
+    """
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    notas = data.get('notas')
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        goal = _load_goal_for_user(cursor, patient['patient_id'], goal_id)
+        if not goal:
+            conn.close()
+            return error_response('Goal no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        if goal['status'] != 'proposed':
+            conn.close()
+            return error_response(
+                f"Solo se puede rechazar un goal con status='proposed' (este tiene '{goal['status']}')",
+                code=ErrorCodes.CONFLICT,
+                status_code=409,
+            )
+
+        if notas:
+            cursor.execute(
+                "UPDATE goals SET status='rejected', activo=0, notas=?, "
+                "updated_at=datetime('now','localtime') WHERE id = ?",
+                [notas, goal_id],
+            )
+        else:
+            cursor.execute(
+                "UPDATE goals SET status='rejected', activo=0, "
+                "updated_at=datetime('now','localtime') WHERE id = ?",
+                [goal_id],
+            )
+
+        cursor.execute("SELECT * FROM goals WHERE id = ?", [goal_id])
+        updated = _serialize_goal(cursor.fetchone())
+
+        conn.commit()
+        conn.close()
+
+        return success_response(
+            {'user_id': user_id, 'goal': updated, 'action': 'rejected'},
+            message='Objetivo rechazado',
+        )
+
+    except Exception as e:
+        return error_response(
+            f'Error rechazando objetivo: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR,
+            status_code=500,
+        )
+
+
+@users_bp.route('/<user_id>/goals/<int:goal_id>/complete', methods=['POST'])
+@require_owner_or_admin
+def complete_goal(user_id, goal_id):
+    """
+    Marca un goal como cumplido y devuelve la siguiente fase del roadmap como propuesta candidata.
+    status: 'accepted' → 'completed'.
+    """
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        goal = _load_goal_for_user(cursor, patient['patient_id'], goal_id)
+        if not goal:
+            conn.close()
+            return error_response('Goal no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+        if goal['status'] != 'accepted':
+            conn.close()
+            return error_response(
+                f"Solo se puede completar un goal con status='accepted' (este tiene '{goal['status']}')",
+                code=ErrorCodes.CONFLICT,
+                status_code=409,
+            )
+
+        cursor.execute(
+            "UPDATE goals SET status='completed', activo=0, "
+            "completed_at=datetime('now','localtime'), updated_at=datetime('now','localtime') "
+            "WHERE id = ?",
+            [goal_id],
+        )
+        cursor.execute("SELECT * FROM goals WHERE id = ?", [goal_id])
+        completed = _serialize_goal(cursor.fetchone())
+        conn.commit()
+        conn.close()
+
+    except Exception as e:
+        return error_response(
+            f'Error completando objetivo: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR,
+            status_code=500,
+        )
+
+    # Calcular siguiente fase del roadmap como sugerencia (no se persiste)
+    next_proposal = _next_phase_proposal(patient)
+
+    return success_response(
+        {
+            'user_id': user_id,
+            'goal': completed,
+            'action': 'completed',
+            'next_proposal': next_proposal,
+        },
+        message='Objetivo completado',
+    )
+
+
+@users_bp.route('/<user_id>/goals/history', methods=['GET'])
+@require_owner_or_admin
+def get_goals_history(user_id):
+    """
+    Lista todos los goals del usuario, más reciente primero (OMV-39).
+    Query params: status (filtro opcional), limit (default 50).
+    """
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    status_filter = request.args.get('status')
+    try:
+        limit = max(1, min(int(request.args.get('limit', 50)), 200))
+    except (TypeError, ValueError):
+        limit = 50
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+
+        if status_filter:
+            cursor.execute(
+                "SELECT * FROM goals WHERE patient_id = ? AND status = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                [patient['patient_id'], status_filter, limit],
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM goals WHERE patient_id = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                [patient['patient_id'], limit],
+            )
+        rows = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+
+        return success_response({
+            'user_id': user_id,
+            'patient_id': patient['patient_id'],
+            'count': len(rows),
+            'goals': rows,
+        })
+
+    except Exception as e:
+        return error_response(
+            f'Error obteniendo histórico: {str(e)}',
+            code=ErrorCodes.INTERNAL_ERROR,
+            status_code=500,
         )
 
 
@@ -889,10 +1279,19 @@ def create_or_update_goal(user_id):
 @require_owner_or_admin
 def get_auto_goals(user_id):
     """
-    Calcula objetivos automáticos basados en límites genéticos.
+    [DEPRECATED — Fix 13 / OMV-43]
+    Calcula objetivos automáticos basados en límites genéticos (solo el destino final).
+
+    Use en su lugar:
+        GET /goals/auto-roadmap?include_phases=false   (mismo destino, mismo formato)
+        GET /goals/auto-roadmap                         (con fases progresivas)
+        GET /goals/next-step                            (siguiente fase como propuesta lista)
+
+    Este endpoint sigue funcionando pero ya no se mantendrá. Se devuelve el header
+    `Deprecation: true` y `Sunset` con la fecha de remoción tentativa.
     """
-    patient = resolve_patient_id(user_id)
-    
+    patient = resolve_patient_id(user_id, auto_create=True)
+
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
     
@@ -966,8 +1365,8 @@ def get_auto_goals(user_id):
             semanas = cambio_peso / 0.25
         
         meses = semanas / 4.33
-        
-        return success_response({
+
+        resp = success_response({
             'datos_actuales': {
                 'peso': peso_actual,
                 'bf': bf_actual,
@@ -991,10 +1390,17 @@ def get_auto_goals(user_id):
             },
             'metadata': {
                 'sexo': sexo,
-                'altura': altura
+                'altura': altura,
+                'deprecated': True,
+                'use_instead': '/users/<id>/goals/auto-roadmap?include_phases=false',
             }
         })
-        
+        # Headers RFC 8594 / RFC 8631 (OMV-43)
+        resp[0].headers['Deprecation'] = 'true'
+        resp[0].headers['Sunset'] = 'Wed, 31 Dec 2026 23:59:59 GMT'
+        resp[0].headers['Link'] = '</api/v3/users/' + str(user_id) + '/goals/auto-roadmap?include_phases=false>; rel="successor-version"'
+        return resp
+
     except Exception as e:
         return error_response(
             f'Error calculando objetivos: {str(e)}',
@@ -1184,206 +1590,474 @@ def _calcular_objetivos_parciales(peso_actual, bf_actual, peso_magro_actual, pes
     return objetivos
 
 
-@users_bp.route('/<user_id>/goals/auto-roadmap', methods=['GET'])
-@require_auth
-def get_auto_roadmap(user_id):
-    """
-    Calcula un roadmap de fases progresivas (corte/volumen) desde el estado actual
-    hasta el límite genético, incluyendo circunferencias por fase.
-    """
-    user = get_current_user()
-    patient = resolve_patient_id(user_id)
+# ============================================
+# Helpers de roadmap (Fix 13)
+# ============================================
 
-    if not patient:
-        return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
-
-    # Permission: owner, admin, or assigned professional
-    is_owner = (patient['nombre'] == user['nombre_apellido']
+def _check_roadmap_permission(user, user_id, patient):
+    """Devuelve error_response o None. owner / admin / profesional asignado."""
+    is_owner = (patient['nombre'] == user.get('nombre_apellido')
                 or str(patient.get('dni', '')) == str(user.get('dni', ''))
                 or str(user_id) == str(user.get('user_id', '')))
-    if not is_owner and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if not is_owner and not user.get('is_admin') and not is_assigned_professional(user.get('user_id'), patient.get('dni', '')):
         return error_response(
             'No tienes permisos para ver datos de este paciente',
-            code=ErrorCodes.FORBIDDEN, status_code=403
+            code=ErrorCodes.FORBIDDEN, status_code=403,
         )
+    return None
 
+
+def _load_roadmap_inputs(patient_id):
+    """
+    Carga (patient_row, latest_measurement_row) desde clinical.db.
+    Devuelve (None, None) si falta cualquiera de los dos.
+    """
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-
         cursor.execute(
             "SELECT nombre, sexo, altura, fecha_nacimiento, circ_cuello FROM patients WHERE id = ?",
-            [patient['patient_id']]
+            [patient_id],
         )
         pat = cursor.fetchone()
         if not pat:
             conn.close()
-            return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
-
-        sexo = pat['sexo'] or 'M'
-        altura = float(pat['altura'] or 170)
-        circ_cuello = float(pat['circ_cuello'] or 38) if pat['circ_cuello'] else 38
-
-        edad = None
-        if pat['fecha_nacimiento']:
-            try:
-                born = datetime.strptime(str(pat['fecha_nacimiento']), '%Y-%m-%d')
-                today = datetime.today()
-                edad = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-            except Exception:
-                pass
-
-        cursor.execute("""
-            SELECT peso, bf_percent, ffmi, peso_graso, peso_magro,
-                   circ_abdomen, circ_cintura, circ_cadera, fecha
-            FROM measurements WHERE patient_id = ?
-            ORDER BY fecha DESC LIMIT 1
-        """, [patient['patient_id']])
+            return None, None
+        cursor.execute(
+            "SELECT peso, bf_percent, ffmi, peso_graso, peso_magro, "
+            "circ_abdomen, circ_cintura, circ_cadera, fecha "
+            "FROM measurements WHERE patient_id = ? "
+            "ORDER BY fecha DESC LIMIT 1",
+            [patient_id],
+        )
         med = cursor.fetchone()
         conn.close()
+        return pat, med
+    except Exception:
+        return None, None
 
-        if not med:
-            return error_response('No hay mediciones para calcular roadmap', code=ErrorCodes.NOT_FOUND, status_code=404)
 
-        peso_actual = float(med['peso'])
-        bf_actual = float(med['bf_percent'] or 20)
-        ffmi_actual = float(med['ffmi'] or 0)
-        peso_graso = float(med['peso_graso'] or peso_actual * bf_actual / 100)
-        peso_magro = float(med['peso_magro'] or peso_actual - peso_graso)
-        circ_abd = float(med['circ_abdomen'] or 0)
-        circ_cin = float(med['circ_cintura'] or 0)
-        circ_cad = float(med['circ_cadera'] or 0)
+def _compute_full_roadmap(pat, med):
+    """
+    Cálculo puro del roadmap (sin permisos ni I/O extra). Devuelve dict completo:
+    {datos_actuales, objetivos_geneticos, cambios_necesarios, tiempo_estimado,
+     objetivos_parciales, metadata}.
+    Asume `pat` y `med` ya validados.
+    """
+    sexo = pat['sexo'] or 'M'
+    altura = float(pat['altura'] or 170)
+    circ_cuello = float(pat['circ_cuello'] or 38) if pat['circ_cuello'] else 38
 
-        altura_m = altura / 100
-
-        # Genetic limits
-        if sexo == 'M':
-            ffmi_limite = 23.7
-            bf_esencial = 6.0
-            ganancia_musculo_mes = 0.375
-        else:
-            ffmi_limite = 18.9
-            bf_esencial = 14.0
-            ganancia_musculo_mes = 0.188
-
-        peso_magro_obj = ffmi_limite * (altura_m ** 2)
-        peso_obj = peso_magro_obj / (1 - bf_esencial / 100)
-        peso_graso_obj = peso_obj - peso_magro_obj
-
-        # Circumference targets (Navy method inverse)
-        circ_abd_obj = 0
-        circ_cin_obj = 0
-        circ_cad_obj = 0
+    edad = None
+    if pat['fecha_nacimiento']:
         try:
-            if sexo == 'M':
-                circ_abd_obj = circ_cuello + math.exp(
-                    5152 * math.log(altura) / 6359
-                    + 103240 * math.log(10) / 19077
-                    - 16500000 * math.log(10) / (6359 * (bf_esencial + 450))
-                )
-            else:
-                circ_cad_obj = (10 * circ_cuello + 10 * math.exp(
-                    5525 * math.log(altura) / 8751
-                    + 43193 * math.log(10) / 11668
-                    - 4125000 * math.log(10) / (2917 * (bf_esencial + 450))
-                )) / 17
-                circ_cin_obj = circ_cad_obj * 0.7
+            born = datetime.strptime(str(pat['fecha_nacimiento']), '%Y-%m-%d')
+            today = datetime.today()
+            edad = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
         except Exception:
             pass
 
-        # Changes needed
-        cambio_peso = peso_obj - peso_actual
-        cambio_magro = peso_magro_obj - peso_magro
-        cambio_graso = peso_graso_obj - peso_graso
+    peso_actual = float(med['peso'])
+    bf_actual = float(med['bf_percent'] or 20)
+    ffmi_actual = float(med['ffmi'] or 0)
+    peso_graso = float(med['peso_graso'] or peso_actual * bf_actual / 100)
+    peso_magro = float(med['peso_magro'] or peso_actual - peso_graso)
+    circ_abd = float(med['circ_abdomen'] or 0)
+    circ_cin = float(med['circ_cintura'] or 0)
+    circ_cad = float(med['circ_cadera'] or 0)
 
-        # Time estimate
-        meses_musculo = abs(cambio_magro) / ganancia_musculo_mes if cambio_magro > 0 else 0
-        perdida_semanal = peso_actual * 0.0075
-        semanas_grasa = abs(cambio_graso) / perdida_semanal if cambio_graso < 0 else 0
-        tiempo_meses = max(meses_musculo, semanas_grasa / 4.33)
+    altura_m = altura / 100
+    if sexo == 'M':
+        ffmi_limite, bf_esencial, ganancia_musculo_mes = 23.7, 6.0, 0.375
+    else:
+        ffmi_limite, bf_esencial, ganancia_musculo_mes = 18.9, 14.0, 0.188
 
-        # Compute phases
-        fases_raw = _calcular_objetivos_parciales(peso_actual, bf_actual, peso_magro, peso_graso, altura, sexo)
+    peso_magro_obj = ffmi_limite * (altura_m ** 2)
+    peso_obj = peso_magro_obj / (1 - bf_esencial / 100)
+    peso_graso_obj = peso_obj - peso_magro_obj
 
-        # Enrich phases with circumferences and time estimates
-        fases = []
-        for fase in fases_raw:
-            bf_obj = fase['bf_objetivo']
-            try:
-                if sexo == 'M':
-                    circ = circ_cuello + math.exp(
-                        5152 * math.log(altura) / 6359
-                        + 103240 * math.log(10) / 19077
-                        - 16500000 * math.log(10) / (6359 * (bf_obj + 450))
-                    )
-                    fase['medida_abdomen'] = round(circ, 1)
-                else:
-                    circ_cad_f = (10 * circ_cuello + 10 * math.exp(
-                        5525 * math.log(altura) / 8751
-                        + 43193 * math.log(10) / 11668
-                        - 4125000 * math.log(10) / (2917 * (bf_obj + 450))
-                    )) / 17
-                    fase['medida_cintura_cadera'] = {
-                        'cintura': round(circ_cad_f * 0.7, 1),
-                        'cadera': round(circ_cad_f, 1),
-                    }
-            except Exception:
-                pass
+    circ_abd_obj = 0
+    circ_cin_obj = 0
+    circ_cad_obj = 0
+    try:
+        if sexo == 'M':
+            circ_abd_obj = circ_cuello + math.exp(
+                5152 * math.log(altura) / 6359
+                + 103240 * math.log(10) / 19077
+                - 16500000 * math.log(10) / (6359 * (bf_esencial + 450))
+            )
+        else:
+            circ_cad_obj = (10 * circ_cuello + 10 * math.exp(
+                5525 * math.log(altura) / 8751
+                + 43193 * math.log(10) / 11668
+                - 4125000 * math.log(10) / (2917 * (bf_esencial + 450))
+            )) / 17
+            circ_cin_obj = circ_cad_obj * 0.7
+    except Exception:
+        pass
 
-            if fase['tipo'] == 'definicion':
-                tiempo = abs(fase['cambio_peso']) / (peso_actual * 0.01 * 4.33)
+    cambio_peso = peso_obj - peso_actual
+    cambio_magro = peso_magro_obj - peso_magro
+    cambio_graso = peso_graso_obj - peso_graso
+
+    meses_musculo = abs(cambio_magro) / ganancia_musculo_mes if cambio_magro > 0 else 0
+    perdida_semanal = peso_actual * 0.0075
+    semanas_grasa = abs(cambio_graso) / perdida_semanal if cambio_graso < 0 else 0
+    tiempo_meses = max(meses_musculo, semanas_grasa / 4.33)
+
+    fases_raw = _calcular_objetivos_parciales(
+        peso_actual, bf_actual, peso_magro, peso_graso, altura, sexo,
+    )
+
+    fases = []
+    for fase in fases_raw:
+        bf_obj = fase['bf_objetivo']
+        try:
+            if sexo == 'M':
+                circ = circ_cuello + math.exp(
+                    5152 * math.log(altura) / 6359
+                    + 103240 * math.log(10) / 19077
+                    - 16500000 * math.log(10) / (6359 * (bf_obj + 450))
+                )
+                fase['medida_abdomen'] = round(circ, 1)
             else:
-                tiempo = abs(fase['cambio_musculo']) / ganancia_musculo_mes if ganancia_musculo_mes else 0
-            fase['tiempo_meses'] = round(tiempo, 1)
+                circ_cad_f = (10 * circ_cuello + 10 * math.exp(
+                    5525 * math.log(altura) / 8751
+                    + 43193 * math.log(10) / 11668
+                    - 4125000 * math.log(10) / (2917 * (bf_obj + 450))
+                )) / 17
+                fase['medida_cintura_cadera'] = {
+                    'cintura': round(circ_cad_f * 0.7, 1),
+                    'cadera': round(circ_cad_f, 1),
+                }
+        except Exception:
+            pass
 
-            fases.append(fase)
+        if fase['tipo'] == 'definicion':
+            tiempo = abs(fase['cambio_peso']) / (peso_actual * 0.01 * 4.33)
+        else:
+            tiempo = abs(fase['cambio_musculo']) / ganancia_musculo_mes if ganancia_musculo_mes else 0
+        fase['tiempo_meses'] = round(tiempo, 1)
+        fases.append(fase)
 
-        return success_response({
-            'datos_actuales': {
-                'peso': round(peso_actual, 1),
-                'bf': round(bf_actual, 1),
-                'ffmi': round(ffmi_actual, 1),
-                'peso_magro': round(peso_magro, 1),
-                'peso_graso': round(peso_graso, 1),
-                'circ_abdomen': round(circ_abd, 1) if circ_abd else None,
-                'circ_cintura': round(circ_cin, 1) if circ_cin else None,
-                'circ_cadera': round(circ_cad, 1) if circ_cad else None,
-            },
-            'objetivos_geneticos': {
-                'ffmi_limite': ffmi_limite,
-                'bf_esencial': bf_esencial,
-                'peso_objetivo': round(peso_obj, 1),
-                'peso_magro_objetivo': round(peso_magro_obj, 1),
-                'peso_graso_objetivo': round(peso_graso_obj, 1),
-                'circ_abdomen_objetivo': round(circ_abd_obj, 1) if sexo == 'M' else None,
-                'circ_cintura_objetivo': round(circ_cin_obj, 1) if sexo == 'F' else None,
-                'circ_cadera_objetivo': round(circ_cad_obj, 1) if sexo == 'F' else None,
-            },
-            'cambios_necesarios': {
-                'peso': round(cambio_peso, 1),
-                'peso_magro': round(cambio_magro, 1),
-                'peso_graso': round(cambio_graso, 1),
-                'abdomen': round(circ_abd_obj - circ_abd, 1) if sexo == 'M' and circ_abd else 0,
-                'cintura': round(circ_cin_obj - circ_cin, 1) if sexo == 'F' and circ_cin else 0,
-                'cadera': round(circ_cad_obj - circ_cad, 1) if sexo == 'F' and circ_cad else 0,
-            },
-            'tiempo_estimado': {
-                'meses': round(tiempo_meses, 1),
-                'años': round(tiempo_meses / 12, 1),
-            },
-            'objetivos_parciales': fases,
-            'metadata': {
-                'sexo': sexo,
-                'edad': edad,
-                'altura': altura,
-                'fecha_ultimo_registro': med['fecha'],
-            },
-        })
+    return {
+        'datos_actuales': {
+            'peso': round(peso_actual, 1),
+            'bf': round(bf_actual, 1),
+            'ffmi': round(ffmi_actual, 1),
+            'peso_magro': round(peso_magro, 1),
+            'peso_graso': round(peso_graso, 1),
+            'circ_abdomen': round(circ_abd, 1) if circ_abd else None,
+            'circ_cintura': round(circ_cin, 1) if circ_cin else None,
+            'circ_cadera': round(circ_cad, 1) if circ_cad else None,
+        },
+        'objetivos_geneticos': {
+            'ffmi_limite': ffmi_limite,
+            'bf_esencial': bf_esencial,
+            'peso_objetivo': round(peso_obj, 1),
+            'peso_magro_objetivo': round(peso_magro_obj, 1),
+            'peso_graso_objetivo': round(peso_graso_obj, 1),
+            'circ_abdomen_objetivo': round(circ_abd_obj, 1) if sexo == 'M' else None,
+            'circ_cintura_objetivo': round(circ_cin_obj, 1) if sexo == 'F' else None,
+            'circ_cadera_objetivo': round(circ_cad_obj, 1) if sexo == 'F' else None,
+        },
+        'cambios_necesarios': {
+            'peso': round(cambio_peso, 1),
+            'peso_magro': round(cambio_magro, 1),
+            'peso_graso': round(cambio_graso, 1),
+            'abdomen': round(circ_abd_obj - circ_abd, 1) if sexo == 'M' and circ_abd else 0,
+            'cintura': round(circ_cin_obj - circ_cin, 1) if sexo == 'F' and circ_cin else 0,
+            'cadera': round(circ_cad_obj - circ_cad, 1) if sexo == 'F' and circ_cad else 0,
+        },
+        'tiempo_estimado': {
+            'meses': round(tiempo_meses, 1),
+            'años': round(tiempo_meses / 12, 1),
+        },
+        'objetivos_parciales': fases,
+        'metadata': {
+            'sexo': sexo,
+            'edad': edad,
+            'altura': altura,
+            'fecha_ultimo_registro': med['fecha'],
+        },
+    }
 
+
+def _load_cached_roadmap(patient_id):
+    """Devuelve el roadmap activo persistido (dict) o None."""
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM roadmaps WHERE patient_id = ? AND activo = 1 "
+            "ORDER BY created_at DESC LIMIT 1",
+            [patient_id],
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        try:
+            payload = json.loads(row['fases_json'])
+        except Exception:
+            return None
+        payload.setdefault('metadata', {})
+        payload['metadata']['roadmap_id'] = row['id']
+        payload['metadata']['roadmap_created_at'] = row['created_at']
+        payload['metadata']['source'] = 'cached'
+        return payload
+    except Exception:
+        return None
+
+
+def _save_roadmap(patient_id, roadmap_payload):
+    """Persiste un roadmap en la tabla roadmaps. Desactiva el anterior. Devuelve nuevo id."""
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE roadmaps SET activo = 0 WHERE patient_id = ? AND activo = 1",
+            [patient_id],
+        )
+        cursor.execute(
+            "INSERT INTO roadmaps "
+            "(patient_id, fases_json, total_meses, ffmi_limite, bf_esencial, "
+            " sexo, altura, peso_inicial, bf_inicial, activo) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            [
+                patient_id,
+                json.dumps(roadmap_payload, ensure_ascii=False),
+                (roadmap_payload.get('tiempo_estimado') or {}).get('meses'),
+                (roadmap_payload.get('objetivos_geneticos') or {}).get('ffmi_limite'),
+                (roadmap_payload.get('objetivos_geneticos') or {}).get('bf_esencial'),
+                (roadmap_payload.get('metadata') or {}).get('sexo'),
+                (roadmap_payload.get('metadata') or {}).get('altura'),
+                (roadmap_payload.get('datos_actuales') or {}).get('peso'),
+                (roadmap_payload.get('datos_actuales') or {}).get('bf'),
+            ],
+        )
+        new_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return new_id
+    except Exception:
+        return None
+
+
+def _phase_to_goal_proposal(fase, source_roadmap_id=None, source_phase_index=None):
+    """Convierte una fase del roadmap en un objeto goal listo para POST /goals."""
+    if not fase:
+        return None
+    proposal = {
+        'peso_objetivo': fase.get('peso_objetivo'),
+        'bf_objetivo': fase.get('bf_objetivo'),
+        'ffmi_objetivo': fase.get('ffmi_objetivo'),
+        'tiempo_estimado_meses': fase.get('tiempo_meses'),
+        'fecha_objetivo': _compute_fecha_objetivo(fase.get('tiempo_meses')),
+        'descripcion': fase.get('descripcion'),
+        'fase': fase.get('fase'),
+        'categoria': fase.get('categoria'),
+        'tipo_fase': fase.get('tipo'),
+        'source': 'auto-accepted',
+    }
+    if 'medida_abdomen' in fase:
+        proposal['circ_abdomen_objetivo'] = fase['medida_abdomen']
+    if 'medida_cintura_cadera' in fase:
+        m = fase['medida_cintura_cadera']
+        proposal['circ_cintura_objetivo'] = m.get('cintura')
+        proposal['circ_cadera_objetivo'] = m.get('cadera')
+    if source_roadmap_id is not None:
+        proposal['source_roadmap_id'] = source_roadmap_id
+    if source_phase_index is not None:
+        proposal['source_phase_index'] = source_phase_index
+    return proposal
+
+
+def _next_phase_proposal(patient):
+    """
+    Devuelve la próxima fase del roadmap (cached → primera; si todas las fases ya
+    se cumplieron, None).
+    """
+    cached = _load_cached_roadmap(patient['patient_id'])
+    if cached and cached.get('objetivos_parciales'):
+        roadmap_id = cached.get('metadata', {}).get('roadmap_id')
+        # Cuántos goals completed hay → asumir esa cantidad de fases ya cumplidas
+        try:
+            conn = get_clinical_connection(sqlite3.Row)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM goals WHERE patient_id = ? AND status = 'completed' "
+                "AND source_roadmap_id = ?",
+                [patient['patient_id'], roadmap_id],
+            )
+            done = cursor.fetchone()[0] or 0
+            conn.close()
+        except Exception:
+            done = 0
+        fases = cached['objetivos_parciales']
+        if done < len(fases):
+            return _phase_to_goal_proposal(fases[done], roadmap_id, done)
+        return None
+
+    # Sin cache → calcular on-the-fly y devolver fases[0]
+    pat, med = _load_roadmap_inputs(patient['patient_id'])
+    if not pat or not med:
+        return None
+    payload = _compute_full_roadmap(pat, med)
+    fases = payload.get('objetivos_parciales') or []
+    if not fases:
+        return None
+    return _phase_to_goal_proposal(fases[0], None, 0)
+
+
+@users_bp.route('/<user_id>/goals/auto-roadmap', methods=['GET'])
+@require_auth
+def get_auto_roadmap(user_id):
+    """
+    Devuelve el roadmap del paciente.
+
+    Query params:
+        recalculate=1        — fuerza recálculo desde la última medición (ignora cache)
+        include_phases=false — omite `objetivos_parciales` (equivalente a /goals/auto)
+        save=1               — además de devolver, persiste el cálculo (solo con recalculate=1)
+    """
+    user = get_current_user() or {}
+    patient = resolve_patient_id(user_id, auto_create=True)
+    if not patient:
+        return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    perm_err = _check_roadmap_permission(user, user_id, patient)
+    if perm_err:
+        return perm_err
+
+    recalculate = request.args.get('recalculate', '').lower() in ('1', 'true', 'yes')
+    include_phases = request.args.get('include_phases', 'true').lower() not in ('0', 'false', 'no')
+    save = request.args.get('save', '').lower() in ('1', 'true', 'yes')
+
+    payload = None
+    source = 'cached'
+    if not recalculate:
+        payload = _load_cached_roadmap(patient['patient_id'])
+
+    if payload is None:
+        pat, med = _load_roadmap_inputs(patient['patient_id'])
+        if not pat:
+            return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+        if not med:
+            return error_response(
+                'No hay mediciones para calcular roadmap',
+                code=ErrorCodes.NOT_FOUND, status_code=404,
+            )
+        try:
+            payload = _compute_full_roadmap(pat, med)
+            source = 'computed'
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return error_response(
+                f'Error calculando roadmap: {str(e)}',
+                code=ErrorCodes.INTERNAL_ERROR, status_code=500,
+            )
+
+        if save and recalculate:
+            new_id = _save_roadmap(patient['patient_id'], payload)
+            if new_id:
+                payload.setdefault('metadata', {})
+                payload['metadata']['roadmap_id'] = new_id
+                source = 'computed+saved'
+
+    payload.setdefault('metadata', {})
+    payload['metadata']['source'] = source
+
+    if not include_phases:
+        payload.pop('objetivos_parciales', None)
+
+    return success_response(payload)
+
+
+@users_bp.route('/<user_id>/goals/auto-roadmap/save', methods=['POST'])
+@require_auth
+def save_auto_roadmap(user_id):
+    """
+    Calcula el roadmap desde la medición más reciente y lo persiste como activo
+    para este paciente (OMV-41). Desactiva el roadmap previo si existía.
+    """
+    user = get_current_user() or {}
+    patient = resolve_patient_id(user_id, auto_create=True)
+    if not patient:
+        return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    perm_err = _check_roadmap_permission(user, user_id, patient)
+    if perm_err:
+        return perm_err
+
+    pat, med = _load_roadmap_inputs(patient['patient_id'])
+    if not pat:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+    if not med:
+        return error_response(
+            'No hay mediciones para calcular roadmap',
+            code=ErrorCodes.NOT_FOUND, status_code=404,
+        )
+
+    try:
+        payload = _compute_full_roadmap(pat, med)
     except Exception as e:
         import traceback
         traceback.print_exc()
         return error_response(
             f'Error calculando roadmap: {str(e)}',
-            code=ErrorCodes.INTERNAL_ERROR, status_code=500
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500,
         )
+
+    new_id = _save_roadmap(patient['patient_id'], payload)
+    if not new_id:
+        return error_response(
+            'No se pudo persistir el roadmap',
+            code=ErrorCodes.INTERNAL_ERROR, status_code=500,
+        )
+
+    payload.setdefault('metadata', {})
+    payload['metadata']['roadmap_id'] = new_id
+    payload['metadata']['source'] = 'computed+saved'
+
+    return success_response(
+        {
+            'user_id': user_id,
+            'patient_id': patient['patient_id'],
+            'roadmap_id': new_id,
+            'roadmap': payload,
+        },
+        message='Roadmap persistido correctamente',
+        status_code=201,
+    )
+
+
+@users_bp.route('/<user_id>/goals/next-step', methods=['GET'])
+@require_owner_or_admin
+def get_next_step(user_id):
+    """
+    Devuelve la PRÓXIMA fase del roadmap como un objeto goal listo para usar
+    como propuesta (precarga del form del profesional). Si hay roadmap persistido,
+    cuenta cuántas fases ya están como goals 'completed' y avanza desde ahí.
+    """
+    patient, err = _resolve_patient_for_goals(user_id)
+    if err:
+        return err
+
+    proposal = _next_phase_proposal(patient)
+    if proposal is None:
+        return success_response(
+            {
+                'user_id': user_id,
+                'patient_id': patient['patient_id'],
+                'next_step': None,
+                'message': 'No hay próxima fase disponible (¿roadmap completado?)',
+            },
+        )
+
+    return success_response({
+        'user_id': user_id,
+        'patient_id': patient['patient_id'],
+        'next_step': proposal,
+    })
