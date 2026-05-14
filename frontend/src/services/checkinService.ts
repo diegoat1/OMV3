@@ -67,4 +67,27 @@ export const checkinService = {
   reportSymptom(payload: CreateSymptomPayload): Promise<SymptomRow> {
     return api.post<SymptomRow>('/checkin/symptoms', payload)
   },
+
+  /** GET /checkin/alerts — clinical red-flag alerts for a patient.
+   *  Pass `patient` (display name) for the professional view; the patient's
+   *  own alerts are returned when omitted. `resolved`=1 returns history. */
+  listAlerts(opts: {
+    patient?: string
+    resolved?: 0 | 1
+    severity?: 'low' | 'medium' | 'high'
+    limit?: number
+  } = {}): Promise<{ alerts: Array<{
+    id: number; patient_id: number; rule: string; severity: 'low' | 'medium' | 'high';
+    message: string; source: string; source_id: number | null;
+    payload: Record<string, unknown>; created_at: string;
+    resolved_at: string | null; resolved_by: number | null; notes?: string | null
+  }>; total: number }> {
+    return api.get(`/checkin/alerts${qs(opts)}`)
+  },
+  resolveAlert(alertId: number, notes?: string) {
+    return api.patch<{ id: number; resolved: boolean }>(
+      `/checkin/alerts/${alertId}/resolve`,
+      notes ? { notes } : {},
+    )
+  },
 }

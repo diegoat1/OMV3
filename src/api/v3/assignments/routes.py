@@ -34,6 +34,61 @@ def _get_specialist_role(role_str):
     return None
 
 
+def _queue_assignment_email(to_email, to_name, action, other_name, other_role=''):
+    """Encola un mail de notificación de vinculación (Fix 14 — OMV-87)."""
+    try:
+        from ..auth.routes import _queue_email
+    except Exception:
+        return
+    role_label = ''
+    if other_role:
+        role_label = f' ({other_role})'
+    templates = {
+        'request_to_patient': (
+            'Te están invitando a vincularte — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name}{role_label} te invitó a vincularse como tu especialista. '
+            f'Entrá a la app y aceptá o rechazá la solicitud.',
+        ),
+        'request_to_specialist': (
+            'Tenés una solicitud pendiente — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name} pidió vincularse contigo. Entrá a la app para aceptar o rechazar.',
+        ),
+        'accepted_to_patient': (
+            'Tu especialista aceptó la vinculación — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name}{role_label} aceptó vincularse contigo.',
+        ),
+        'accepted_to_specialist': (
+            'El paciente aceptó la vinculación — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name} aceptó tu solicitud y ya está vinculado.',
+        ),
+        'rejected_to_patient': (
+            'Tu especialista rechazó la vinculación — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name}{role_label} no aceptó la vinculación. Buscá otro profesional desde la app.',
+        ),
+        'rejected_to_specialist': (
+            'El paciente rechazó la vinculación — Omega Medicina',
+            f'Hola {to_name},\n\n{other_name} rechazó tu solicitud de vinculación.',
+        ),
+    }
+    if action not in templates:
+        return
+    subject, body = templates[action]
+    _queue_email(to_email, subject, body, template=f'assignment_{action}')
+
+
+def _get_user_email(user_id):
+    """Devuelve el email asociado a un auth.db user_id, o None."""
+    try:
+        conn = get_auth_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute("SELECT email FROM users WHERE id = ?", [user_id])
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row)['email'] if row else None
+    except Exception:
+        return None
+
+
 def _log_audit(user_id, user_name, action, details, ip=None):
     try:
         conn = get_auth_connection()
@@ -188,6 +243,14 @@ def request_assignment():
             request.remote_addr
         )
 
+        # Fix 14 — OMV-87: notificar al paciente
+        patient_email = _get_user_email(pat['id'])
+        if patient_email:
+            _queue_assignment_email(
+                patient_email, pat['display_name'] or '',
+                'request_to_patient', spec['display_name'] or '', spec_role,
+            )
+
         return success_response({
             'assignment_id': assignment_id,
             'patient_name': pat['display_name'],
@@ -262,7 +325,8 @@ def accept_assignment(assignment_id):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT id, specialist_id, specialist_name, patient_id, patient_name, status
+            SELECT id, specialist_id, specialist_name, specialist_role,
+                   patient_id, patient_name, status
             FROM specialist_assignments WHERE id = ?
         """, [assignment_id])
         row = cursor.fetchone()
@@ -278,11 +342,17 @@ def accept_assignment(assignment_id):
             actor_id, actor_name = a['patient_id'], a['patient_name']
             audit_msg = f'{a["patient_name"]} aceptó a {a["specialist_name"]} como especialista'
             ok_message = f'Aceptaste a {a["specialist_name"]} como tu especialista.'
+            # Notificar al especialista (el otro lado)
+            notify_to = ('specialist', a['specialist_id'], a['specialist_name'])
+            notify_other = (a['patient_name'], '')
         elif a['status'] == 'pending_specialist':
             allowed = str(a['specialist_id']) == str(user['user_id'])
             actor_id, actor_name = a['specialist_id'], a['specialist_name']
             audit_msg = f'{a["specialist_name"]} aceptó a {a["patient_name"]} como paciente'
             ok_message = f'Aceptaste a {a["patient_name"]} como tu paciente.'
+            # Notificar al paciente (el otro lado)
+            notify_to = ('patient', a['patient_id'], a['patient_name'])
+            notify_other = (a['specialist_name'], a.get('specialist_role') or '')
         else:
             conn.close()
             return error_response('Esta solicitud ya fue procesada', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
@@ -297,6 +367,14 @@ def accept_assignment(assignment_id):
         conn.close()
 
         _log_audit(actor_id, actor_name, 'assignment_accepted', audit_msg, request.remote_addr)
+
+        # Fix 14 — OMV-87: notificar al otro lado.
+        _, recipient_id, recipient_name = notify_to
+        recipient_email = _get_user_email(recipient_id)
+        if recipient_email:
+            kind = 'accepted_to_specialist' if notify_to[0] == 'specialist' else 'accepted_to_patient'
+            _queue_assignment_email(recipient_email, recipient_name or '',
+                                    kind, notify_other[0] or '', notify_other[1])
 
         return success_response({'assignment_id': assignment_id, 'status': 'accepted'}, message=ok_message)
 
@@ -317,7 +395,8 @@ def reject_assignment(assignment_id):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT id, specialist_id, specialist_name, patient_id, patient_name, status
+            SELECT id, specialist_id, specialist_name, specialist_role,
+                   patient_id, patient_name, status
             FROM specialist_assignments WHERE id = ?
         """, [assignment_id])
         row = cursor.fetchone()
@@ -332,10 +411,14 @@ def reject_assignment(assignment_id):
             allowed = str(a['patient_id']) == str(user['user_id'])
             actor_id, actor_name = a['patient_id'], a['patient_name']
             audit_msg = f'{a["patient_name"]} rechazó a {a["specialist_name"]}'
+            notify_to = ('specialist', a['specialist_id'], a['specialist_name'])
+            notify_other = (a['patient_name'], '')
         elif a['status'] == 'pending_specialist':
             allowed = str(a['specialist_id']) == str(user['user_id'])
             actor_id, actor_name = a['specialist_id'], a['specialist_name']
             audit_msg = f'{a["specialist_name"]} rechazó a {a["patient_name"]}'
+            notify_to = ('patient', a['patient_id'], a['patient_name'])
+            notify_other = (a['specialist_name'], a.get('specialist_role') or '')
         else:
             conn.close()
             return error_response('Esta solicitud ya fue procesada', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
@@ -350,6 +433,14 @@ def reject_assignment(assignment_id):
         conn.close()
 
         _log_audit(actor_id, actor_name, 'assignment_rejected', audit_msg, request.remote_addr)
+
+        # Fix 14 — OMV-87: notificar al otro lado.
+        _, recipient_id, recipient_name = notify_to
+        recipient_email = _get_user_email(recipient_id)
+        if recipient_email:
+            kind = 'rejected_to_specialist' if notify_to[0] == 'specialist' else 'rejected_to_patient'
+            _queue_assignment_email(recipient_email, recipient_name or '',
+                                    kind, notify_other[0] or '', notify_other[1])
 
         return success_response({'assignment_id': assignment_id, 'status': 'rejected'}, message='Solicitud rechazada.')
 
@@ -544,6 +635,14 @@ def patient_request_specialist():
             f'{patient_name} solicitó vincularse con {spec["display_name"]} ({spec_role})',
             request.remote_addr
         )
+
+        # Fix 14 — OMV-87: notificar al especialista.
+        specialist_email = _get_user_email(specialist_id)
+        if specialist_email:
+            _queue_assignment_email(
+                specialist_email, spec['display_name'] or '',
+                'request_to_specialist', patient_name, '',
+            )
 
         return success_response({
             'assignment_id': assignment_id,

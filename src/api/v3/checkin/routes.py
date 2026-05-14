@@ -117,10 +117,287 @@ def submit_today():
     # Recalculate and persist Health Index
     health_index = _calculate_and_save_health_index(pid, hoy)
 
+    # Fix 6 — OMV-63: evaluar reglas de signos rojos y persistir alertas.
+    new_alerts = _evaluate_clinical_alerts(pid, saved, checkin_id)
+
     return success_response({
         'checkin': saved,
         'health_index': health_index,
+        'alerts_triggered': new_alerts,
     })
+
+
+# ============================================
+# CLINICAL ALERTS (Fix 6 — OMV-63)
+# ============================================
+
+# Cada regla es una función (row) -> dict | None.
+# Si devuelve dict, se persiste una alerta con esos campos:
+#   { rule, severity, message, payload }
+def _rule_sangre_moco(row):
+    if (row or {}).get('sangre_moco'):
+        return {
+            'rule': 'sangre_moco_deposicion',
+            'severity': 'high',
+            'message': 'Presencia de sangre o moco en deposición — requiere evaluación clínica.',
+            'payload': {'sangre_moco': 1},
+        }
+    return None
+
+
+def _rule_dolor_severo(row):
+    d = (row or {}).get('dolor_abdominal') or 0
+    try:
+        d = float(d)
+    except (TypeError, ValueError):
+        return None
+    if d >= 8:
+        return {
+            'rule': 'dolor_abdominal_severo',
+            'severity': 'high',
+            'message': f'Dolor abdominal severo reportado ({int(d)}/10).',
+            'payload': {'dolor_abdominal': d},
+        }
+    if d >= 6:
+        return {
+            'rule': 'dolor_abdominal_moderado',
+            'severity': 'medium',
+            'message': f'Dolor abdominal moderado ({int(d)}/10) — seguimiento sugerido.',
+            'payload': {'dolor_abdominal': d},
+        }
+    return None
+
+
+def _rule_bristol_extremo(row):
+    b = (row or {}).get('bristol')
+    if b is None or b == '':
+        return None
+    try:
+        b = int(b)
+    except (TypeError, ValueError):
+        return None
+    if b in (1, 2):
+        return {
+            'rule': 'bristol_constipacion',
+            'severity': 'medium',
+            'message': f'Tipo Bristol {b} — constipación marcada.',
+            'payload': {'bristol': b},
+        }
+    if b in (6, 7):
+        return {
+            'rule': 'bristol_diarrea',
+            'severity': 'medium',
+            'message': f'Tipo Bristol {b} — diarrea / heces líquidas.',
+            'payload': {'bristol': b},
+        }
+    return None
+
+
+def _rule_animo_critico(row):
+    a = (row or {}).get('animo')
+    if a is None:
+        return None
+    try:
+        a = float(a)
+    except (TypeError, ValueError):
+        return None
+    if a <= 1:
+        return {
+            'rule': 'animo_critico',
+            'severity': 'high',
+            'message': 'Ánimo crítico (≤1/10) — considerar contención.',
+            'payload': {'animo': a},
+        }
+    return None
+
+
+def _rule_hidratacion_baja(row):
+    h = (row or {}).get('hidratacion_litros')
+    if h is None:
+        return None
+    try:
+        h = float(h)
+    except (TypeError, ValueError):
+        return None
+    if h < 0.5:
+        return {
+            'rule': 'hidratacion_muy_baja',
+            'severity': 'medium',
+            'message': f'Hidratación muy baja ({h} L).',
+            'payload': {'hidratacion_litros': h},
+        }
+    return None
+
+
+_ALERT_RULES = (
+    _rule_sangre_moco,
+    _rule_dolor_severo,
+    _rule_bristol_extremo,
+    _rule_animo_critico,
+    _rule_hidratacion_baja,
+)
+
+
+def _evaluate_clinical_alerts(patient_id, checkin_row, checkin_id):
+    """Run rules over the saved row and persist any triggered alerts.
+
+    Devuelve la lista de alertas nuevas creadas. Idempotente — si una alerta
+    con el mismo (patient_id, rule, source_id) ya existe sin resolver, no la
+    duplica.
+    """
+    triggered = []
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        for rule_fn in _ALERT_RULES:
+            res = rule_fn(checkin_row)
+            if not res:
+                continue
+            # Skip si ya hay una alerta activa idéntica para este checkin.
+            cursor.execute(
+                "SELECT id FROM clinical_alerts "
+                "WHERE patient_id = ? AND rule = ? AND source_id = ? AND resolved_at IS NULL "
+                "LIMIT 1",
+                [patient_id, res['rule'], checkin_id],
+            )
+            if cursor.fetchone():
+                continue
+            cursor.execute(
+                "INSERT INTO clinical_alerts "
+                "(patient_id, rule, severity, message, source, source_id, payload_json) "
+                "VALUES (?, ?, ?, ?, 'checkin', ?, ?)",
+                [
+                    patient_id, res['rule'], res['severity'], res['message'],
+                    checkin_id, json.dumps(res.get('payload') or {}),
+                ],
+            )
+            triggered.append({
+                'id': cursor.lastrowid,
+                'rule': res['rule'],
+                'severity': res['severity'],
+                'message': res['message'],
+            })
+        conn.commit()
+        conn.close()
+    except Exception:
+        # No frenar el guardado del check-in si hay error en alertas.
+        pass
+    return triggered
+
+
+@checkin_bp.route('/alerts', methods=['GET'])
+@require_auth
+def list_clinical_alerts():
+    """
+    Lista alertas clínicas del paciente.
+
+    Query params:
+        - patient: display_name (profesional viendo a paciente vinculado)
+        - resolved: 0|1 — por defecto sólo activas
+        - severity: low|medium|high
+        - limit: default 50
+    """
+    user = get_current_user()
+    target_name = request.args.get('patient') or user.get('nombre_apellido')
+    if target_name != user.get('nombre_apellido'):
+        if not check_patient_access(user, target_name):
+            return error_response('No tenés permisos sobre este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+    pat = resolve_patient_id(target_name)
+    if not pat:
+        return error_response('Paciente no encontrado',
+                              code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    resolved_filter = request.args.get('resolved', '0')
+    severity = request.args.get('severity')
+    limit = request.args.get('limit', 50, type=int)
+
+    sql = "SELECT * FROM clinical_alerts WHERE patient_id = ?"
+    params = [pat['patient_id']]
+    if resolved_filter == '0':
+        sql += " AND resolved_at IS NULL"
+    elif resolved_filter == '1':
+        sql += " AND resolved_at IS NOT NULL"
+    if severity in ('low', 'medium', 'high'):
+        sql += " AND severity = ?"
+        params.append(severity)
+    sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
+    params.append(limit)
+
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        rows = []
+        for r in cursor.fetchall():
+            d = dict(r)
+            try:
+                d['payload'] = json.loads(d.pop('payload_json') or '{}')
+            except Exception:
+                d['payload'] = {}
+                d.pop('payload_json', None)
+            rows.append(d)
+        conn.close()
+        return success_response({'alerts': rows, 'total': len(rows)})
+    except Exception as e:
+        return error_response(f'Error leyendo alertas: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@checkin_bp.route('/alerts/<int:alert_id>/resolve', methods=['PATCH'])
+@require_auth
+def resolve_clinical_alert(alert_id):
+    """
+    Marca una alerta como resuelta. Solo profesional asignado o admin.
+    Body opcional: { "notes": "..." }
+    """
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    notes = (data.get('notes') or '').strip() or None
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT a.id, a.patient_id, a.resolved_at, p.nombre AS patient_nombre "
+            "FROM clinical_alerts a JOIN patients p ON p.id = a.patient_id "
+            "WHERE a.id = ?",
+            [alert_id],
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return error_response('Alerta no encontrada',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+        a = dict(row)
+        if a['resolved_at']:
+            conn.close()
+            return success_response({'id': alert_id, 'already_resolved': True},
+                                    message='La alerta ya estaba resuelta')
+        # Permiso: el paciente NO resuelve sus propias alertas (solo el profesional).
+        is_owner = (a['patient_nombre'] == user.get('nombre_apellido'))
+        if is_owner and not user.get('is_admin'):
+            conn.close()
+            return error_response(
+                'Solo el profesional asignado o un administrador pueden resolver alertas.',
+                code=ErrorCodes.FORBIDDEN, status_code=403,
+            )
+        if not is_owner and not check_patient_access(user, a['patient_nombre']):
+            conn.close()
+            return error_response('No tenés permisos sobre este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+
+        cursor.execute(
+            "UPDATE clinical_alerts SET resolved_at = CURRENT_TIMESTAMP, "
+            "resolved_by = ?, notes = COALESCE(?, notes) WHERE id = ?",
+            [user.get('user_id'), notes, alert_id],
+        )
+        conn.commit()
+        conn.close()
+        return success_response({'id': alert_id, 'resolved': True},
+                                message='Alerta resuelta')
+    except Exception as e:
+        return error_response(f'Error: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
 # ============================================
