@@ -777,33 +777,118 @@ def list_pending_users():
 @require_admin
 def approve_user(user_id):
     """
-    Aprueba un usuario pendiente: cambia status a 'active'.
+    Aprueba un usuario pendiente.
+
+    Body opcional (Fix 12 — OMV-19, OMV-20, OMV-21, OMV-74):
+        payment: { amount, currency, payment_method, transaction_ref, notes }
+        membership_period_days: int (default 365)
+        membership_expires_at: ISO 8601 (override directo)
+        force_email_verification: bool (default False)
+
+    Si `force_email_verification` no es True y el usuario no verificó email,
+    devuelve 400 EMAIL_NOT_VERIFIED.
     """
+    from datetime import datetime as _dt, timedelta as _td
+    data = request.get_json(silent=True) or {}
+    payment = data.get('payment') or {}
+    period_days = int(data.get('membership_period_days') or 365)
+    explicit_exp = data.get('membership_expires_at')
+    force_email = bool(data.get('force_email_verification'))
+
     try:
         conn = get_auth_connection(sqlite3.Row)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, display_name, status FROM users WHERE id = ?", [user_id])
+        cursor.execute(
+            "SELECT id, display_name, email, status, email_verified FROM users WHERE id = ?",
+            [user_id],
+        )
         user = cursor.fetchone()
         if not user:
             conn.close()
-            return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+            return error_response('Usuario no encontrado',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+        u = dict(user)
 
-        cursor.execute("UPDATE users SET status = 'active' WHERE id = ?", [user_id])
+        # OMV-74: si no verificó email y no se forzó, bloquear.
+        if not u.get('email_verified') and not force_email:
+            conn.close()
+            return error_response(
+                'El usuario todavía no verificó su email. Mandá force_email_verification=true para aprobar igual.',
+                code='EMAIL_NOT_VERIFIED', status_code=400,
+            )
+
+        # OMV-20: calcular vencimiento.
+        if explicit_exp:
+            expires_at = explicit_exp
+        else:
+            expires_at = (_dt.utcnow() + _td(days=period_days)).isoformat()
+
+        # OMV-19: registrar pago si vino payment{}.
+        payment_id = None
+        admin = get_current_user()
+        if payment:
+            try:
+                cursor.execute("""
+                    INSERT INTO payments
+                        (user_id, amount, currency, payment_method, transaction_ref,
+                         period_days, notes, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, [
+                    user_id,
+                    payment.get('amount'),
+                    payment.get('currency', 'ARS'),
+                    payment.get('payment_method'),
+                    payment.get('transaction_ref'),
+                    period_days,
+                    payment.get('notes'),
+                    admin.get('user_id'),
+                ])
+                payment_id = cursor.lastrowid
+            except Exception:
+                payment_id = None  # tabla puede no existir en deploys viejos
+
+        cursor.execute(
+            "UPDATE users SET status = 'active', is_active = 1, "
+            "membership_expires_at = ?, last_payment_id = ? "
+            "WHERE id = ?",
+            [expires_at, payment_id, user_id],
+        )
+        # Si forzamos el approve sin email, marcar email_verified=1 también.
+        if force_email and not u.get('email_verified'):
+            cursor.execute("UPDATE users SET email_verified = 1 WHERE id = ?", [user_id])
         conn.commit()
         conn.close()
 
-        admin = get_current_user()
         _log_audit(
             admin.get('user_id'), admin.get('nombre_apellido', 'Admin'),
             'user_approved',
-            f'Aprobó usuario: {dict(user)["display_name"]} (ID {user_id})',
-            request.remote_addr
+            f'Aprobó {u["display_name"]} (ID {user_id}) hasta {expires_at}'
+            + (f' · pago #{payment_id}' if payment_id else ''),
+            request.remote_addr,
         )
 
-        return success_response({'user_id': user_id, 'status': 'active'}, message='Usuario aprobado')
+        # OMV-21: encolar email de bienvenida.
+        try:
+            from ..auth.routes import _queue_email
+            _queue_email(
+                u['email'], '¡Cuenta activada! — Omega Medicina',
+                f'Hola {u["display_name"]},\n\nTu cuenta ya está activa. '
+                f'Membresía vigente hasta {expires_at}.',
+                template='approve_welcome',
+            )
+        except Exception:
+            pass
+
+        return success_response({
+            'user_id': user_id,
+            'status': 'active',
+            'membership_expires_at': expires_at,
+            'payment_id': payment_id,
+        }, message='Usuario aprobado')
     except Exception as e:
-        return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+        return error_response(f'Error: {str(e)}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
 @admin_bp.route('/auth-users/<int:user_id>/reject', methods=['POST'])
@@ -811,32 +896,54 @@ def approve_user(user_id):
 def reject_user(user_id):
     """
     Rechaza un usuario pendiente: cambia is_active a 0 y status a 'rejected'.
+    Persiste `reason` en audit_log (OMV-77).
     """
+    data = request.get_json(silent=True) or {}
+    reason = (data.get('reason') or '').strip() or 'Sin motivo'
     try:
         conn = get_auth_connection(sqlite3.Row)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, display_name FROM users WHERE id = ?", [user_id])
+        cursor.execute("SELECT id, display_name, email FROM users WHERE id = ?", [user_id])
         user = cursor.fetchone()
         if not user:
             conn.close()
-            return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+            return error_response('Usuario no encontrado',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
 
-        cursor.execute("UPDATE users SET status = 'rejected', is_active = 0 WHERE id = ?", [user_id])
+        cursor.execute(
+            "UPDATE users SET status = 'rejected', is_active = 0 WHERE id = ?",
+            [user_id],
+        )
         conn.commit()
         conn.close()
 
         admin = get_current_user()
+        u = dict(user)
         _log_audit(
             admin.get('user_id'), admin.get('nombre_apellido', 'Admin'),
             'user_rejected',
-            f'Rechazó usuario: {dict(user)["display_name"]} (ID {user_id})',
-            request.remote_addr
+            f'Rechazó usuario: {u["display_name"]} (ID {user_id}) · motivo: {reason}',
+            request.remote_addr,
         )
+        try:
+            from ..auth.routes import _queue_email
+            _queue_email(
+                u['email'], 'Tu cuenta fue rechazada — Omega Medicina',
+                f'Hola {u["display_name"]},\n\nLamentablemente tu cuenta '
+                f'no fue aprobada.\nMotivo: {reason}',
+                template='reject_notice',
+            )
+        except Exception:
+            pass
 
-        return success_response({'user_id': user_id, 'status': 'rejected'}, message='Usuario rechazado')
+        return success_response(
+            {'user_id': user_id, 'status': 'rejected', 'reason': reason},
+            message='Usuario rechazado',
+        )
     except Exception as e:
-        return error_response(f'Error: {str(e)}', code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+        return error_response(f'Error: {str(e)}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
 @admin_bp.route('/auth-users/<int:user_id>/toggle-active', methods=['POST'])

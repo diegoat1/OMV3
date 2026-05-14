@@ -20,17 +20,24 @@ ADMIN_USERNAME = 'Toffaletti, Diego Alejandro'
 ADMIN_DNI = '37070509'
 
 
-def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS):
+def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS, jti=None):
     """
     Genera un token JWT para el usuario.
-    
+
     Args:
         user_data: Dict con datos del usuario (id, dni, email, nombre_apellido, rol)
         expires_in_hours: Horas hasta expiración
-    
+        jti: opcional, JWT ID — si se pasa, va al payload para permitir
+             revocación selectiva (OMV-75, OMV-80). Si se omite se genera
+             uno nuevo automáticamente.
+
     Returns:
         Token JWT string
     """
+    import secrets
+    if jti is None:
+        jti = secrets.token_hex(16)
+    exp = datetime.utcnow() + timedelta(hours=expires_in_hours)
     payload = {
         'user_id': user_data.get('id') or user_data.get('user_id'),
         'dni': user_data.get('dni'),
@@ -38,30 +45,68 @@ def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS):
         'nombre_apellido': user_data.get('nombre_apellido'),
         'rol': user_data.get('rol', 'user'),
         'is_admin': user_data.get('is_admin', False),
+        'jti': jti,
         'iat': datetime.utcnow(),
-        'exp': datetime.utcnow() + timedelta(hours=expires_in_hours)
+        'exp': exp,
     }
-    
+
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def is_token_revoked(jti) -> bool:
+    """Returns True if the JWT id is in revoked_tokens."""
+    if not jti:
+        return False
+    try:
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM revoked_tokens WHERE jti = ? LIMIT 1", [jti])
+        row = cursor.fetchone()
+        conn.close()
+        return bool(row)
+    except Exception:
+        # Tabla puede no existir antes de migration 014 — fail-open
+        # (un fail-closed bloquearía el login en deploys viejos).
+        return False
+
+
+def revoke_token(jti, user_id=None, reason='manual', expires_at=None):
+    """Persist a JTI into revoked_tokens. Best-effort; never raises."""
+    if not jti:
+        return
+    try:
+        conn = get_auth_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR IGNORE INTO revoked_tokens (jti, user_id, expires_at, reason)
+            VALUES (?, ?, ?, ?)
+        """, [jti, user_id, expires_at, reason])
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def decode_token(token):
     """
     Decodifica y valida un token JWT.
-    
+
     Args:
         token: Token JWT string
-    
+
     Returns:
-        Dict con payload del token o None si es inválido
+        Dict con payload del token o None si es inválido o revocado.
     """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:
         return None
+    # OMV-75 / OMV-80: bloqueo via revoked_tokens
+    if is_token_revoked(payload.get('jti')):
+        return None
+    return payload
 
 
 def get_token_from_request():
