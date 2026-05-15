@@ -9,7 +9,7 @@ from ..common.auth import require_auth, require_admin, require_owner_or_admin, g
 from ..common.database import get_db_connection, execute_query, resolve_user_identity, get_clinical_connection, resolve_patient_id
 import sqlite3
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 @users_bp.route('', methods=['GET'])

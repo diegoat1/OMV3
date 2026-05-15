@@ -436,8 +436,7 @@ export interface GoalsResponse {
   breakdown?: Record<GoalStatus, number>
 }
 
-/** Fields the backend's POST /users/<id>/goals actually persists. Anything
- *  outside this list is silently dropped by `users/routes.py:692-738`. */
+/** Fields the backend's POST /users/<id>/goals actually persists. */
 export interface ProposeGoalPayload {
   peso_objetivo?: number | null
   bf_objetivo?: number | null
@@ -445,8 +444,46 @@ export interface ProposeGoalPayload {
   circ_abdomen_objetivo?: number | null
   circ_cintura_objetivo?: number | null
   circ_cadera_objetivo?: number | null
+  circ_hombro_objetivo?: number | null
+  circ_pecho_objetivo?: number | null
+  circ_brazo_objetivo?: number | null
+  circ_antebrazo_objetivo?: number | null
+  circ_muslo_objetivo?: number | null
+  circ_pantorrilla_objetivo?: number | null
+  tiempo_estimado_meses?: number | null
+  fecha_objetivo?: string | null            // YYYY-MM-DD
   notas?: string
-  tipo?: 'manual' | 'auto'
+  status?: 'proposed' | 'accepted'
+  source?: 'manual' | 'auto-accepted' | 'auto-modified'
+  tipo?: 'manual' | 'auto'                  // legacy alias
+  source_roadmap_id?: number | null
+  source_phase_index?: number | null
+}
+
+/** Shape de GET /goals/next-step (la primera fase del roadmap lista para
+ *  precargar el form del profesional). */
+export interface GoalNextStep {
+  fase: string
+  tipo_fase: 'definicion' | 'volumen' | string
+  descripcion: string
+  peso_objetivo: number
+  bf_objetivo: number
+  ffmi_objetivo: number
+  categoria: string
+  circ_abdomen_objetivo?: number | null
+  circ_cintura_objetivo?: number | null
+  circ_cadera_objetivo?: number | null
+  tiempo_estimado_meses: number
+  fecha_objetivo: string                    // YYYY-MM-DD
+  source: 'auto-accepted'
+  source_phase_index: number
+}
+
+export interface GoalNextStepResponse {
+  user_id: string
+  patient_id: number
+  next_step: GoalNextStep | null
+  message?: string
 }
 
 /** Una fase del roadmap auto-calculado. */
