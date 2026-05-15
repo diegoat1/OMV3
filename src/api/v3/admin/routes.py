@@ -779,21 +779,21 @@ def approve_user(user_id):
     """
     Aprueba un usuario pendiente.
 
+    La aprobación del admin equivale a la verificación: setea status='active',
+    is_active=1, email_verified=1 y registra membership_expires_at. NO requiere
+    que el usuario haya confirmado el email previamente (Fix 12 revisado).
+
     Body opcional (Fix 12 — OMV-19, OMV-20, OMV-21, OMV-74):
         payment: { amount, currency, payment_method, transaction_ref, notes }
         membership_period_days: int (default 365)
         membership_expires_at: ISO 8601 (override directo)
-        force_email_verification: bool (default False)
-
-    Si `force_email_verification` no es True y el usuario no verificó email,
-    devuelve 400 EMAIL_NOT_VERIFIED.
+        force_email_verification: bool — DEPRECATED, ignorado (siempre 1).
     """
     from datetime import datetime as _dt, timedelta as _td
     data = request.get_json(silent=True) or {}
     payment = data.get('payment') or {}
     period_days = int(data.get('membership_period_days') or 365)
     explicit_exp = data.get('membership_expires_at')
-    force_email = bool(data.get('force_email_verification'))
 
     try:
         conn = get_auth_connection(sqlite3.Row)
@@ -810,13 +810,10 @@ def approve_user(user_id):
                                   code=ErrorCodes.NOT_FOUND, status_code=404)
         u = dict(user)
 
-        # OMV-74: si no verificó email y no se forzó, bloquear.
-        if not u.get('email_verified') and not force_email:
-            conn.close()
-            return error_response(
-                'El usuario todavía no verificó su email. Mandá force_email_verification=true para aprobar igual.',
-                code='EMAIL_NOT_VERIFIED', status_code=400,
-            )
+        # OMV-74 (revisado): la aprobación del admin IMPLICA verificación de
+        # email. No bloqueamos por email_verified=0; en cambio lo seteamos a 1
+        # cuando aprobamos. El flag `force_email_verification` queda como
+        # no-op por compatibilidad con clientes viejos.
 
         # OMV-20: calcular vencimiento.
         if explicit_exp:
@@ -848,15 +845,14 @@ def approve_user(user_id):
             except Exception:
                 payment_id = None  # tabla puede no existir en deploys viejos
 
+        # Aprobación admin: activa cuenta + da por verificado el email.
         cursor.execute(
             "UPDATE users SET status = 'active', is_active = 1, "
+            "email_verified = 1, email_verification_token = NULL, "
             "membership_expires_at = ?, last_payment_id = ? "
             "WHERE id = ?",
             [expires_at, payment_id, user_id],
         )
-        # Si forzamos el approve sin email, marcar email_verified=1 también.
-        if force_email and not u.get('email_verified'):
-            cursor.execute("UPDATE users SET email_verified = 1 WHERE id = ?", [user_id])
         conn.commit()
         conn.close()
 

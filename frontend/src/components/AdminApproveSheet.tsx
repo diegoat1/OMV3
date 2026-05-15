@@ -11,13 +11,14 @@ interface Props {
   onApproved: () => void
 }
 
-/** Minimal approve flow.
+/** Approve flow.
  *
- *  The v3 backend (`admin/routes.py:approve_user`) only runs:
- *      UPDATE users SET status = 'active' WHERE id = ?
- *  No payment, membership window, or email gate is persisted today, so the
- *  sheet sticks to the single irreversible action and offers an optional
- *  internal note for the audit log entry the admin can review later.
+ *  El backend (`admin/routes.py:approve_user`) corre:
+ *      UPDATE users SET status='active', is_active=1, email_verified=1,
+ *                       membership_expires_at = now + 365d
+ *      INSERT INTO payments (...) si vino payment{}
+ *  La aprobación admin implica verificación de email — no requerimos que el
+ *  usuario haya confirmado su email previamente.
  */
 export function AdminApproveSheet({ user, onClose, onApproved }: Props) {
   const [notes, setNotes] = useState('')
@@ -67,9 +68,9 @@ export function AdminApproveSheet({ user, onClose, onApproved }: Props) {
 
         <div className="card" style={{ background: 'rgba(125,140,255,0.05)', borderColor: 'rgba(125,140,255,0.2)' }}>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-            Activa la cuenta para que el usuario pueda iniciar sesión. El backend todavía
-            no maneja membresías, pagos ni notificaciones por email — esa lógica se sumará
-            cuando estén los endpoints correspondientes.
+            Activa la cuenta para que el usuario pueda iniciar sesión. La aprobación
+            cuenta también como verificación de email, así que no hace falta esperar a
+            que el usuario confirme. La membresía queda vigente por 365 días por defecto.
           </p>
         </div>
 
