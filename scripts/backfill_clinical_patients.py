@@ -21,10 +21,12 @@ def _db_dir():
 
 
 def main():
+    # Alinear con src/api/v3/common/database.py:
+    #   auth.db     -> <DATABASE_DIR>/auth.db
+    #   clinical.db -> <DATABASE_DIR>/db/clinical.db
     db_dir = _db_dir()
     auth_path = os.path.join(db_dir, 'auth.db')
-    clin_dir = os.path.join(db_dir, 'db') if not os.path.exists(os.path.join(db_dir, 'clinical.db')) else db_dir
-    clin_path = os.path.join(clin_dir, 'clinical.db')
+    clin_path = os.path.join(db_dir, 'db', 'clinical.db')
 
     if not os.path.exists(auth_path):
         print(f'[err] no encuentro {auth_path}')
