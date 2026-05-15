@@ -44,7 +44,7 @@ def _ensure_v2_tables(conn):
 def _get_patient(user):
     """Resolve current user to patient_id."""
     nombre = user.get('nombre_apellido', '')
-    uid = user.get('user_id', user.get('dni', ''))
+    uid = user.get('user_id', '')
     info = resolve_patient_id(uid) or resolve_patient_id(nombre)
     return info
 

@@ -1765,7 +1765,7 @@ def delete_recipe(recipe_id):
 @require_auth
 def list_meal_plans():
     """
-    Lista los planes alimentarios del usuario o paciente target (?patient=<dni>).
+    Lista los planes alimentarios del usuario o paciente target (?patient=<id>).
     """
     user = get_current_user()
     target_name = request.args.get('nombre_apellido') or request.args.get('patient')
@@ -1900,7 +1900,7 @@ def get_meal_blocks():
     """
     Obtiene la distribución de macros por comida desde nutrition_plans.
     Returns per-meal macro percentages and calculated grams.
-    Acepta ?patient=<dni> para que el especialista consulte un paciente asignado.
+    Acepta ?patient=<id> para que el especialista consulte un paciente asignado.
     """
     user = get_current_user()
     target_name = request.args.get('nombre_apellido') or request.args.get('patient')
@@ -2250,7 +2250,7 @@ def calculate_meal_plan(plan_id):
     """
     Auto-calcula todas las recetas de un plan alimentario guardado.
     Uses the new solve_meal solver for each recipe.
-    Acepta ?patient=<dni> para especialista asignado.
+    Acepta ?patient=<id> para especialista asignado.
     """
     user = get_current_user()
     target_name = request.args.get('nombre_apellido') or request.args.get('patient')
@@ -2460,7 +2460,7 @@ def get_shopping_list(plan_id):
     """
     Genera una lista de compras a partir de un plan alimentario.
     Aggregates ingredients from all selected recipes.
-    Acepta ?patient=<dni> para especialista asignado.
+    Acepta ?patient=<id> para especialista asignado.
     """
     user = get_current_user()
     target_name = request.args.get('nombre_apellido') or request.args.get('patient')
@@ -2970,11 +2970,6 @@ def _get_plan_data(cursor, patient_id):
     return cursor.fetchone()
 
 
-def _get_user_dni(user):
-    """Helper: resolve DNI from auth user dict."""
-    return user.get('dni') or user.get('documento')
-
-
 @nutrition_bp.route('/meal-plans/blocks/adjust', methods=['POST'])
 @require_auth
 def adjust_blocks():
@@ -3102,7 +3097,7 @@ def adjust_blocks():
 def get_block_suggestions():
     """
     Obtiene sugerencias de bloques: presets globales + favoritos del usuario + ajustes recientes.
-    Query: ?comida=desayuno (optional filter), ?patient=<dni> (specialist asignado)
+    Query: ?comida=desayuno (optional filter), ?patient=<id> (specialist asignado)
     """
     user = get_current_user()
     target_name = request.args.get('nombre_apellido') or request.args.get('patient')

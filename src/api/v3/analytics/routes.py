@@ -47,10 +47,10 @@ def get_dashboard():
         try:
             cconn = get_clinical_connection(sqlite3.Row)
             cc = cconn.cursor()
-            cc.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [direct_patient_id])
+            cc.execute("SELECT id, nombre FROM patients WHERE id = ?", [direct_patient_id])
             prow = cc.fetchone()
             cconn.close()
-            patient = {'patient_id': prow[0], 'dni': prow[1], 'nombre': prow[2]} if prow else None
+            patient = {'patient_id': prow[0], 'nombre': prow[1]} if prow else None
         except Exception:
             patient = None
     elif user_param:
@@ -64,7 +64,7 @@ def get_dashboard():
     target_user = patient['nombre']
     patient_id = patient['patient_id']
 
-    if target_user != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if target_user != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de otros usuarios',
             code=ErrorCodes.FORBIDDEN,
@@ -239,7 +239,7 @@ def get_summary():
     else:
         patient = resolve_patient_id(user['nombre_apellido'])
 
-    if patient and patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if patient and patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de otros usuarios',
             code=ErrorCodes.FORBIDDEN,
@@ -300,7 +300,7 @@ def get_body_composition():
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
     
-    if patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de otros usuarios',
             code=ErrorCodes.FORBIDDEN,
@@ -358,7 +358,7 @@ def get_body_composition_history():
     Obtiene el historial de composición corporal.
     
     Query Params:
-        user: auth.db ID, DNI, or nombre_apellido (optional)
+        user: auth.db ID o nombre_apellido (optional)
         limit: Número de registros (default: 30)
         desde: Fecha desde (YYYY-MM-DD)
         hasta: Fecha hasta (YYYY-MM-DD)
@@ -374,10 +374,10 @@ def get_body_composition_history():
         try:
             cconn = get_clinical_connection(sqlite3.Row)
             cc = cconn.cursor()
-            cc.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [direct_patient_id])
+            cc.execute("SELECT id, nombre FROM patients WHERE id = ?", [direct_patient_id])
             prow = cc.fetchone()
             cconn.close()
-            patient = {'patient_id': prow[0], 'dni': prow[1], 'nombre': prow[2]} if prow else None
+            patient = {'patient_id': prow[0], 'nombre': prow[1]} if prow else None
         except Exception:
             patient = None
     elif user_param:
@@ -388,7 +388,7 @@ def get_body_composition_history():
     if not patient:
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
     
-    if patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de otros usuarios',
             code=ErrorCodes.FORBIDDEN,
@@ -499,7 +499,7 @@ def get_scores():
     else:
         patient = resolve_patient_id(user['nombre_apellido'])
 
-    if patient and patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if patient and patient['nombre'] != user['nombre_apellido'] and not user['is_admin'] and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de otros usuarios',
             code=ErrorCodes.FORBIDDEN,
@@ -1086,10 +1086,10 @@ def goal_projection():
         try:
             cconn = get_clinical_connection(sqlite3.Row)
             cc = cconn.cursor()
-            cc.execute("SELECT id, dni, nombre FROM patients WHERE id = ?", [direct_patient_id])
+            cc.execute("SELECT id, nombre FROM patients WHERE id = ?", [direct_patient_id])
             prow = cc.fetchone()
             cconn.close()
-            patient = {'patient_id': prow[0], 'dni': prow[1], 'nombre': prow[2]} if prow else None
+            patient = {'patient_id': prow[0], 'nombre': prow[1]} if prow else None
         except Exception:
             patient = None
     elif user_param:
@@ -1101,7 +1101,7 @@ def goal_projection():
         return error_response('Usuario no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
 
     # Access control: same as get_summary/get_body_composition.
-    if patient.get('nombre') != user['nombre_apellido'] and not user.get('is_admin') and not is_assigned_professional(user['user_id'], patient.get('dni', '')):
+    if patient.get('nombre') != user['nombre_apellido'] and not user.get('is_admin') and not is_assigned_professional(user['user_id'], patient.get('nombre', '')):
         return error_response('No tenés permisos para ver datos de este paciente',
                               code=ErrorCodes.FORBIDDEN, status_code=403)
 

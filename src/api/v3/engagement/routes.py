@@ -35,7 +35,7 @@ def list_reminders():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS RECORDATORIOS (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_dni TEXT NOT NULL,
+                auth_user_id INTEGER NOT NULL,
                 nombre_apellido TEXT,
                 titulo TEXT NOT NULL,
                 descripcion TEXT,
@@ -49,8 +49,8 @@ def list_reminders():
         """)
         conn.commit()
 
-        query = "SELECT * FROM RECORDATORIOS WHERE user_dni = ?"
-        params = [user['dni']]
+        query = "SELECT * FROM RECORDATORIOS WHERE auth_user_id = ?"
+        params = [int(user['user_id'])]
 
         if status == 'pending':
             query += " AND completado = 0"
@@ -96,11 +96,11 @@ def create_reminder():
 
         cursor.execute("""
             INSERT INTO RECORDATORIOS
-            (user_dni, nombre_apellido, titulo, descripcion, tipo, prioridad, fecha_vencimiento)
+            (auth_user_id, nombre_apellido, titulo, descripcion, tipo, prioridad, fecha_vencimiento)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, [
-            user['dni'],
-            user['nombre_apellido'],
+            int(user['user_id']),
+            user.get('nombre_apellido'),
             data['titulo'],
             data.get('descripcion'),
             data.get('tipo', 'general'),
@@ -138,8 +138,8 @@ def complete_reminder(reminder_id):
         cursor.execute("""
             UPDATE RECORDATORIOS
             SET completado = 1, fecha_completado = datetime('now','localtime')
-            WHERE id = ? AND user_dni = ?
-        """, [reminder_id, user['dni']])
+            WHERE id = ? AND auth_user_id = ?
+        """, [reminder_id, int(user['user_id'])])
 
         if cursor.rowcount == 0:
             conn.close()
@@ -168,7 +168,7 @@ def delete_reminder(reminder_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM RECORDATORIOS WHERE id = ? AND user_dni = ?", [reminder_id, user['dni']])
+        cursor.execute("DELETE FROM RECORDATORIOS WHERE id = ? AND auth_user_id = ?", [reminder_id, int(user['user_id'])])
 
         if cursor.rowcount == 0:
             conn.close()
@@ -209,7 +209,7 @@ def list_tasks():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS TAREAS (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_dni TEXT NOT NULL,
+                auth_user_id INTEGER NOT NULL,
                 nombre_apellido TEXT,
                 titulo TEXT NOT NULL,
                 descripcion TEXT,
@@ -224,8 +224,8 @@ def list_tasks():
         """)
         conn.commit()
 
-        query = "SELECT * FROM TAREAS WHERE user_dni = ?"
-        params = [user['dni']]
+        query = "SELECT * FROM TAREAS WHERE auth_user_id = ?"
+        params = [int(user['user_id'])]
 
         if status != 'all':
             query += " AND estado = ?"
@@ -284,11 +284,11 @@ def create_task():
 
         cursor.execute("""
             INSERT INTO TAREAS
-            (user_dni, nombre_apellido, titulo, descripcion, categoria, fecha_limite, metadata_json)
+            (auth_user_id, nombre_apellido, titulo, descripcion, categoria, fecha_limite, metadata_json)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, [
-            user['dni'],
-            user['nombre_apellido'],
+            int(user['user_id']),
+            user.get('nombre_apellido'),
             data['titulo'],
             data.get('descripcion'),
             data.get('categoria', 'general'),
@@ -342,11 +342,11 @@ def update_task(task_id):
         if not updates:
             return error_response('No hay campos para actualizar', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
-        values.extend([task_id, user['dni']])
+        values.extend([task_id, int(user['user_id'])])
 
         cursor.execute(f"""
             UPDATE TAREAS SET {', '.join(updates)}
-            WHERE id = ? AND user_dni = ?
+            WHERE id = ? AND auth_user_id = ?
         """, values)
 
         if cursor.rowcount == 0:
@@ -376,7 +376,7 @@ def delete_task(task_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM TAREAS WHERE id = ? AND user_dni = ?", [task_id, user['dni']])
+        cursor.execute("DELETE FROM TAREAS WHERE id = ? AND auth_user_id = ?", [task_id, int(user['user_id'])])
 
         if cursor.rowcount == 0:
             conn.close()
@@ -536,7 +536,7 @@ def get_insights():
         cursor.execute("""
             SELECT COUNT(*) FROM SESIONES_ENTRENAMIENTO
             WHERE user_id = ? AND fecha >= datetime('now', '-7 days', 'localtime')
-        """, [user['dni']])
+        """, [str(user['user_id'])])
         sessions_week = cursor.fetchone()
 
         if sessions_week:
@@ -576,8 +576,8 @@ def get_insights():
         # 5. Pending reminders count
         cursor.execute("""
             SELECT COUNT(*) FROM RECORDATORIOS
-            WHERE user_dni = ? AND completado = 0
-        """, [user['dni']])
+            WHERE auth_user_id = ? AND completado = 0
+        """, [int(user['user_id'])])
         pending = cursor.fetchone()
         if pending and pending[0] > 0:
             insights.append({
@@ -635,7 +635,7 @@ def get_performance():
                    COALESCE(SUM(duracion_minutos), 0) as total_min
             FROM SESIONES_ENTRENAMIENTO
             WHERE user_id = ? AND fecha >= datetime('now', ? || ' days', 'localtime')
-        """, [user['dni'], f'-{days}'])
+        """, [str(user['user_id']), f'-{days}'])
         training = cursor.fetchone()
         training_sessions = training[0] if training else 0
         training_minutes = training[1] if training else 0
@@ -643,23 +643,23 @@ def get_performance():
         # Tasks completed in period
         cursor.execute("""
             SELECT COUNT(*) FROM TAREAS
-            WHERE user_dni = ? AND estado = 'completed'
+            WHERE auth_user_id = ? AND estado = 'completed'
             AND fecha_completado >= datetime('now', ? || ' days', 'localtime')
-        """, [user['dni'], f'-{days}'])
+        """, [int(user['user_id']), f'-{days}'])
         tasks_row = cursor.fetchone()
         tasks_completed = tasks_row[0] if tasks_row else 0
 
         # Total tasks
-        cursor.execute("SELECT COUNT(*) FROM TAREAS WHERE user_dni = ?", [user['dni']])
+        cursor.execute("SELECT COUNT(*) FROM TAREAS WHERE auth_user_id = ?", [int(user['user_id'])])
         tasks_total_row = cursor.fetchone()
         tasks_total = tasks_total_row[0] if tasks_total_row else 0
 
         # Reminders completed in period
         cursor.execute("""
             SELECT COUNT(*) FROM RECORDATORIOS
-            WHERE user_dni = ? AND completado = 1
+            WHERE auth_user_id = ? AND completado = 1
             AND fecha_completado >= datetime('now', ? || ' days', 'localtime')
-        """, [user['dni'], f'-{days}'])
+        """, [int(user['user_id']), f'-{days}'])
         rem_row = cursor.fetchone()
         reminders_completed = rem_row[0] if rem_row else 0
 

@@ -37,9 +37,9 @@ def list_users():
         params = []
         
         if search:
-            query += " AND (nombre LIKE ? OR email LIKE ? OR dni LIKE ?)"
+            query += " AND (nombre LIKE ? OR email LIKE ?)"
             search_param = f"%{search}%"
-            params.extend([search_param, search_param, search_param])
+            params.extend([search_param, search_param])
         
         # Contar total
         count_query = query.replace("SELECT *", "SELECT COUNT(*)")
@@ -68,33 +68,22 @@ def list_users():
 @require_owner_or_admin
 def get_user(user_id):
     """
-    Obtiene un usuario por ID (auth.db ID, DNI, or nombre_apellido).
+    Obtiene un usuario por ID (auth user_id numérico o nombre_apellido).
 
-    OMV-89bis: si el auth user existe pero no tiene fila en clinical.db.patients,
-    se aprovisiona vía resolve_patient_id(auto_create=True). Esto cubre cuentas
-    registradas por el flow v3 (sin DNI, sin PERFILESTATICO legacy) que algún
-    profesional ya vinculó.
+    Si el auth user existe pero no tiene fila en clinical.db.patients, se
+    aprovisiona vía resolve_patient_id(auto_create=True). Esto cubre cuentas
+    registradas por el flow v3 a las que algún profesional ya vinculó.
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
+    pat = resolve_patient_id(user_id, auto_create=str(user_id).isdigit())
 
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM patients WHERE dni = ?", [resolved_dni])
-        user = cursor.fetchone()
-
-        # Auto-provisión: el auth user existe pero clinical.db no tiene su
-        # fila todavía. Pedimos al resolver que la cree y reintentamos.
-        if not user:
-            conn.close()
-            pat = resolve_patient_id(user_id, auto_create=True) if str(user_id).isdigit() else None
-            if pat:
-                conn = get_clinical_connection(sqlite3.Row)
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM patients WHERE id = ?", [pat['patient_id']])
-                user = cursor.fetchone()
+        user = None
+        if pat:
+            cursor.execute("SELECT * FROM patients WHERE id = ?", [pat['patient_id']])
+            user = cursor.fetchone()
 
         if not user:
             try:
@@ -146,11 +135,11 @@ def get_user(user_id):
 @require_admin
 def create_user():
     """
-    Crea un nuevo usuario (perfil estático).
-    
+    Crea un nuevo perfil clínico vinculado a un auth user existente.
+
     Request Body:
         {
-            "dni": "12345678",
+            "auth_user_id": 42,            // requerido
             "nombre_apellido": "Apellido, Nombre",
             "email": "user@example.com",
             "sexo": "M" | "F",
@@ -160,39 +149,44 @@ def create_user():
         }
     """
     data = request.get_json() or {}
-    
-    # Validaciones
-    required_fields = ['dni', 'nombre_apellido', 'email', 'sexo', 'altura']
+
+    required_fields = ['auth_user_id', 'nombre_apellido', 'email', 'sexo', 'altura']
     missing = [f for f in required_fields if not data.get(f)]
-    
+
     if missing:
         return error_response(
             f'Campos requeridos faltantes: {", ".join(missing)}',
             code=ErrorCodes.VALIDATION_ERROR,
             status_code=400
         )
-    
+
+    try:
+        auth_uid = int(data['auth_user_id'])
+    except (TypeError, ValueError):
+        return error_response(
+            'auth_user_id debe ser numérico',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+        )
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-        
-        # Verificar si ya existe
-        cursor.execute("SELECT dni FROM patients WHERE dni = ?", [data['dni']])
+
+        cursor.execute("SELECT id FROM patients WHERE auth_user_id = ?", [auth_uid])
         if cursor.fetchone():
             conn.close()
             return error_response(
-                'Ya existe un usuario con ese DNI',
+                'Ya existe un paciente vinculado a ese auth_user_id',
                 code=ErrorCodes.CONFLICT,
                 status_code=409
             )
-        
-        # Insertar
+
         cursor.execute("""
-            INSERT INTO patients 
-            (dni, nombre, email, sexo, altura, telefono, fecha_nacimiento)
+            INSERT INTO patients
+            (auth_user_id, nombre, email, sexo, altura, telefono, fecha_nacimiento)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, [
-            data['dni'],
+            auth_uid,
             data['nombre_apellido'],
             data['email'],
             data['sexo'],
@@ -200,15 +194,17 @@ def create_user():
             data.get('telefono'),
             data.get('fecha_nacimiento')
         ])
-        
+
+        new_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         return success_response(
-            {'dni': data['dni'], 'nombre_apellido': data['nombre_apellido']},
+            {'patient_id': new_id, 'auth_user_id': auth_uid,
+             'nombre_apellido': data['nombre_apellido']},
             message='Usuario creado exitosamente'
         )
-        
+
     except Exception as e:
         return error_response(
             f'Error creando usuario: {str(e)}',
@@ -236,8 +232,7 @@ def update_user(user_id):
             code=ErrorCodes.FORBIDDEN, status_code=403,
         )
 
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
+    pat = resolve_patient_id(user_id, auto_create=str(user_id).isdigit())
 
     data = request.get_json() or {}
 
@@ -248,18 +243,17 @@ def update_user(user_id):
             status_code=400,
         )
 
+    if not pat:
+        return error_response(
+            'Usuario no encontrado',
+            code=ErrorCodes.NOT_FOUND,
+            status_code=404,
+        )
+    patient_id = pat['patient_id']
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-
-        cursor.execute("SELECT dni FROM patients WHERE dni = ?", [resolved_dni])
-        if not cursor.fetchone():
-            conn.close()
-            return error_response(
-                'Usuario no encontrado',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404,
-            )
 
         # All clinical.db `patients` columns the static profile knows about.
         field_map = {
@@ -290,14 +284,14 @@ def update_user(user_id):
             )
 
         updates.append("updated_at = CURRENT_TIMESTAMP")
-        values.append(resolved_dni)
-        cursor.execute(f"UPDATE patients SET {', '.join(updates)} WHERE dni = ?", values)
+        values.append(patient_id)
+        cursor.execute(f"UPDATE patients SET {', '.join(updates)} WHERE id = ?", values)
 
         conn.commit()
         conn.close()
 
         return success_response(
-            {'dni': resolved_dni, 'updated_fields': list(data.keys())},
+            {'patient_id': patient_id, 'updated_fields': list(data.keys())},
             message='Perfil actualizado.',
         )
 
@@ -315,38 +309,31 @@ def delete_user(user_id):
     """
     Elimina un usuario (solo admin).
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
-    
+    pat = resolve_patient_id(user_id)
+
+    if not pat:
+        return error_response(
+            'Usuario no encontrado',
+            code=ErrorCodes.NOT_FOUND,
+            status_code=404
+        )
+    patient_id = pat['patient_id']
+
     try:
         conn = get_clinical_connection()
         cursor = conn.cursor()
-        
-        # Verificar que existe
-        cursor.execute("SELECT id FROM patients WHERE dni = ?", [resolved_dni])
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return error_response(
-                'Usuario no encontrado',
-                code=ErrorCodes.NOT_FOUND,
-                status_code=404
-            )
-        
-        patient_id = user[0]
-        
+
         # Eliminar datos relacionados (CASCADE should handle this, but explicit is safer)
         cursor.execute("DELETE FROM measurements WHERE patient_id = ?", [patient_id])
         cursor.execute("DELETE FROM goals WHERE patient_id = ?", [patient_id])
         cursor.execute("DELETE FROM nutrition_plans WHERE patient_id = ?", [patient_id])
         cursor.execute("DELETE FROM patients WHERE id = ?", [patient_id])
-        
+
         conn.commit()
         conn.close()
-        
+
         return success_response(
-            {'dni': resolved_dni, 'deleted': True},
+            {'patient_id': patient_id, 'deleted': True},
             message='Usuario eliminado exitosamente'
         )
         
@@ -371,18 +358,19 @@ def get_measurements(user_id):
     Query Params:
         limit: Número máximo de registros (default: 50)
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
-    
+    pat = resolve_patient_id(user_id, auto_create=str(user_id).isdigit())
+
     limit = min(request.args.get('limit', 50, type=int), 500)
 
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
 
-        # Obtener paciente
-        cursor.execute("SELECT id, nombre FROM patients WHERE dni = ?", [resolved_dni])
-        user = cursor.fetchone()
+        if pat:
+            cursor.execute("SELECT id, nombre FROM patients WHERE id = ?", [pat['patient_id']])
+            user = cursor.fetchone()
+        else:
+            user = None
         
         if not user:
             conn.close()
@@ -438,8 +426,7 @@ def create_measurement(user_id):
         M: peso + circ_abdomen obligatorios
         F: peso + circ_cintura + circ_cadera + circ_abdomen obligatorios
     """
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
+    pat = resolve_patient_id(user_id, auto_create=str(user_id).isdigit())
 
     data = request.get_json() or {}
 
@@ -447,12 +434,14 @@ def create_measurement(user_id):
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
 
-        # Obtener datos del usuario
-        cursor.execute("""
-            SELECT id, nombre, sexo, altura, circ_cuello, circ_muneca, circ_tobillo
-            FROM patients WHERE dni = ?
-        """, [resolved_dni])
-        user = cursor.fetchone()
+        if pat:
+            cursor.execute("""
+                SELECT id, nombre, sexo, altura, circ_cuello, circ_muneca, circ_tobillo
+                FROM patients WHERE id = ?
+            """, [pat['patient_id']])
+            user = cursor.fetchone()
+        else:
+            user = None
 
         if not user:
             conn.close()
@@ -618,12 +607,22 @@ def update_measurement(user_id, measurement_id):
                               code=ErrorCodes.FORBIDDEN, status_code=403)
 
     # Block the patient themselves: only specialist or admin can edit.
-    identity = resolve_user_identity(user_id)
-    resolved_dni = identity['dni'] if identity else user_id
+    target_pat = resolve_patient_id(user_id)
+    target_name = (target_pat or {}).get('nombre') or ''
+    target_auth_uid = None
+    if target_pat:
+        try:
+            conn_id = get_clinical_connection(sqlite3.Row)
+            cur_id = conn_id.cursor()
+            cur_id.execute("SELECT auth_user_id FROM patients WHERE id = ?", [target_pat['patient_id']])
+            r_id = cur_id.fetchone()
+            conn_id.close()
+            target_auth_uid = r_id[0] if r_id else None
+        except Exception:
+            target_auth_uid = None
     is_self = (
-        str(user.get('dni') or '') == str(resolved_dni)
-        or (identity and str(user.get('user_id') or '') == str(identity.get('auth_user_id') or ''))
-        or str(user.get('nombre_apellido') or '') == str((identity or {}).get('nombre') or '')
+        (target_auth_uid is not None and str(user.get('user_id') or '') == str(target_auth_uid))
+        or (target_name and str(user.get('nombre_apellido') or '') == str(target_name))
     )
     if is_self and not user.get('is_admin'):
         return error_response(
@@ -802,12 +801,12 @@ def _resolve_patient_for_goals(user_id):
     return patient, None
 
 
-def _patient_auth_user_id(dni):
-    """Devuelve el auth.db user_id vinculado a este DNI, o None."""
+def _patient_auth_user_id(patient_id):
+    """Devuelve el auth.db user_id vinculado a este patient_id, o None."""
     try:
-        conn = get_auth_connection()
+        conn = get_clinical_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT user_id FROM patient_user_link WHERE patient_dni = ?", [str(dni)])
+        cursor.execute("SELECT auth_user_id FROM patients WHERE id = ?", [int(patient_id)])
         row = cursor.fetchone()
         conn.close()
         return row[0] if row else None
@@ -940,7 +939,7 @@ def create_goal(user_id):
     poster_user_id = current.get('user_id')
 
     # Determinar status default según quien postea
-    patient_auth_uid = _patient_auth_user_id(patient['dni'])
+    patient_auth_uid = _patient_auth_user_id(patient['patient_id'])
     poster_is_patient = (
         poster_user_id is not None
         and patient_auth_uid is not None
@@ -1615,10 +1614,13 @@ def _calcular_objetivos_parciales(peso_actual, bf_actual, peso_magro_actual, pes
 
 def _check_roadmap_permission(user, user_id, patient):
     """Devuelve error_response o None. owner / admin / profesional asignado."""
-    is_owner = (patient['nombre'] == user.get('nombre_apellido')
-                or str(patient.get('dni', '')) == str(user.get('dni', ''))
-                or str(user_id) == str(user.get('user_id', '')))
-    if not is_owner and not user.get('is_admin') and not is_assigned_professional(user.get('user_id'), patient.get('dni', '')):
+    patient_auth_uid = _patient_auth_user_id(patient.get('patient_id'))
+    is_owner = (
+        patient['nombre'] == user.get('nombre_apellido')
+        or (patient_auth_uid is not None and str(patient_auth_uid) == str(user.get('user_id') or ''))
+        or str(user_id) == str(user.get('user_id', ''))
+    )
+    if not is_owner and not user.get('is_admin') and not is_assigned_professional(user.get('user_id'), patient.get('nombre', '')):
         return error_response(
             'No tienes permisos para ver datos de este paciente',
             code=ErrorCodes.FORBIDDEN, status_code=403,

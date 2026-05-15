@@ -120,7 +120,7 @@ def list_users():
     Lista todos los usuarios con filtros.
     
     Query Params:
-        q: Búsqueda por nombre/email/DNI
+        q: Búsqueda por nombre/email
         page: Página
         per_page: Items por página
         order_by: Campo para ordenar
@@ -131,29 +131,27 @@ def list_users():
     search = request.args.get('q', '').strip()
     order_by = request.args.get('order_by', 'NOMBRE_APELLIDO')
     order = request.args.get('order', 'asc').upper()
-    
-    # Validar orden
-    allowed_order_by = ['NOMBRE_APELLIDO', 'DNI', 'EMAIL']
+
+    allowed_order_by = ['NOMBRE_APELLIDO', 'EMAIL']
     if order_by not in allowed_order_by:
         order_by = 'NOMBRE_APELLIDO'
     if order not in ['ASC', 'DESC']:
         order = 'ASC'
-    
-    # Map legacy order_by to clinical.db columns
-    order_map = {'NOMBRE_APELLIDO': 'nombre', 'DNI': 'dni', 'EMAIL': 'email'}
+
+    order_map = {'NOMBRE_APELLIDO': 'nombre', 'EMAIL': 'email'}
     order_col = order_map.get(order_by, 'nombre')
-    
+
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
+
         query = "SELECT * FROM patients WHERE 1=1"
         params = []
-        
+
         if search:
-            query += " AND (nombre LIKE ? OR email LIKE ? OR dni LIKE ?)"
+            query += " AND (nombre LIKE ? OR email LIKE ?)"
             search_param = f"%{search}%"
-            params.extend([search_param, search_param, search_param])
+            params.extend([search_param, search_param])
         
         # Contar total
         count_query = query.replace("SELECT *", "SELECT COUNT(*)")
@@ -187,10 +185,14 @@ def get_user_detail(user_id):
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
-        # Paciente
-        cursor.execute("SELECT * FROM patients WHERE dni = ?", [user_id])
-        patient = cursor.fetchone()
+
+        # Paciente — acepta patient_id directo o resolución por auth_user_id/nombre.
+        from ..common.database import resolve_patient_id
+        pat = resolve_patient_id(user_id)
+        patient = None
+        if pat:
+            cursor.execute("SELECT * FROM patients WHERE id = ?", [pat['patient_id']])
+            patient = cursor.fetchone()
         
         if not patient:
             conn.close()
@@ -269,12 +271,12 @@ def search_users():
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT dni, nombre, email 
-            FROM patients 
-            WHERE nombre LIKE ? OR email LIKE ? OR dni LIKE ?
+            SELECT id, auth_user_id, nombre, email
+            FROM patients
+            WHERE nombre LIKE ? OR email LIKE ?
             ORDER BY nombre ASC
             LIMIT ?
-        """, [f"%{search}%", f"%{search}%", f"%{search}%", limit])
+        """, [f"%{search}%", f"%{search}%", limit])
         
         users = [dict(row) for row in cursor.fetchall()]
         conn.close()
@@ -689,18 +691,16 @@ def list_auth_users():
 
         query = """
             SELECT u.id, u.email, u.display_name, u.role, u.is_active, u.status,
-                   u.telefono, u.desired_role, u.created_at,
-                   l.patient_dni
+                   u.telefono, u.desired_role, u.created_at
             FROM users u
-            LEFT JOIN patient_user_link l ON u.id = l.user_id
             WHERE 1=1
         """
         params = []
 
         if search:
-            query += " AND (u.display_name LIKE ? OR u.email LIKE ? OR l.patient_dni LIKE ?)"
+            query += " AND (u.display_name LIKE ? OR u.email LIKE ?)"
             s = f"%{search}%"
-            params.extend([s, s, s])
+            params.extend([s, s])
 
         if status_filter:
             query += " AND u.status = ?"
@@ -724,7 +724,6 @@ def list_auth_users():
                 'status': d['status'] or 'active',
                 'telefono': d['telefono'] or '',
                 'desired_role': d['desired_role'] or '',
-                'patient_dni': d['patient_dni'] or '',
                 'created_at': d['created_at'] or '',
             })
 
@@ -744,10 +743,8 @@ def list_pending_users():
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT u.id, u.email, u.display_name, u.role, u.telefono, u.desired_role, u.created_at,
-                   l.patient_dni
+            SELECT u.id, u.email, u.display_name, u.role, u.telefono, u.desired_role, u.created_at
             FROM users u
-            LEFT JOIN patient_user_link l ON u.id = l.user_id
             WHERE u.status = 'pending_verification'
             ORDER BY u.created_at DESC
         """)
@@ -764,7 +761,6 @@ def list_pending_users():
                 'role': d['role'] or 'user',
                 'telefono': d['telefono'] or '',
                 'desired_role': d['desired_role'] or '',
-                'patient_dni': d['patient_dni'] or '',
                 'created_at': d['created_at'] or '',
             })
 

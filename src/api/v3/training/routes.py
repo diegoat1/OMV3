@@ -107,7 +107,7 @@ def create_strength_record():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(target_name)
     else:
-        patient = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        patient = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not data.get('ejercicios'):
         return error_response(
@@ -166,7 +166,7 @@ def get_strength_history():
 
     Query params:
         limit (default 20)
-        user: nombre/dni/email del paciente target (admin / especialista)
+        user: nombre o auth_user_id del paciente target (admin / especialista)
     """
     user = get_current_user()
     limit = request.args.get('limit', 20, type=int)
@@ -439,7 +439,7 @@ def list_training_plans():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -498,7 +498,7 @@ def create_training_plan():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
 
@@ -534,7 +534,6 @@ def create_training_plan():
         return success_response({
             'id': plan_id,
             'patient_id': target['patient_id'],
-            'user_id': target.get('dni'),
             'total_dias': total_dias,
             'current_dia': 1,
             'active': True,
@@ -617,7 +616,7 @@ def get_current_session():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -663,7 +662,7 @@ def register_session():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target_patient = resolve_patient_id(target_name)
     else:
-        target_patient = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target_patient = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target_patient:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -747,7 +746,7 @@ def advance_day():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -792,7 +791,7 @@ def complete_session():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -837,7 +836,7 @@ def get_session_history():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target_patient = resolve_patient_id(target_name)
     else:
-        target_patient = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target_patient = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target_patient:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -901,7 +900,7 @@ def get_today_session():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not target:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
@@ -1115,7 +1114,7 @@ def submit_strength_results():
                                   code=ErrorCodes.FORBIDDEN, status_code=403)
         patient = resolve_patient_id(target_name)
     else:
-        patient = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        patient = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
 
     if not patient:
         return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)

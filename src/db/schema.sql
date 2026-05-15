@@ -11,12 +11,11 @@ PRAGMA foreign_keys=ON;
 
 -- ============================================
 -- TABLA CENTRAL: patients
--- Reemplaza: PERFILESTATICO
+-- Identidad: auth_user_id (FK a auth.db.users.id, autogenerado).
 -- ============================================
 CREATE TABLE IF NOT EXISTS patients (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    auth_user_id    INTEGER,            -- FK → auth.db users.id
-    dni             TEXT UNIQUE NOT NULL,
+    auth_user_id    INTEGER UNIQUE,      -- FK lógica → auth.db users.id
     nombre          TEXT NOT NULL,       -- Nombre completo (Apellido, Nombre)
     email           TEXT,
     telefono        TEXT,
@@ -29,7 +28,6 @@ CREATE TABLE IF NOT EXISTS patients (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_patients_dni ON patients(dni);
 CREATE INDEX IF NOT EXISTS idx_patients_auth ON patients(auth_user_id);
 
 -- ============================================
@@ -486,11 +484,11 @@ CREATE TABLE IF NOT EXISTS nutrition_daily_summary (
 CREATE INDEX IF NOT EXISTS idx_daily_summary_patient_fecha ON nutrition_daily_summary(patient_id, fecha);
 
 -- ============================================
--- TABLA DE MAPEO (para migración)
+-- TABLA DE MAPEO (para migración inicial — ya cerrada).
 -- ============================================
 CREATE TABLE IF NOT EXISTS _migration_map (
     legacy_nombre_apellido TEXT,
-    legacy_dni             TEXT,
+    legacy_id              TEXT,
     new_patient_id         INTEGER REFERENCES patients(id),
     migrated_at            DATETIME DEFAULT CURRENT_TIMESTAMP
 );

@@ -385,16 +385,17 @@ def get_telemed_patients():
         cursor = conn.cursor()
 
         query = """
-            SELECT id, user_id, paciente_nombre, paciente_dni, documento, documento_tipo,
+            SELECT id, user_id, paciente_nombre, documento, documento_tipo,
                    nombre, apellido, fecha_nacimiento, edad, altura_cm, peso_kg,
                    alergias, patologias_previas, antecedentes, telefono, es_fumador,
-                   activo_sexualmente, embarazo, notas, fecha_registro
+                   activo_sexualmente, embarazo, notas, fecha_registro,
+                   auth_user_id
             FROM TELEMED_PACIENTES WHERE 1=1
         """
         params = []
         if not is_admin:
             query += " AND user_id = ?"
-            params.append(user.get('dni') or user['nombre_apellido'])
+            params.append(user['nombre_apellido'])
         if paciente:
             query += " AND paciente_nombre = ?"
             params.append(paciente)
@@ -417,7 +418,7 @@ def create_or_update_telemed_patient():
     """
     user = get_current_user()
     is_admin = user.get('is_admin', False)
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
     data = request.get_json() or {}
 
     nombre = (data.get('nombre') or '').strip()
@@ -440,7 +441,6 @@ def create_or_update_telemed_patient():
     common_values = {
         'paciente_nombre': paciente_nombre,
         'nombre': nombre or None, 'apellido': apellido or None,
-        'paciente_dni': (data.get('paciente_dni') or data.get('documento') or '').strip() or None,
         'documento': (data.get('documento') or '').strip() or None,
         'documento_tipo': (data.get('documento_tipo') or '').strip() or None,
         'fecha_nacimiento': fecha_nacimiento, 'edad': edad_valor,
@@ -468,7 +468,7 @@ def create_or_update_telemed_patient():
             vals.append(record_id)
             if not is_admin:
                 condicion += " AND user_id = ?"
-                vals.append(user_dni)
+                vals.append(current_user_name)
 
             cursor.execute(f"UPDATE TELEMED_PACIENTES SET {', '.join(campos_update)}, fecha_registro = CURRENT_TIMESTAMP {condicion}", vals)
             if cursor.rowcount == 0:
@@ -484,14 +484,14 @@ def create_or_update_telemed_patient():
         # INSERT
         cursor.execute("""
             INSERT INTO TELEMED_PACIENTES (
-                user_id, paciente_nombre, nombre, apellido, paciente_dni, documento, documento_tipo,
+                user_id, paciente_nombre, nombre, apellido, documento, documento_tipo,
                 fecha_nacimiento, edad, altura_cm, peso_kg,
                 alergias, patologias_previas, antecedentes, telefono,
                 es_fumador, activo_sexualmente, embarazo, notas
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
-            user_dni, common_values['paciente_nombre'], common_values['nombre'], common_values['apellido'],
-            common_values['paciente_dni'], common_values['documento'], common_values['documento_tipo'],
+            current_user_name, common_values['paciente_nombre'], common_values['nombre'], common_values['apellido'],
+            common_values['documento'], common_values['documento_tipo'],
             common_values['fecha_nacimiento'], common_values['edad'],
             common_values['altura_cm'], common_values['peso_kg'],
             common_values['alergias'], common_values['patologias_previas'],
@@ -522,7 +522,7 @@ def get_telemed_patient(patient_id):
         params = [patient_id]
         if not is_admin:
             query += " AND user_id = ?"
-            params.append(user.get('dni') or user['nombre_apellido'])
+            params.append(user['nombre_apellido'])
         cursor.execute(query, params)
         row = cursor.fetchone()
         conn.close()
@@ -556,19 +556,19 @@ def get_situations():
         cursor = conn.cursor()
 
         query = """
-            SELECT id, paciente_nombre, paciente_dni, tipo_consulta, tipo_consulta_personalizada,
+            SELECT id, paciente_nombre, tipo_consulta, tipo_consulta_personalizada,
                    motivo_consulta, historia_enfermedad_actual, antecedentes_personales,
                    laboratorios, estudios_complementarios, interconsultas,
                    situacion_actual, tratamiento_farmacologico,
                    medidas_estilo_vida, signos_alarma, proximos_controles,
                    diagnostico_cie10, informe_dimision, indicaciones, resumen_clinico,
-                   etiquetas, fecha_registro
+                   etiquetas, fecha_registro, auth_user_id
             FROM TELEMED_SITUACIONES WHERE 1=1
         """
         params = []
         if not is_admin:
             query += " AND user_id = ?"
-            params.append(user.get('dni') or user['nombre_apellido'])
+            params.append(user['nombre_apellido'])
         if paciente:
             query += " AND paciente_nombre = ?"
             params.append(paciente)
@@ -604,7 +604,7 @@ def create_or_update_situation():
     """
     user = get_current_user()
     is_admin = user.get('is_admin', False)
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
     data = request.get_json() or {}
 
     paciente_nombre = (data.get('paciente_nombre') or '').strip()
@@ -619,7 +619,6 @@ def create_or_update_situation():
 
     campos_comunes = {
         'paciente_nombre': paciente_nombre,
-        'paciente_dni': _clean_text(data.get('paciente_dni')),
         'tipo_consulta': _clean_text(data.get('tipo_consulta')),
         'tipo_consulta_personalizada': _clean_text(data.get('tipo_consulta_personalizada')),
         'motivo_consulta': _clean_text(data.get('motivo_consulta')),
@@ -652,7 +651,7 @@ def create_or_update_situation():
             condicion = "WHERE id = ?"
             if not is_admin:
                 condicion += " AND user_id = ?"
-                params.append(user_dni)
+                params.append(current_user_name)
             cursor.execute(f"UPDATE TELEMED_SITUACIONES SET {set_clause}, fecha_registro = CURRENT_TIMESTAMP {condicion}", params)
             if cursor.rowcount == 0:
                 conn.close()
@@ -662,7 +661,7 @@ def create_or_update_situation():
             return success_response({'updated': True})
 
         campos_insert = ['user_id'] + list(campos_comunes.keys())
-        valores_insert = [user_dni] + list(campos_comunes.values())
+        valores_insert = [current_user_name] + list(campos_comunes.values())
         placeholders = ", ".join(['?'] * len(campos_insert))
         cursor.execute(f"INSERT INTO TELEMED_SITUACIONES ({', '.join(campos_insert)}) VALUES ({placeholders})", valores_insert)
         conn.commit()
@@ -679,7 +678,7 @@ def delete_situation(situacion_id):
     """Delete a clinical situation record."""
     user = get_current_user()
     is_admin = user.get('is_admin', False)
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
 
     try:
         conn = get_telemed_connection()
@@ -688,7 +687,7 @@ def delete_situation(situacion_id):
         params = [situacion_id]
         if not is_admin:
             condicion += " AND user_id = ?"
-            params.append(user_dni)
+            params.append(current_user_name)
         cursor.execute(f"DELETE FROM TELEMED_SITUACIONES {condicion}", params)
         if cursor.rowcount == 0:
             conn.close()
@@ -786,15 +785,16 @@ def get_documents():
         cursor = conn.cursor()
 
         query = """
-            SELECT id, user_id, paciente_nombre, paciente_dni, tipo_documento,
+            SELECT id, user_id, paciente_nombre, tipo_documento,
                    descripcion, fecha_documento, drive_url, etiquetas, fecha_registro,
-                   notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id
+                   notas, nombre_archivo, mime_type, tamano_archivo, drive_file_id, carpeta_id,
+                   auth_user_id
             FROM TELEMED_DOCUMENTOS WHERE 1=1
         """
         params = []
         if not is_admin:
             query += " AND user_id = ?"
-            params.append(user.get('dni') or user['nombre_apellido'])
+            params.append(user['nombre_apellido'])
         if paciente:
             query += " AND paciente_nombre = ?"
             params.append(paciente)
@@ -826,7 +826,7 @@ def get_documents():
 def create_document():
     """Register a new medical document (metadata — links to Google Drive)."""
     user = get_current_user()
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
     data = request.get_json() or {}
 
     paciente_nombre = (data.get('paciente_nombre') or '').strip()
@@ -879,12 +879,12 @@ def create_document():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO TELEMED_DOCUMENTOS (
-                user_id, paciente_nombre, paciente_dni, tipo_documento,
+                user_id, paciente_nombre, tipo_documento,
                 descripcion, fecha_documento, drive_url, etiquetas, notas,
                 drive_file_id, nombre_archivo, mime_type, tamano_archivo, carpeta_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
-            user_dni, paciente_nombre, data.get('paciente_dni'),
+            current_user_name, paciente_nombre,
             tipo_documento, _clean_text(data.get('descripcion')),
             data.get('fecha_documento'), drive_url,
             json.dumps(etiquetas) if etiquetas else None,
@@ -910,11 +910,11 @@ def update_document(documento_id):
     """Update a medical document's metadata."""
     user = get_current_user()
     is_admin = user.get('is_admin', False)
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
     data = request.get_json() or {}
 
     campos = {}
-    for clave in ('paciente_nombre', 'tipo_documento', 'descripcion', 'fecha_documento', 'drive_url', 'paciente_dni', 'carpeta_id', 'notas'):
+    for clave in ('paciente_nombre', 'tipo_documento', 'descripcion', 'fecha_documento', 'drive_url', 'carpeta_id', 'notas'):
         if clave in data:
             valor = data.get(clave)
             if isinstance(valor, str):
@@ -939,7 +939,7 @@ def update_document(documento_id):
         condicion = "WHERE id = ?"
         if not is_admin:
             condicion += " AND user_id = ?"
-            params.append(user_dni)
+            params.append(current_user_name)
 
         cursor.execute(f"UPDATE TELEMED_DOCUMENTOS SET {set_clause}, fecha_registro = CURRENT_TIMESTAMP {condicion}", params)
         if cursor.rowcount == 0:
@@ -960,7 +960,7 @@ def delete_document(documento_id):
     """Delete a medical document."""
     user = get_current_user()
     is_admin = user.get('is_admin', False)
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
 
     try:
         conn = get_telemed_connection()
@@ -969,7 +969,7 @@ def delete_document(documento_id):
         params = [documento_id]
         if not is_admin:
             condicion += " AND user_id = ?"
-            params.append(user_dni)
+            params.append(current_user_name)
         cursor.execute(f"DELETE FROM TELEMED_DOCUMENTOS {condicion}", params)
         if cursor.rowcount == 0:
             conn.close()
@@ -1008,14 +1008,14 @@ def create_prevention_program():
         return _guard
     """Create a new prevention program."""
     user = get_current_user()
-    user_dni = user.get('dni') or user['nombre_apellido']
+    current_user_name = user['nombre_apellido']
     data = request.get_json() or {}
 
     try:
         conn = get_telemed_connection()
         cursor = conn.cursor()
         campos = ['user_id']
-        valores = [user_dni]
+        valores = [current_user_name]
         placeholders = ['?']
         for campo, valor in data.items():
             if valor is not None and valor != '':
@@ -1039,7 +1039,7 @@ def create_prevention_program():
 def _generic_performance_get(table_name, db_type='legacy'):
     """Generic GET for performance tables."""
     user = get_current_user()
-    user_id = user.get('dni') or user['nombre_apellido']
+    user_id = user['nombre_apellido']
     try:
         if db_type == 'telemed':
             conn = get_telemed_connection(sqlite3.Row)
@@ -1058,7 +1058,7 @@ def _generic_performance_get(table_name, db_type='legacy'):
 def _generic_performance_post(table_name, db_type='legacy', success_msg='Registro guardado'):
     """Generic POST for performance tables."""
     user = get_current_user()
-    user_id = user.get('dni') or user['nombre_apellido']
+    user_id = user['nombre_apellido']
     data = request.get_json() or {}
     try:
         if db_type == 'telemed':
@@ -1211,7 +1211,7 @@ def get_templates():
 
     if not is_admin:
         query += " AND user_id = ?"
-        params.append(user.get('dni') or user['nombre_apellido'])
+        params.append(user['nombre_apellido'])
 
     if template_type:
         query += " AND type = ?"
@@ -1253,7 +1253,7 @@ def create_template():
     if content and not isinstance(content, str):
         content = json.dumps(content, ensure_ascii=False)
 
-    user_id = user.get('dni') or user['nombre_apellido']
+    user_id = user['nombre_apellido']
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     conn = get_telemed_connection()
@@ -1276,7 +1276,7 @@ def update_template(template_id):
     _ensure_templates_table()
     user = get_current_user()
     data = request.get_json() or {}
-    user_id = user.get('dni') or user['nombre_apellido']
+    user_id = user['nombre_apellido']
     is_admin = user.get('is_admin', False)
 
     conn = get_telemed_connection()
@@ -1318,7 +1318,7 @@ def delete_template(template_id):
     """Delete a template."""
     _ensure_templates_table()
     user = get_current_user()
-    user_id = user.get('dni') or user['nombre_apellido']
+    user_id = user['nombre_apellido']
     is_admin = user.get('is_admin', False)
 
     conn = get_telemed_connection()

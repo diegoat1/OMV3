@@ -16,8 +16,7 @@ export interface ApiError {
 export type ApiResponse<T> = ApiSuccess<T> | ApiError
 
 /** Shape returned by the v3 backend. `rol` may be a comma-separated string.
- *  `dni` ya no forma parte del contrato — el identificador del usuario es
- *  `id` (auth user_id, auto-generado por el backend). */
+ *  El identificador es `id` (auth user_id, autogenerado por el backend). */
 export interface AuthUser {
   id: string
   email: string
@@ -40,8 +39,7 @@ export interface LoginResponse {
   user: AuthUser
 }
 
-/** POST /auth/register payload. The backend is being aligned to this contract:
- *  - no `documento` (DNI) required
+/** POST /auth/register payload.
  *  - `sexo` strictly 'M' | 'F'
  *  - `desired_roles` as array (excluding 'admin')
  */

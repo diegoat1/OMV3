@@ -2,9 +2,9 @@
 ASSIGNMENTS Routes - Specialist-Patient assignment flow
 
 Flow:
-1. Doctor/specialist requests assignment by patient DNI
-2. Patient sees pending request and accepts or rejects
-3. Once accepted, the specialist can see the patient in their list
+1. Doctor/specialist requests assignment by patient email o nombre.
+2. Patient sees pending request and accepts or rejects.
+3. Once accepted, the specialist can see the patient in their list.
 """
 
 from flask import request
@@ -112,7 +112,6 @@ def request_assignment():
     Body (any one of these identifies the patient):
         - "patient_email": "name@example.com"
         - "patient_name":  "Apellido, Nombre"   (display_name LIKE)
-        - "patient_dni":   "12345678"            (legacy fallback)
 
     The specialist must have a specialist role (doctor, nutricionista, entrenador).
     Creates a pending request the patient must accept.
@@ -121,20 +120,17 @@ def request_assignment():
     data = request.get_json() or {}
     patient_email = (data.get('patient_email') or '').strip().lower()
     patient_name  = (data.get('patient_name')  or '').strip()
-    patient_dni   = (data.get('patient_dni')   or '').strip()
-    # `query` is a unified search box from the UI: try as email, then name, then DNI.
+    # `query` is a unified search box from the UI: try as email, otherwise name.
     query         = (data.get('query')         or '').strip()
-    if query and not (patient_email or patient_name or patient_dni):
+    if query and not (patient_email or patient_name):
         if '@' in query:
             patient_email = query.lower()
-        elif query.isdigit():
-            patient_dni = query
         else:
             patient_name = query
 
-    if not (patient_email or patient_name or patient_dni):
+    if not (patient_email or patient_name):
         return error_response(
-            'Indicá email, nombre o DNI del paciente',
+            'Indicá email o nombre del paciente',
             code=ErrorCodes.VALIDATION_ERROR, status_code=400,
         )
 
@@ -159,35 +155,24 @@ def request_assignment():
 
         spec_role = _get_specialist_role(spec['role'])
 
-        # Find patient by whichever identifier was provided. The auth users
-        # table holds the canonical email/display_name; the patient_user_link
-        # table still carries the legacy DNI for older accounts.
+        # Find patient by email o nombre. La auth.users.id es ahora el
+        # único identificador transversal.
         patient = None
         if patient_email:
             cursor.execute("""
-                SELECT u.id, u.display_name, u.is_active, l.patient_dni
-                FROM users u
-                LEFT JOIN patient_user_link l ON u.id = l.user_id
-                WHERE LOWER(u.email) = ?
+                SELECT id, display_name, is_active
+                FROM users
+                WHERE LOWER(email) = ?
             """, [patient_email])
             patient = cursor.fetchone()
         if not patient and patient_name:
             cursor.execute("""
-                SELECT u.id, u.display_name, u.is_active, l.patient_dni
-                FROM users u
-                LEFT JOIN patient_user_link l ON u.id = l.user_id
-                WHERE LOWER(u.display_name) = LOWER(?)
-                   OR LOWER(u.display_name) LIKE LOWER(?)
+                SELECT id, display_name, is_active
+                FROM users
+                WHERE LOWER(display_name) = LOWER(?)
+                   OR LOWER(display_name) LIKE LOWER(?)
                 LIMIT 1
             """, [patient_name, f'%{patient_name}%'])
-            patient = cursor.fetchone()
-        if not patient and patient_dni:
-            cursor.execute("""
-                SELECT u.id, u.display_name, u.is_active, l.patient_dni
-                FROM users u
-                JOIN patient_user_link l ON u.id = l.user_id
-                WHERE l.patient_dni = ?
-            """, [patient_dni])
             patient = cursor.fetchone()
 
         if not patient:
@@ -222,15 +207,11 @@ def request_assignment():
 
         # Create the assignment request
         now = datetime.utcnow().isoformat()
-        # We keep the patient_dni column populated when the link exists for
-        # backwards-compat with the legacy reports, but identity is no longer
-        # dependent on it.
-        stored_dni = pat.get('patient_dni') or ''
         cursor.execute("""
             INSERT INTO specialist_assignments
-                (specialist_id, specialist_name, specialist_role, patient_id, patient_name, patient_dni, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending_patient', ?, ?)
-        """, [spec['id'], spec['display_name'], spec_role, pat['id'], pat['display_name'] or '', stored_dni, now, now])
+                (specialist_id, specialist_name, specialist_role, patient_id, patient_name, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'pending_patient', ?, ?)
+        """, [spec['id'], spec['display_name'], spec_role, pat['id'], pat['display_name'] or '', now, now])
 
         assignment_id = cursor.lastrowid
         conn.commit()
@@ -273,7 +254,7 @@ def my_requests():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, specialist_id, specialist_name, specialist_role,
-                   patient_id, patient_name, patient_dni, status, created_at, updated_at
+                   patient_id, patient_name, status, created_at, updated_at
             FROM specialist_assignments
             WHERE specialist_id = ?
             ORDER BY created_at DESC
@@ -297,7 +278,7 @@ def pending_for_patient():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, specialist_id, specialist_name, specialist_role,
-                   patient_id, patient_name, patient_dni, status, created_at
+                   patient_id, patient_name, status, created_at
             FROM specialist_assignments
             WHERE patient_id = ? AND status = 'pending_patient'
             ORDER BY created_at DESC
@@ -619,20 +600,19 @@ def patient_request_specialist():
             return error_response('Ya existe una solicitud pendiente con este especialista',
                                   code=ErrorCodes.VALIDATION_ERROR, status_code=409)
 
-        # Resolve patient name + DNI
+        # Resolve patient name
         patient_name = user.get('nombre_apellido') or ''
-        patient_dni = user.get('dni') or ''
 
         now = datetime.utcnow().isoformat()
         cursor.execute("""
             INSERT INTO specialist_assignments
                 (specialist_id, specialist_name, specialist_role,
-                 patient_id, patient_name, patient_dni,
+                 patient_id, patient_name,
                  status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending_specialist', ?, ?)
+            VALUES (?, ?, ?, ?, ?, 'pending_specialist', ?, ?)
         """, [
             specialist_id, spec['display_name'] or '', spec_role,
-            user['user_id'], patient_name, patient_dni,
+            user['user_id'], patient_name,
             now, now,
         ])
         assignment_id = cursor.lastrowid
@@ -679,7 +659,7 @@ def my_outgoing_requests():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, specialist_id, specialist_name, specialist_role,
-                   patient_id, patient_name, patient_dni, status, created_at, updated_at
+                   patient_id, patient_name, status, created_at, updated_at
             FROM specialist_assignments
             WHERE patient_id = ? AND status = 'pending_specialist'
             ORDER BY created_at DESC
@@ -725,7 +705,7 @@ def my_patients():
         conn = get_auth_connection(sqlite3.Row)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT MIN(sa.id) as id, sa.patient_id, sa.patient_name, sa.patient_dni,
+            SELECT MIN(sa.id) as id, sa.patient_id, sa.patient_name,
                    sa.status, MAX(sa.created_at) as created_at, MAX(sa.updated_at) as updated_at,
                    u.email as patient_email, u.is_active as patient_active
             FROM specialist_assignments sa

@@ -987,7 +987,7 @@ def patient_summary():
 
     pid = pat['patient_id']
     out = {
-        'patient': {'nombre': pat['nombre'], 'patient_id': pid, 'dni': pat.get('dni')},
+        'patient': {'nombre': pat['nombre'], 'patient_id': pid},
         'last_checkin': None,
         'last_measurement': None,
         'active_goal': None,

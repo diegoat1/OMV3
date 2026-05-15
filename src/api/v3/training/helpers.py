@@ -113,7 +113,7 @@ def get_all_strength_admin() -> List[dict]:
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT s.*, p.nombre AS username, p.dni
+            SELECT s.*, p.nombre AS username, p.auth_user_id
             FROM strength_tests s
             JOIN patients p ON s.patient_id = p.id
             ORDER BY s.fecha DESC
@@ -990,7 +990,7 @@ def resolve_target_patient_id(user, target_name=None):
             return None, 'forbidden'
         target = resolve_patient_id(target_name)
     else:
-        target = resolve_patient_id(user.get('nombre_apellido') or user.get('dni'))
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
     if not target:
         return None, 'not_found'
     return target, None

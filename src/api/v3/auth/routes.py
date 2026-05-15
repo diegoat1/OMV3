@@ -146,10 +146,8 @@ def login():
         auth_cursor = auth_conn.cursor()
         auth_cursor.execute("""
             SELECT u.id, u.email, u.password_hash, u.role, u.display_name, u.is_active,
-                   u.status, u.desired_role, u.email_verified, u.membership_expires_at,
-                   l.patient_dni
+                   u.status, u.desired_role, u.email_verified, u.membership_expires_at
             FROM users u
-            LEFT JOIN patient_user_link l ON u.id = l.user_id
             WHERE LOWER(u.email) = ?
         """, [email])
         auth_user = auth_cursor.fetchone()
@@ -202,7 +200,6 @@ def login():
         is_admin = 'admin' in [r.strip() for r in (auth_dict['role'] or '').split(',')]
         token_data = {
             'user_id': str(auth_dict['id']),
-            'dni': auth_dict.get('patient_dni') or '',
             'email': auth_dict['email'],
             'nombre_apellido': auth_dict['display_name'] or '',
             'rol': auth_dict['role'],
