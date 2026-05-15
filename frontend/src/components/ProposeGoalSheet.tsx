@@ -113,21 +113,24 @@ export function ProposeGoalSheet({ profile, latestMeasurement, onClose, onSaved 
       return
     }
 
-    // The backend only persists peso/bf/ffmi/abdomen/cintura/cadera/notas/tipo
-    // (no `categoria`, `meses_estimados`, `source*`). We still keep `meses`
-    // in the UI as a planning aid and append it to notas so the info isn't
-    // lost on the server.
+    // El doctor SIEMPRE propone — el paciente lo acepta o rechaza después.
+    // Mandamos status='proposed' explícito para que no se autoacepte cuando
+    // el paciente y el doctor son el mismo auth_user_id (caso ver-mi-propio-
+    // perfil del admin con doble rol).
+    // tiempo_estimado_meses va como campo estructurado y la fecha_objetivo
+    // se deriva en el backend (`_compute_fecha_objetivo`) si no la mandamos.
     const notasFinal = [
       notas.trim(),
-      meses ? `Plazo estimado: ${meses} ${meses === 1 ? 'mes' : 'meses'}` : '',
       `Categoría: ${tipo}`,
     ].filter(Boolean).join(' · ')
 
     const payload: ProposeGoalPayload = {
-      tipo: 'manual',
+      status: 'proposed',
+      source: 'manual',
       ...(peso !== null ? { peso_objetivo: peso } : {}),
       ...(bf !== null ? { bf_objetivo: bf } : {}),
       ...(ffmi !== null ? { ffmi_objetivo: ffmi } : {}),
+      ...(meses !== null ? { tiempo_estimado_meses: meses } : {}),
       notas: notasFinal,
     }
 
@@ -148,20 +151,29 @@ export function ProposeGoalSheet({ profile, latestMeasurement, onClose, onSaved 
     const phase = roadmap.objetivos_parciales[selectedIdx]
     setSubmitting(true)
     try {
-      // Backend has no persisted roadmap; we just save the chosen phase as
-      // the active goal and preserve provenance in the notas field.
+      // El doctor propone una fase auto-calculada. El backend persiste el
+      // tiempo_estimado_meses como columna y deriva fecha_objetivo solo.
       const notasAuto = [
         phase.descripcion,
         phase.fase,
         `Fase ${selectedIdx + 1}/${roadmap.objetivos_parciales.length}`,
-        phase.tiempo_meses ? `~${phase.tiempo_meses} ${phase.tiempo_meses === 1 ? 'mes' : 'meses'}` : '',
       ].filter(Boolean).join(' · ')
 
       const payload: ProposeGoalPayload = {
-        tipo: 'auto',
+        status: 'proposed',
+        source: 'auto-accepted',
+        source_phase_index: selectedIdx,
         peso_objetivo: phase.peso_objetivo,
         bf_objetivo: phase.bf_objetivo,
         ffmi_objetivo: phase.ffmi_objetivo,
+        ...(phase.tiempo_meses ? { tiempo_estimado_meses: phase.tiempo_meses } : {}),
+        ...(phase.medida_abdomen != null ? { circ_abdomen_objetivo: phase.medida_abdomen } : {}),
+        ...(phase.medida_cintura_cadera
+          ? {
+              circ_cintura_objetivo: phase.medida_cintura_cadera.cintura,
+              circ_cadera_objetivo: phase.medida_cintura_cadera.cadera,
+            }
+          : {}),
         notas: notasAuto,
       }
       await goalService.propose(profile.user_id, payload)
