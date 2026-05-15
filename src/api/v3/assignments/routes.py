@@ -487,22 +487,21 @@ def list_available_specialists():
         cursor.execute(query, params)
         all_rows = [dict(r) for r in cursor.fetchall()]
 
-        # Strip admins (role contains 'admin') from the list — admins aren't
-        # bookable as clinical specialists from the patient flow (OMV-26).
-        def all_roles(role_csv):
-            return [r.strip().lower() for r in (role_csv or '').split(',')]
-
+        # Filtrar al vocabulario clínico (doctor / nutricionista / entrenador).
+        # Un usuario que ADEMÁS sea admin aparece igual si tiene rol clínico —
+        # el flag 'admin' se omite del `roles[]` devuelto para que el paciente
+        # no lo "solicite como admin" (OMV-26). Los admin puros (sin ningún
+        # rol clínico) quedan fuera del catálogo.
         def specialist_roles(role_csv):
+            parts = [r.strip().lower() for r in (role_csv or '').split(',')]
             allowed = {'doctor', 'nutricionista', 'entrenador'}
-            return [r for r in all_roles(role_csv) if r in allowed]
+            return [r for r in parts if r in allowed]
 
         specialists = []
         for r in all_rows:
-            if 'admin' in all_roles(r['role']):
-                continue  # admins fuera del catálogo de specialists
             roles = specialist_roles(r['role'])
             if not roles:
-                continue
+                continue  # admin puro o user pelado: fuera
             if role_filter and role_filter not in roles:
                 continue
             specialists.append({
