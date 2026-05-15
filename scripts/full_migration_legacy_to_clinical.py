@@ -98,6 +98,12 @@ def main():
     # ───────────────── 2) PERFILESTATICO → patients ─────────────────
     print()
     print('=== patients ===')
+    # Detectar si patients aún tiene la columna `dni` (PA pre-migración 018).
+    patient_cols = [r[1] for r in cur.execute("PRAGMA table_info(patients)").fetchall()]
+    has_dni_col = 'dni' in patient_cols
+    if has_dni_col:
+        print('  (schema legacy: patients.dni presente — incluyo DNI en el insert)')
+
     name_to_pid = {}
     legacy_patients = lg.execute("""
         SELECT NOMBRE_APELLIDO, DNI, NUMERO_TELEFONO, EMAIL, SEXO,
@@ -109,6 +115,7 @@ def main():
     # email contra el mismo auth user (raro pero pasa), solo el primero se
     # linkea; el resto queda con auth_user_id NULL.
     used_uids = set()
+    used_dnis = set()
     for p in legacy_patients:
         email = (p['EMAIL'] or '').strip().lower()
         auth_uid = email_to_uid.get(email)
@@ -123,17 +130,52 @@ def main():
             sexo = 'F'
         elif sexo and sexo.upper() not in ('M', 'F'):
             sexo = None
+
+        # Calcular DNI value para el insert solo si la columna existe.
+        # PERFILESTATICO.DNI viene como INTEGER; lo casteamos a string para
+        # mantener el patrón que ya usaba el legacy. UNIQUE en patients.dni
+        # también es real en el schema PA — deduplicar con un sufijo si dos
+        # PERFILESTATICO comparten DNI.
+        dni_value = None
+        if has_dni_col:
+            dni_str = str(p['DNI']) if p['DNI'] is not None else None
+            if not dni_str:
+                dni_str = f'no-dni-{p["NOMBRE_APELLIDO"]}'
+            if dni_str in used_dnis:
+                # raro pero defensivo
+                suffix = 2
+                while f'{dni_str}-{suffix}' in used_dnis:
+                    suffix += 1
+                dni_str = f'{dni_str}-{suffix}'
+            used_dnis.add(dni_str)
+            dni_value = dni_str
+
         if not args.dry_run:
-            cur.execute("""
-                INSERT INTO patients
-                (auth_user_id, nombre, email, telefono, sexo, fecha_nacimiento, altura,
-                 circ_cuello, circ_muneca, circ_tobillo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, [
-                auth_uid, p['NOMBRE_APELLIDO'], p['EMAIL'], p['NUMERO_TELEFONO'],
-                sexo, p['FECHA_NACIMIENTO'], p['ALTURA'],
-                p['CIRC_CUELLO'], p['CIRC_MUNECA'], p['CIRC_TOBILLO'],
-            ])
+            if has_dni_col:
+                cur.execute("""
+                    INSERT INTO patients
+                    (auth_user_id, dni, nombre, email, telefono, sexo,
+                     fecha_nacimiento, altura,
+                     circ_cuello, circ_muneca, circ_tobillo)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, [
+                    auth_uid, dni_value,
+                    p['NOMBRE_APELLIDO'], p['EMAIL'], p['NUMERO_TELEFONO'],
+                    sexo, p['FECHA_NACIMIENTO'], p['ALTURA'],
+                    p['CIRC_CUELLO'], p['CIRC_MUNECA'], p['CIRC_TOBILLO'],
+                ])
+            else:
+                cur.execute("""
+                    INSERT INTO patients
+                    (auth_user_id, nombre, email, telefono, sexo,
+                     fecha_nacimiento, altura,
+                     circ_cuello, circ_muneca, circ_tobillo)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, [
+                    auth_uid, p['NOMBRE_APELLIDO'], p['EMAIL'], p['NUMERO_TELEFONO'],
+                    sexo, p['FECHA_NACIMIENTO'], p['ALTURA'],
+                    p['CIRC_CUELLO'], p['CIRC_MUNECA'], p['CIRC_TOBILLO'],
+                ])
             name_to_pid[p['NOMBRE_APELLIDO']] = cur.lastrowid
         if auth_uid:
             linked_count += 1
