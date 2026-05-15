@@ -287,12 +287,32 @@ def register():
         # Hash del password que envió el usuario
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        # Mapear primer rol deseado a la columna `role` legacy
-        primary = (desired_roles[0] if desired_roles else 'patient').lower()
-        role = 'doctor' if primary in ('doctor', 'nutritionist', 'trainer', 'professional') else 'user'
+        # Mapear desired_roles (vocabulario UI: patient / doctor / nutritionist /
+        # trainer, opcionalmente en español: nutricionista / entrenador) al
+        # vocabulario canónico interno usado por specialist_assignments y los
+        # filtros de /assignments/specialists.
+        _ROLE_CANONICAL = {
+            'patient': 'user',
+            'doctor': 'doctor', 'medico': 'doctor', 'médico': 'doctor',
+            'nutritionist': 'nutricionista', 'nutricionista': 'nutricionista',
+            'trainer': 'entrenador', 'entrenador': 'entrenador',
+            'professional': 'doctor',
+        }
+        canonical = []
+        for r in desired_roles:
+            mapped = _ROLE_CANONICAL.get(str(r).strip().lower())
+            if mapped and mapped not in canonical:
+                canonical.append(mapped)
+        if not canonical:
+            canonical = ['user']
 
-        # Guardar el array completo como CSV (admin lo lee como string)
-        desired_role_csv = ','.join(str(r).lower() for r in desired_roles) or 'patient'
+        # `role` legacy = primer rol no-paciente si lo hay, si no 'user'.
+        non_user = [r for r in canonical if r != 'user']
+        role = ','.join(non_user) if non_user else 'user'
+
+        # `desired_role` keep raw para que el admin lo vea (CSV con lo que pidió
+        # el usuario, incluyendo "patient" si aplica).
+        desired_role_csv = ','.join(canonical)
 
         # OMV-16: token de verificación inicial.
         verification_token = secrets.token_urlsafe(32)
