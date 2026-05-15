@@ -338,12 +338,18 @@ def _ensure_patient_link(auth_user_id, display_name=None, email=None):
     if not uid:
         return None
 
-    # 1) ¿Ya hay patient_user_link?
+    # 1) ¿Ya hay patient_user_link? Traemos también sexo/fecha_nac/telefono
+    #    capturados en /auth/register para no pedirlos de nuevo en el sheet
+    #    "Datos constitucionales".
+    sexo = None
+    fecha_nacimiento = None
+    telefono = None
     try:
         auth_conn = get_auth_connection(sqlite3.Row)
         auth_cursor = auth_conn.cursor()
         auth_cursor.execute(
-            "SELECT u.id, u.display_name, u.email, l.patient_dni "
+            "SELECT u.id, u.display_name, u.email, u.sexo, u.fecha_nacimiento, "
+            "       u.telefono, l.patient_dni "
             "FROM users u LEFT JOIN patient_user_link l ON u.id = l.user_id "
             "WHERE u.id = ?",
             [uid],
@@ -357,6 +363,9 @@ def _ensure_patient_link(auth_user_id, display_name=None, email=None):
             display_name = d.get('display_name') or f'Usuario {uid}'
         if email is None:
             email = d.get('email')
+        sexo = d.get('sexo')
+        fecha_nacimiento = d.get('fecha_nacimiento')
+        telefono = d.get('telefono')
 
         synthetic_dni = d.get('patient_dni') or f'u{uid}'
 
@@ -379,20 +388,62 @@ def _ensure_patient_link(auth_user_id, display_name=None, email=None):
     try:
         clin_conn = get_clinical_connection(sqlite3.Row)
         ccur = clin_conn.cursor()
-        ccur.execute("SELECT id, dni, nombre FROM patients WHERE dni = ?", [synthetic_dni])
+        ccur.execute(
+            "SELECT id, dni, nombre, sexo, fecha_nacimiento, telefono "
+            "FROM patients WHERE dni = ?",
+            [synthetic_dni],
+        )
         prow = ccur.fetchone()
         if prow:
+            # Backfill: si la fila existía pero le falta sexo/fecha_nac/teléfono
+            # y auth.db sí los tiene, los copiamos ahora — así no le pedimos al
+            # usuario datos que ya cargó al registrarse.
+            sets = []
+            vals = []
+            if sexo and not prow['sexo']:
+                sets.append('sexo = ?')
+                vals.append(sexo)
+            if fecha_nacimiento and not prow['fecha_nacimiento']:
+                sets.append('fecha_nacimiento = ?')
+                vals.append(fecha_nacimiento)
+            if telefono and not prow['telefono']:
+                sets.append('telefono = ?')
+                vals.append(telefono)
+            if sets:
+                vals.append(prow['id'])
+                try:
+                    ccur.execute(
+                        f"UPDATE patients SET {', '.join(sets)}, "
+                        f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        vals,
+                    )
+                    clin_conn.commit()
+                except Exception:
+                    pass
             clin_conn.close()
             return {
-                'dni': prow[1],
-                'nombre_apellido': prow[2],
-                'patient_id': prow[0],
+                'dni': prow['dni'],
+                'nombre_apellido': prow['nombre'],
+                'patient_id': prow['id'],
             }
-        # No existe → crear
-        ccur.execute(
-            "INSERT INTO patients (dni, nombre, email) VALUES (?, ?, ?)",
-            [synthetic_dni, display_name, email],
-        )
+        # No existe → crear con todo lo que sabemos
+        try:
+            ccur.execute(
+                "INSERT INTO patients (auth_user_id, dni, nombre, email, sexo, "
+                "                      fecha_nacimiento, telefono) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [int(uid) if uid.isdigit() else None, synthetic_dni,
+                 display_name, email, sexo, fecha_nacimiento, telefono],
+            )
+        except sqlite3.OperationalError:
+            # auth_user_id no existe en schemas viejos: caemos al INSERT clásico
+            ccur.execute(
+                "INSERT INTO patients (dni, nombre, email, sexo, "
+                "                      fecha_nacimiento, telefono) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                [synthetic_dni, display_name, email, sexo,
+                 fecha_nacimiento, telefono],
+            )
         clin_conn.commit()
         new_id = ccur.lastrowid
         clin_conn.close()

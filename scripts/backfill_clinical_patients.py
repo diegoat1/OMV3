@@ -46,7 +46,8 @@ def main():
     clin_cur = clin_conn.cursor()
 
     auth_cur.execute("""
-        SELECT u.id, u.email, u.display_name, l.patient_dni
+        SELECT u.id, u.email, u.display_name, u.sexo, u.fecha_nacimiento,
+               u.telefono, l.patient_dni
         FROM users u LEFT JOIN patient_user_link l ON u.id = l.user_id
         WHERE u.status = 'active'
         ORDER BY u.id
@@ -56,6 +57,7 @@ def main():
 
     created_links = 0
     created_patients = 0
+    backfilled = 0
     skipped = 0
     issues = []
 
@@ -64,6 +66,9 @@ def main():
         synthetic_dni = u['patient_dni'] or f'u{uid}'
         display = u['display_name'] or f'Usuario {uid}'
         email = u['email']
+        sexo = u.get('sexo')
+        fecha_nac = u.get('fecha_nacimiento')
+        telefono = u.get('telefono')
 
         # 1) Asegurar patient_user_link
         if not u['patient_dni']:
@@ -79,14 +84,48 @@ def main():
 
         # 2) Asegurar clinical.db.patients
         try:
-            clin_cur.execute("SELECT id FROM patients WHERE dni = ?", [synthetic_dni])
-            if clin_cur.fetchone():
-                skipped += 1
-                continue
             clin_cur.execute(
-                "INSERT INTO patients (dni, nombre, email) VALUES (?, ?, ?)",
-                [synthetic_dni, display, email],
+                "SELECT id, sexo, fecha_nacimiento, telefono FROM patients WHERE dni = ?",
+                [synthetic_dni],
             )
+            existing = clin_cur.fetchone()
+            if existing:
+                # Backfill de campos vacíos desde auth.db
+                sets = []
+                vals = []
+                if sexo and not existing['sexo']:
+                    sets.append('sexo = ?'); vals.append(sexo)
+                if fecha_nac and not existing['fecha_nacimiento']:
+                    sets.append('fecha_nacimiento = ?'); vals.append(fecha_nac)
+                if telefono and not existing['telefono']:
+                    sets.append('telefono = ?'); vals.append(telefono)
+                if sets:
+                    vals.append(existing['id'])
+                    clin_cur.execute(
+                        f"UPDATE patients SET {', '.join(sets)}, "
+                        f"updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        vals,
+                    )
+                    backfilled += 1
+                    print(f'  ~ backfill patient_id={existing["id"]} dni={synthetic_dni} '
+                          f'campos={[s.split("=")[0].strip() for s in sets]}')
+                else:
+                    skipped += 1
+                continue
+            try:
+                clin_cur.execute(
+                    "INSERT INTO patients (auth_user_id, dni, nombre, email, sexo, "
+                    "                      fecha_nacimiento, telefono) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    [uid, synthetic_dni, display, email, sexo, fecha_nac, telefono],
+                )
+            except sqlite3.OperationalError:
+                clin_cur.execute(
+                    "INSERT INTO patients (dni, nombre, email, sexo, "
+                    "                      fecha_nacimiento, telefono) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    [synthetic_dni, display, email, sexo, fecha_nac, telefono],
+                )
             created_patients += 1
             print(f'  + creado patient_id={clin_cur.lastrowid} dni={synthetic_dni} nombre={display!r}')
         except Exception as e:
@@ -99,9 +138,10 @@ def main():
 
     print()
     print('-' * 50)
-    print(f'patient_user_link creados : {created_links}')
-    print(f'clinical.patients creados : {created_patients}')
-    print(f'clinical.patients ya OK   : {skipped}')
+    print(f'patient_user_link creados      : {created_links}')
+    print(f'clinical.patients creados      : {created_patients}')
+    print(f'clinical.patients backfill     : {backfilled}')
+    print(f'clinical.patients ya completos : {skipped}')
     if issues:
         print('issues:')
         for i in issues:
