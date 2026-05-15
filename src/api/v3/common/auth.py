@@ -339,8 +339,9 @@ def check_patient_access(user, patient_identifier):
 
 def require_owner_or_admin(f):
     """
-    Decorador que requiere ser dueño del recurso o administrador.
-    El ID del recurso debe estar en kwargs como 'user_id' o 'id'.
+    Decorador que requiere ser dueño del recurso, especialista asignado o
+    administrador (Fase 3 / OMV-18 / OMV-62). El ID del recurso debe estar en
+    kwargs como 'user_id' o 'id'.
 
     Usage:
         @require_owner_or_admin
@@ -350,37 +351,34 @@ def require_owner_or_admin(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = get_token_from_request()
-        
+
         if not token:
             return error_response(
                 'Token de autenticación requerido',
                 code=ErrorCodes.UNAUTHORIZED,
                 status_code=401
             )
-        
+
         payload = decode_token(token)
-        
+
         if not payload:
             return error_response(
                 'Token inválido o expirado',
                 code=ErrorCodes.TOKEN_INVALID,
                 status_code=401
             )
-        
-        # Verificar si es admin
+
         is_admin = (
             payload.get('is_admin', False) or
             payload.get('rol') == 'admin' or
             payload.get('nombre_apellido') == ADMIN_USERNAME
         )
-        
-        # Obtener ID del recurso solicitado
+
         resource_id = kwargs.get('user_id') or kwargs.get('id')
         token_user_id = str(payload.get('user_id') or '')
         token_name = str(payload.get('nombre_apellido') or '')
         token_email = str(payload.get('email') or '').lower()
 
-        # Verificar si es dueño o admin (accept auth.db ID, nombre_apellido o email)
         if resource_id:
             rid = str(resource_id)
             is_owner = (
@@ -390,14 +388,30 @@ def require_owner_or_admin(f):
             )
         else:
             is_owner = True
-        
-        if not is_admin and not is_owner:
+
+        # Fase 3 / OMV-18 / OMV-62: el especialista con assignment 'accepted'
+        # también accede (mismas operaciones que un admin sobre ese paciente).
+        is_specialist = False
+        if not is_admin and not is_owner and resource_id:
+            user_ctx = {
+                'user_id': payload.get('user_id'),
+                'nombre_apellido': payload.get('nombre_apellido'),
+                'email': payload.get('email'),
+                'is_admin': False,
+                'rol': payload.get('rol', 'user'),
+            }
+            try:
+                is_specialist = check_patient_access(user_ctx, str(resource_id))
+            except Exception:
+                is_specialist = False
+
+        if not (is_admin or is_owner or is_specialist):
             return error_response(
                 'Acceso denegado. No tienes permisos para este recurso.',
                 code=ErrorCodes.FORBIDDEN,
                 status_code=403
             )
-        
+
         g.current_user = {
             'user_id': payload.get('user_id'),
             'email': payload.get('email'),
@@ -405,9 +419,9 @@ def require_owner_or_admin(f):
             'rol': 'admin' if is_admin else payload.get('rol', 'user'),
             'is_admin': is_admin
         }
-        
+
         return f(*args, **kwargs)
-    
+
     return decorated
 
 

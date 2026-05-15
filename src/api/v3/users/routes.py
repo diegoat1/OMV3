@@ -268,6 +268,39 @@ def update_user(user_id):
             'circ_muneca': 'circ_muneca',
             'circ_tobillo': 'circ_tobillo',
         }
+
+        # OMV-23: rangos plausibles para medidas constitucionales.
+        # Min/max conservadores; cualquier cosa fuera es error de tipeo.
+        _RANGES = {
+            'altura':       (50.0, 250.0),    # cm
+            'circ_cuello':  (20.0, 80.0),     # cm
+            'circ_muneca':  (10.0, 30.0),     # cm
+            'circ_tobillo': (15.0, 40.0),     # cm
+        }
+        if data.get('sexo') is not None and data['sexo'] not in ('M', 'F'):
+            conn.close()
+            return error_response(
+                'sexo debe ser "M" o "F"',
+                code=ErrorCodes.VALIDATION_ERROR,
+                status_code=400,
+            )
+        for fld, (lo, hi) in _RANGES.items():
+            if fld in data and data[fld] is not None:
+                try:
+                    v = float(data[fld])
+                except (TypeError, ValueError):
+                    conn.close()
+                    return error_response(
+                        f'{fld} debe ser numérico',
+                        code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                    )
+                if v < lo or v > hi:
+                    conn.close()
+                    return error_response(
+                        f'{fld} fuera de rango ({lo}-{hi} cm)',
+                        code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+                    )
+
         updates = []
         values = []
         for key, col in field_map.items():
@@ -454,59 +487,97 @@ def create_measurement(user_id):
         patient_id = user['id']
         sexo = user['sexo']
         altura = user['altura']
+        circ_cuello = user['circ_cuello']
 
-        # Validación por sexo
-        if not data.get('peso'):
+        # OMV-29: separación constitucional / dinámica. Este endpoint NO
+        # acepta campos estáticos — el doctor los carga vía PUT /users/<id>.
+        _STATIC_FIELDS = ('altura', 'circ_cuello', 'circ_muneca', 'circ_tobillo')
+        leaked = [f for f in _STATIC_FIELDS if f in data]
+        if leaked:
             conn.close()
             return error_response(
-                'El peso es requerido',
+                f'Campos constitucionales ({", ".join(leaked)}) deben cargarse '
+                f'con PUT /users/<id>, no en una medición.',
                 code=ErrorCodes.VALIDATION_ERROR,
-                status_code=400
+                status_code=400,
             )
 
+        # OMV-34: peso y circ_abdomen son obligatorios para AMBOS sexos.
+        # En mujeres, además, cintura y cadera (para Navy).
+        if not data.get('peso'):
+            conn.close()
+            return error_response('El peso es requerido',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+        if not data.get('circ_abdomen'):
+            conn.close()
+            return error_response('circ_abdomen es requerido',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
         if sexo == 'F':
             missing = []
             if not data.get('circ_cintura'): missing.append('circ_cintura')
             if not data.get('circ_cadera'): missing.append('circ_cadera')
-            if not data.get('circ_abdomen'): missing.append('circ_abdomen')
             if missing:
                 conn.close()
                 return error_response(
                     f'Campos obligatorios para mujeres: {", ".join(missing)}',
-                    code=ErrorCodes.VALIDATION_ERROR,
-                    status_code=400
-                )
-        elif sexo == 'M':
-            if not data.get('circ_abdomen'):
+                    code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        # OMV-32: fecha_registro válida y no futura (margen de 1 día).
+        from datetime import timedelta as _td, datetime as _dt
+        fecha_raw = data.get('fecha_registro')
+        if fecha_raw:
+            try:
+                fecha_dt = _dt.fromisoformat(str(fecha_raw).replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    fecha_dt = _dt.strptime(str(fecha_raw)[:10], '%Y-%m-%d')
+                except ValueError:
+                    conn.close()
+                    return error_response(
+                        'fecha_registro inválida (ISO 8601 o YYYY-MM-DD)',
+                        code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+            if fecha_dt > _dt.utcnow() + _td(days=1):
                 conn.close()
                 return error_response(
-                    'circ_abdomen es obligatorio para hombres',
-                    code=ErrorCodes.VALIDATION_ERROR,
-                    status_code=400
-                )
+                    'fecha_registro no puede ser futura',
+                    code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+            fecha_registro = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Actualizar campos estáticos en patients si se proporcionan
-        static_fields = {}
-        for field in ['altura', 'circ_cuello', 'circ_muneca', 'circ_tobillo']:
-            if data.get(field) is not None:
-                static_fields[field] = float(data[field])
-
-        if static_fields:
-            set_clause = ', '.join(f"{k} = ?" for k in static_fields)
-            cursor.execute(
-                f"UPDATE patients SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                list(static_fields.values()) + [patient_id]
-            )
-            # Use updated altura for calculations
-            if 'altura' in static_fields:
-                altura = static_fields['altura']
+        # OMV-28: rangos plausibles. Cualquier valor fuera = typo, error claro.
+        _CIRC_RANGES = {
+            'peso':            (20.0, 350.0),
+            'circ_abdomen':    (40.0, 250.0),
+            'circ_cintura':    (40.0, 250.0),
+            'circ_cadera':     (50.0, 250.0),
+            'circ_hombro':     (60.0, 200.0),
+            'circ_pecho':      (50.0, 200.0),
+            'circ_brazo':      (15.0, 80.0),
+            'circ_antebrazo':  (10.0, 60.0),
+            'circ_muslo':      (20.0, 100.0),
+            'circ_pantorrilla':(15.0, 80.0),
+        }
+        for fld, (lo, hi) in _CIRC_RANGES.items():
+            if data.get(fld) is None or data.get(fld) == '':
+                continue
+            try:
+                v = float(data[fld])
+            except (TypeError, ValueError):
+                conn.close()
+                return error_response(f'{fld} debe ser numérico',
+                                      code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+            if v < lo or v > hi:
+                conn.close()
+                return error_response(
+                    f'{fld} fuera de rango ({lo}-{hi})',
+                    code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
         peso = float(data['peso'])
-        circ_abdomen = float(data.get('circ_abdomen') or 0)
+        circ_abdomen = float(data['circ_abdomen'])
         circ_cintura = float(data.get('circ_cintura') or 0)
         circ_cadera = float(data.get('circ_cadera') or 0)
 
-        # Campos de seguimiento
         circ_hombro = float(data['circ_hombro']) if data.get('circ_hombro') else None
         circ_pecho = float(data['circ_pecho']) if data.get('circ_pecho') else None
         circ_brazo = float(data['circ_brazo']) if data.get('circ_brazo') else None
@@ -514,51 +585,53 @@ def create_measurement(user_id):
         circ_muslo = float(data['circ_muslo']) if data.get('circ_muslo') else None
         circ_pantorrilla = float(data['circ_pantorrilla']) if data.get('circ_pantorrilla') else None
 
-        # Calcular BF% usando metodo Navy
+        # OMV-33: BF% Navy CON resta del cuello (versión metric, cm).
+        #   M:  bf = 86.010 * log10(abdomen - cuello)
+        #          - 70.041 * log10(altura) + 36.76
+        #   F:  bf = 163.205 * log10(cintura + cadera - cuello)
+        #          - 97.684 * log10(altura) - 78.387
+        # Misma fórmula que usa update_measurement → resultados consistentes
+        # entre POST y PUT.
         altura_cm = float(altura) if altura else 170
+        cuello = float(circ_cuello) if circ_cuello else 0
         bf_percent = 0
+        if not cuello:
+            conn.close()
+            return error_response(
+                'circ_cuello no está cargado en el perfil. Cargá primero las '
+                'medidas constitucionales con PUT /users/<id>.',
+                code=ErrorCodes.VALIDATION_ERROR, status_code=400)
 
-        if sexo == 'M' and circ_abdomen > 0:
-            bf_percent = 495 / (1.0324 - 0.19077 * math.log10(circ_abdomen) + 0.15456 * math.log10(altura_cm)) - 450
-        elif sexo == 'F' and circ_cintura > 0 and circ_cadera > 0:
-            bf_percent = 495 / (1.29579 - 0.35004 * math.log10(circ_cintura + circ_cadera) + 0.22100 * math.log10(altura_cm)) - 450
+        if sexo == 'M' and circ_abdomen > cuello:
+            bf_percent = (86.010 * math.log10(circ_abdomen - cuello)
+                          - 70.041 * math.log10(altura_cm) + 36.76)
+        elif sexo == 'F' and circ_cintura > 0 and circ_cadera > 0 and (circ_cintura + circ_cadera) > cuello:
+            bf_percent = (163.205 * math.log10(circ_cintura + circ_cadera - cuello)
+                          - 97.684 * math.log10(altura_cm) - 78.387)
 
-        bf_percent = max(0, min(60, bf_percent))  # Limitar entre 0-60%
+        bf_percent = max(2.0, min(60.0, bf_percent))
 
-        # Calcular peso magro y graso
         peso_graso = peso * (bf_percent / 100)
         peso_magro = peso - peso_graso
 
-        # Calcular FFMI
         altura_m = altura_cm / 100
         ffmi = peso_magro / (altura_m ** 2) + 6.1 * (1.8 - altura_m) if altura_m > 0 else 0
 
-        fecha_registro = data.get('fecha_registro') or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # OMV-31: registrar quién cargó la medición.
+        actor = get_current_user() or {}
+        created_by_user_id = actor.get('user_id')
 
-        # Insertar medicion
         cursor.execute("""
             INSERT INTO measurements
             (patient_id, fecha, peso, circ_abdomen, circ_cintura, circ_cadera,
              circ_hombro, circ_pecho, circ_brazo, circ_antebrazo, circ_muslo, circ_pantorrilla,
-             bf_percent, peso_magro, peso_graso, ffmi)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             bf_percent, peso_magro, peso_graso, ffmi, created_by_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
-            patient_id,
-            fecha_registro,
-            peso,
-            circ_abdomen,
-            circ_cintura,
-            circ_cadera,
-            circ_hombro,
-            circ_pecho,
-            circ_brazo,
-            circ_antebrazo,
-            circ_muslo,
-            circ_pantorrilla,
-            round(bf_percent, 2),
-            round(peso_magro, 2),
-            round(peso_graso, 2),
-            round(ffmi, 2)
+            patient_id, fecha_registro, peso, circ_abdomen, circ_cintura, circ_cadera,
+            circ_hombro, circ_pecho, circ_brazo, circ_antebrazo, circ_muslo, circ_pantorrilla,
+            round(bf_percent, 2), round(peso_magro, 2), round(peso_graso, 2), round(ffmi, 2),
+            created_by_user_id,
         ])
 
         measurement_id = cursor.lastrowid
@@ -574,7 +647,7 @@ def create_measurement(user_id):
             'peso_graso': round(peso_graso, 2),
             'ffmi': round(ffmi, 2),
             'fecha_registro': fecha_registro,
-            'static_updated': list(static_fields.keys()) if static_fields else []
+            'created_by_user_id': created_by_user_id,
         }, message='Medición registrada exitosamente')
 
     except Exception as e:
