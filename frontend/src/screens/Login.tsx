@@ -22,8 +22,24 @@ export function Login({ onLogin, onCreateAccount }: LoginProps) {
       const user = await authService.login(email, password)
       onLogin(user)
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'No pudimos iniciar sesión.'
-      setError(message)
+      // Mensajes por código para los estados de Fase 1.
+      if (err instanceof ApiError) {
+        if (err.code === 'MEMBERSHIP_EXPIRED') {
+          setError(
+            'Tu membresía está vencida. Contactá al administrador para reactivarla — ya quedaste en su panel de pendientes.',
+          )
+        } else if (err.code === 'PENDING_VERIFICATION') {
+          setError(
+            'Tu cuenta está pendiente de aprobación del administrador. Vas a recibir un email cuando esté lista.',
+          )
+        } else if (err.code === 'ACCOUNT_REJECTED') {
+          setError('Tu cuenta fue rechazada. Contactá al administrador para resolverlo.')
+        } else {
+          setError(err.message)
+        }
+      } else {
+        setError('No pudimos iniciar sesión.')
+      }
     } finally {
       setLoading(false)
     }

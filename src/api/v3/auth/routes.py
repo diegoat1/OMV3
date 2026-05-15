@@ -312,6 +312,18 @@ def register():
         auth_conn.commit()
         auth_conn.close()
 
+        # OMV-17: la fila clínica se aprovisiona en el mismo flow (single
+        # transaction lógica). Si falla, el alta queda OK pero el perfil
+        # se creará lazy en el primer acceso (no abortamos el registro).
+        patient_id = None
+        try:
+            from ..common.database import _ensure_patient_link
+            ensured = _ensure_patient_link(user_id, display_name=nombre, email=email)
+            if ensured:
+                patient_id = ensured.get('patient_id')
+        except Exception:
+            pass
+
         _log_audit(
             user_id, nombre,
             'user_registered',
@@ -331,6 +343,7 @@ def register():
 
         return success_response({
             'user_id': user_id,
+            'patient_id': patient_id,
             'status': 'pending_verification',
             'email_verified': False,
             'email_verification_required': True,

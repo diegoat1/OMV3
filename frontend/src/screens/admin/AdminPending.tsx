@@ -145,7 +145,22 @@ export function AdminPending() {
               >
                 <Avatar name={u.display_name || u.email} color={color} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ph-link-name">{u.display_name || u.email}</div>
+                  <div className="ph-link-name">
+                    {u.display_name || u.email}
+                    {u.reason === 'membership_expired' && (
+                      <span style={{
+                        marginLeft: 8,
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(229, 62, 74, 0.12)',
+                        color: '#E23E4A',
+                        fontWeight: 600,
+                      }}>
+                        Membresía vencida
+                      </span>
+                    )}
+                  </div>
                   <div className="ph-link-meta">
                     {u.email}
                     {u.email_verified === false && (
@@ -157,6 +172,9 @@ export function AdminPending() {
                   <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
                     {ROLE_LABEL[role] || role || '—'}
                     {u.telefono ? ` · ${u.telefono}` : ''}
+                    {u.reason === 'membership_expired' && u.membership_expires_at && (
+                      <> · venció {u.membership_expires_at.slice(0, 10)}</>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignSelf: 'center' }}>

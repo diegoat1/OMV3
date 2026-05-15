@@ -70,10 +70,16 @@ export interface PendingUser {
   email: string
   display_name: string
   role: string
+  status?: string
   telefono: string
   desired_role: string
   created_at: string
   email_verified?: boolean
+  /** Membresía vigente del usuario; viene cuando `reason === 'membership_expired'`. */
+  membership_expires_at?: string
+  /** Motivo por el que aparece en el panel:
+   *  'pending_verification' (alta inicial) | 'membership_expired' (reactivación). */
+  reason?: 'pending_verification' | 'membership_expired'
 }
 
 export interface PendingUsersResponse {

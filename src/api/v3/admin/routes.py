@@ -736,32 +736,50 @@ def list_auth_users():
 @require_admin
 def list_pending_users():
     """
-    Lista usuarios pendientes de verificación.
+    Lista usuarios que requieren atención del admin:
+      - status = 'pending_verification' (aprobación inicial)
+      - status = 'active' pero membership_expires_at vencida (reactivación)
+
+    Cada fila trae `reason`: 'pending_verification' | 'membership_expired'.
     """
+    from datetime import datetime as _dt
     try:
         conn = get_auth_connection(sqlite3.Row)
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT u.id, u.email, u.display_name, u.role, u.telefono, u.desired_role, u.created_at
+            SELECT u.id, u.email, u.display_name, u.role, u.status, u.telefono,
+                   u.desired_role, u.created_at, u.membership_expires_at
             FROM users u
             WHERE u.status = 'pending_verification'
-            ORDER BY u.created_at DESC
+               OR (u.status = 'active'
+                   AND u.membership_expires_at IS NOT NULL
+                   AND u.membership_expires_at < CURRENT_TIMESTAMP)
+            ORDER BY u.status = 'pending_verification' DESC,
+                     u.created_at DESC
         """)
         rows = cursor.fetchall()
         conn.close()
 
+        now_iso = _dt.utcnow().isoformat()
         users = []
         for row in rows:
             d = dict(row)
+            reason = 'pending_verification'
+            if d['status'] == 'active' and d.get('membership_expires_at'):
+                if str(d['membership_expires_at']) < now_iso:
+                    reason = 'membership_expired'
             users.append({
                 'id': d['id'],
                 'email': d['email'],
                 'display_name': d['display_name'] or '',
                 'role': d['role'] or 'user',
+                'status': d['status'],
                 'telefono': d['telefono'] or '',
                 'desired_role': d['desired_role'] or '',
                 'created_at': d['created_at'] or '',
+                'membership_expires_at': d.get('membership_expires_at') or '',
+                'reason': reason,
             })
 
         return success_response({'users': users, 'total': len(users)})
