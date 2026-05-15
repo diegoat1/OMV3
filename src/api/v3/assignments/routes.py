@@ -368,6 +368,16 @@ def accept_assignment(assignment_id):
 
         _log_audit(actor_id, actor_name, 'assignment_accepted', audit_msg, request.remote_addr)
 
+        # OMV-89bis: una vez aceptada la vinculación, aseguramos que el
+        # paciente tenga su fila en clinical.db.patients + patient_user_link.
+        # Así el doctor puede abrir la ficha sin esperar a que el resolver
+        # auto-aprovisiones en el primer GET (más rápido y robusto).
+        try:
+            from ..common.database import _ensure_patient_link
+            _ensure_patient_link(a['patient_id'], display_name=a.get('patient_name'))
+        except Exception:
+            pass
+
         # Fix 14 — OMV-87: notificar al otro lado.
         _, recipient_id, recipient_name = notify_to
         recipient_email = _get_user_email(recipient_id)
