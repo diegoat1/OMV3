@@ -157,7 +157,6 @@ export function AdminPending() {
                   <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
                     {ROLE_LABEL[role] || role || '—'}
                     {u.telefono ? ` · ${u.telefono}` : ''}
-                    {u.patient_dni ? ` · DNI ${u.patient_dni}` : ''}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignSelf: 'center' }}>

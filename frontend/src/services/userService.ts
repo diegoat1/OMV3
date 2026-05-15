@@ -5,7 +5,6 @@ interface GetUserResponse {
   user: {
     id: number
     auth_user_id?: number | null
-    dni: string | null
     nombre: string
     email?: string | null
     sexo?: 'M' | 'F' | null
@@ -34,7 +33,6 @@ export const userService = {
       user_id: String(userId),
       patient_id: u.id,
       auth_user_id: u.auth_user_id ?? null,
-      dni: u.dni ?? null,
       nombre: u.nombre,
       email: u.email ?? null,
       sexo: u.sexo ?? null,

@@ -27,7 +27,7 @@ export function AddPatientSheet({ subjectSingular = 'paciente', onClose, onCreat
     setSubmitting(true)
     try {
       // The backend's `query` field disambiguates: looks like an email → email;
-      // pure digits → legacy DNI; otherwise → display_name LIKE.
+      // otherwise → display_name LIKE.
       const res = await assignmentService.specialistRequest({ query: trimmed })
       setOkMsg(`Solicitud enviada a ${res.patient_name}. Tiene que aceptarla.`)
       setTimeout(() => { onCreated() }, 900)

@@ -324,9 +324,7 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
                     <Avatar name={p.patient_name} color="#E23E4A" size={36} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="ph-link-name">{p.patient_name}</div>
-                      <div className="ph-link-meta">
-                        {p.patient_email || (p.patient_dni ? `DNI ${p.patient_dni}` : '—')}
-                      </div>
+                      <div className="ph-link-meta">{p.patient_email || '—'}</div>
                     </div>
                     <div
                       className="dp-chev"

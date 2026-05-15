@@ -52,7 +52,7 @@ export const adminService = {
   getPatient(patientId: string | number): Promise<unknown> {
     return api.get<unknown>(`/admin/users/${patientId}`)
   },
-  /** Free-text search of clinical.db patients (name/dni/email). */
+  /** Free-text search of clinical.db patients (name/email). */
   searchPatients(q: string, limit: number = 20): Promise<unknown> {
     return api.get<unknown>(`/admin/users/search?q=${encodeURIComponent(q)}&limit=${limit}`)
   },

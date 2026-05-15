@@ -159,7 +159,7 @@ export function AdminUsers() {
         <input
           type="search"
           className="dp-search-input"
-          placeholder="Buscar por nombre, email o DNI…"
+          placeholder="Buscar por nombre o email…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -224,10 +224,7 @@ export function AdminUsers() {
                     <Avatar name={u.display_name || u.email} size={36} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="ph-link-name">{u.display_name || '—'}</div>
-                      <div className="ph-link-meta">
-                        {u.email}
-                        {u.patient_dni ? ` · DNI ${u.patient_dni}` : ''}
-                      </div>
+                      <div className="ph-link-meta">{u.email}</div>
                     </div>
                     <span
                       className="mono"

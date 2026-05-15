@@ -15,10 +15,11 @@ export interface ApiError {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError
 
-/** Shape returned by the v3 backend. `rol` may be a comma-separated string. */
+/** Shape returned by the v3 backend. `rol` may be a comma-separated string.
+ *  `dni` ya no forma parte del contrato — el identificador del usuario es
+ *  `id` (auth user_id, auto-generado por el backend). */
 export interface AuthUser {
   id: string
-  dni?: string | null
   email: string
   nombre_apellido?: string | null
   rol: string
@@ -73,7 +74,6 @@ export interface PendingUser {
   role: string
   telefono: string
   desired_role: string
-  patient_dni: string
   created_at: string
   email_verified?: boolean
 }
@@ -145,7 +145,6 @@ export interface AdminAuthUser {
   is_active: boolean
   telefono?: string
   desired_role?: string
-  patient_dni?: string
   created_at: string
 }
 
@@ -230,7 +229,6 @@ export interface PendingAssignment {
   specialist_role: string  // 'doctor' | 'nutricionista' | 'entrenador'
   patient_id: number
   patient_name: string
-  patient_dni?: string | null
   status: AssignmentStatus
   created_at: string
 }
@@ -250,7 +248,6 @@ export interface MyPatient {
   id: number
   patient_id: number
   patient_name: string
-  patient_dni?: string | null
   patient_email?: string | null
   patient_active?: number
   status: AssignmentStatus
@@ -266,7 +263,6 @@ export interface MyRequest {
   specialist_role: string
   patient_id: number
   patient_name: string
-  patient_dni?: string | null
   status: AssignmentStatus
   created_at: string
   updated_at: string
@@ -292,11 +288,10 @@ export interface PatientRequestPayload {
 }
 
 /** POST /assignments/request body — specialist initiates a link by any of
- *  email, display_name, DNI or a free-text `query` the backend disambiguates. */
+ *  email, display_name o un `query` free-text que el backend desambigua. */
 export interface SpecialistRequestPayload {
   patient_email?: string
   patient_name?: string
-  patient_dni?: string
   query?: string
 }
 
@@ -315,7 +310,6 @@ export interface StaticProfile {
   user_id: string
   patient_id: number
   auth_user_id: number | null
-  dni: string | null
   nombre: string
   email: string | null
   sexo: 'M' | 'F' | null

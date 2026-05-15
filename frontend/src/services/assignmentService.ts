@@ -29,7 +29,7 @@ export const assignmentService = {
   myRequests(): Promise<{ requests: MyRequest[] }> {
     return api.get<{ requests: MyRequest[] }>('/assignments/my-requests')
   },
-  /** Specialist initiates a link to a patient by DNI. */
+  /** Specialist initiates a link to a patient by email, nombre o query libre. */
   specialistRequest(payload: SpecialistRequestPayload): Promise<SpecialistRequestResponse> {
     return api.post<SpecialistRequestResponse>('/assignments/request', payload)
   },

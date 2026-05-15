@@ -12,14 +12,14 @@ import sqlite3
 
 
 CANONICAL_USER_FIELDS = [
-    'id', 'dni', 'email', 'nombre_apellido',
+    'id', 'email', 'nombre_apellido',
     'sexo', 'altura', 'telefono', 'fecha_nacimiento',
     'rol', 'is_admin',
 ]
 
 # Campos que el helper enriquece desde clinical.db.patients si vienen vacíos
 # en el source (None o empty string). El query es indexed por auth_user_id.
-_DB_ENRICHED_FIELDS = ('sexo', 'altura', 'telefono', 'fecha_nacimiento', 'dni', 'nombre', 'email')
+_DB_ENRICHED_FIELDS = ('sexo', 'altura', 'telefono', 'fecha_nacimiento', 'nombre', 'email')
 
 
 def serialize_user(source, enrich_from_db=True):
@@ -61,14 +61,13 @@ def serialize_user(source, enrich_from_db=True):
             conn = get_clinical_connection(sqlite3.Row)
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT dni, sexo, altura, telefono, fecha_nacimiento, nombre, email
+                SELECT sexo, altura, telefono, fecha_nacimiento, nombre, email
                 FROM patients WHERE auth_user_id = ?
             """, [int(u['id'])])
             row = cursor.fetchone()
             conn.close()
             if row:
                 p = dict(row)
-                # Completar solo si el source no trae el campo (None o empty string)
                 if not u.get('sexo'):
                     u['sexo'] = p.get('sexo')
                 if not u.get('altura'):
@@ -77,8 +76,6 @@ def serialize_user(source, enrich_from_db=True):
                     u['telefono'] = p.get('telefono')
                 if not u.get('fecha_nacimiento'):
                     u['fecha_nacimiento'] = p.get('fecha_nacimiento')
-                if not u.get('dni'):
-                    u['dni'] = p.get('dni') or ''
                 if not u.get('nombre_apellido'):
                     u['nombre_apellido'] = p.get('nombre') or ''
                 if not u.get('email'):

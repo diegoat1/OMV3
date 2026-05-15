@@ -61,7 +61,6 @@ export function DoctorHome({ role = 'doctor' }: Props) {
             specialist_role: r.specialist_role,
             patient_id: r.patient_id,
             patient_name: r.patient_name,
-            patient_dni: r.patient_dni,
             status: r.status,
             created_at: r.created_at,
           })),
@@ -155,9 +154,7 @@ export function DoctorHome({ role = 'doctor' }: Props) {
                 <Avatar name={r.patient_name} color="var(--omega)" size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ph-link-name">{r.patient_name}</div>
-                  <div className="ph-link-meta">
-                    Pidió vincularse {r.patient_dni ? `· DNI ${r.patient_dni}` : ''}
-                  </div>
+                  <div className="ph-link-meta">Pidió vincularse</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
@@ -214,9 +211,7 @@ export function DoctorHome({ role = 'doctor' }: Props) {
                 <Avatar name={p.patient_name} color={subjectAvatarColor} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ph-link-name">{p.patient_name}</div>
-                  <div className="ph-link-meta">
-                    {p.patient_email || (p.patient_dni ? `DNI ${p.patient_dni}` : '—')}
-                  </div>
+                  <div className="ph-link-meta">{p.patient_email || '—'}</div>
                 </div>
               </div>
             ))}

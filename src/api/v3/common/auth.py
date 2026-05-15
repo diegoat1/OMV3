@@ -15,9 +15,9 @@ JWT_SECRET = os.getenv('JWT_SECRET', 'omega_medicina_secret_key_2025')
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
 
-# Usuario admin hardcodeado (legacy)
+# Usuario admin hardcodeado (legacy). Solo el display_name se usa hoy; el
+# DNI hardcoded quedó deprecado al sacar DNI del JWT.
 ADMIN_USERNAME = 'Toffaletti, Diego Alejandro'
-ADMIN_DNI = '37070509'
 
 
 def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS, jti=None):
@@ -25,7 +25,11 @@ def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS, jti=None):
     Genera un token JWT para el usuario.
 
     Args:
-        user_data: Dict con datos del usuario (id, dni, email, nombre_apellido, rol)
+        user_data: Dict con datos del usuario (id, email, nombre_apellido, rol).
+                   `dni` se acepta opcionalmente como field INTERNO (no se expone
+                   en respuestas API ni en el frontend; sirve para que los
+                   endpoints legacy contra RECORDATORIOS/TAREAS/etc. sigan
+                   pudiendo joinear hasta que esas tablas se migren).
         expires_in_hours: Horas hasta expiración
         jti: opcional, JWT ID — si se pasa, va al payload para permitir
              revocación selectiva (OMV-75, OMV-80). Si se omite se genera
@@ -40,7 +44,7 @@ def generate_token(user_data, expires_in_hours=JWT_EXPIRATION_HOURS, jti=None):
     exp = datetime.utcnow() + timedelta(hours=expires_in_hours)
     payload = {
         'user_id': user_data.get('id') or user_data.get('user_id'),
-        'dni': user_data.get('dni'),
+        'dni': user_data.get('dni'),  # interno; no se expone al cliente
         'email': user_data.get('email'),
         'nombre_apellido': user_data.get('nombre_apellido'),
         'rol': user_data.get('rol', 'user'),
@@ -164,7 +168,8 @@ def require_auth(f):
                 status_code=401
             )
         
-        # Guardar usuario en contexto
+        # Guardar usuario en contexto. `dni` queda en el dict por compat con
+        # endpoints legacy (engagement, telemedicine); no se expone al cliente.
         g.current_user = {
             'user_id': payload.get('user_id'),
             'dni': payload.get('dni'),
@@ -210,10 +215,9 @@ def require_admin(f):
         
         # Verificar si es admin
         is_admin = (
-            payload.get('is_admin', False) or 
+            payload.get('is_admin', False) or
             payload.get('rol') == 'admin' or
-            payload.get('nombre_apellido') == ADMIN_USERNAME or
-            payload.get('dni') == ADMIN_DNI
+            payload.get('nombre_apellido') == ADMIN_USERNAME
         )
         
         if not is_admin:
@@ -223,7 +227,8 @@ def require_admin(f):
                 status_code=403
             )
         
-        # Guardar usuario en contexto
+        # Guardar usuario en contexto. `dni` queda en el dict por compat con
+        # endpoints legacy (engagement, telemedicine); no se expone al cliente.
         g.current_user = {
             'user_id': payload.get('user_id'),
             'dni': payload.get('dni'),
@@ -295,7 +300,6 @@ def check_patient_access(user, patient_identifier):
     pid_str = str(patient_identifier).strip()
     candidates = {
         str(user.get('user_id') or ''),
-        str(user.get('dni') or ''),
         str(user.get('nombre_apellido') or ''),
         str(user.get('email') or '').lower(),
     }
@@ -313,13 +317,14 @@ def check_patient_access(user, patient_identifier):
         target_keys = {
             str(target.get('patient_id') or ''),
             str(target.get('auth_user_id') or ''),
-            str(target.get('dni') or ''),
             str(target.get('nombre') or ''),
             str(target.get('email') or '').lower(),
         }
         if target_keys & candidates:
             return True
-        # Especialista asignado: probar con DNI y con nombre
+        # Especialista asignado: probar por nombre del paciente. La tabla
+        # specialist_assignments todavía guarda patient_dni como FK legacy;
+        # mientras no se migre, pasamos el dni si lo tenemos en el target.
         specialist_id = user.get('user_id')
         if specialist_id:
             for key in (target.get('dni'), target.get('nombre')):
@@ -366,22 +371,25 @@ def require_owner_or_admin(f):
         
         # Verificar si es admin
         is_admin = (
-            payload.get('is_admin', False) or 
+            payload.get('is_admin', False) or
             payload.get('rol') == 'admin' or
-            payload.get('nombre_apellido') == ADMIN_USERNAME or
-            payload.get('dni') == ADMIN_DNI
+            payload.get('nombre_apellido') == ADMIN_USERNAME
         )
         
         # Obtener ID del recurso solicitado
         resource_id = kwargs.get('user_id') or kwargs.get('id')
         token_user_id = str(payload.get('user_id') or '')
-        token_dni = str(payload.get('dni') or '')
         token_name = str(payload.get('nombre_apellido') or '')
-        
-        # Verificar si es dueño o admin (accept auth.db ID, DNI, or nombre_apellido)
+        token_email = str(payload.get('email') or '').lower()
+
+        # Verificar si es dueño o admin (accept auth.db ID, nombre_apellido o email)
         if resource_id:
             rid = str(resource_id)
-            is_owner = rid == token_user_id or rid == token_dni or rid == token_name
+            is_owner = (
+                rid == token_user_id
+                or rid == token_name
+                or rid.lower() == token_email
+            )
         else:
             is_owner = True
         
@@ -392,7 +400,8 @@ def require_owner_or_admin(f):
                 status_code=403
             )
         
-        # Guardar usuario en contexto
+        # Guardar usuario en contexto. `dni` queda en el dict por compat con
+        # endpoints legacy (engagement, telemedicine); no se expone al cliente.
         g.current_user = {
             'user_id': payload.get('user_id'),
             'dni': payload.get('dni'),
