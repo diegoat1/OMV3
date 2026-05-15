@@ -69,19 +69,38 @@ def list_users():
 def get_user(user_id):
     """
     Obtiene un usuario por ID (auth.db ID, DNI, or nombre_apellido).
+
+    OMV-89bis: si el auth user existe pero no tiene fila en clinical.db.patients,
+    se aprovisiona vía resolve_patient_id(auto_create=True). Esto cubre cuentas
+    registradas por el flow v3 (sin DNI, sin PERFILESTATICO legacy) que algún
+    profesional ya vinculó.
     """
     identity = resolve_user_identity(user_id)
     resolved_dni = identity['dni'] if identity else user_id
-    
+
     try:
         conn = get_clinical_connection(sqlite3.Row)
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT * FROM patients WHERE dni = ?", [resolved_dni])
         user = cursor.fetchone()
-        
+
+        # Auto-provisión: el auth user existe pero clinical.db no tiene su
+        # fila todavía. Pedimos al resolver que la cree y reintentamos.
         if not user:
             conn.close()
+            pat = resolve_patient_id(user_id, auto_create=True) if str(user_id).isdigit() else None
+            if pat:
+                conn = get_clinical_connection(sqlite3.Row)
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM patients WHERE id = ?", [pat['patient_id']])
+                user = cursor.fetchone()
+
+        if not user:
+            try:
+                conn.close()
+            except Exception:
+                pass
             return error_response(
                 'Usuario no encontrado',
                 code=ErrorCodes.NOT_FOUND,

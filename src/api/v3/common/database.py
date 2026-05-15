@@ -322,55 +322,150 @@ def _resolve_patient_legacy(uid, resolved_dni=None):
     return None
 
 
+def _ensure_patient_link(auth_user_id, display_name=None, email=None):
+    """
+    OMV-89bis: Garantiza que el auth_user_id tenga su trio completo:
+        - row en auth.db.patient_user_link (con DNI sintético "u<id>" si no
+          venía con uno real)
+        - row en clinical.db.patients
+
+    Returns:
+        dict {dni, nombre_apellido, patient_id} o None si la creación falló.
+
+    Idempotente: si las filas ya existen, las devuelve sin tocar nada.
+    """
+    uid = str(auth_user_id).strip()
+    if not uid:
+        return None
+
+    # 1) ¿Ya hay patient_user_link?
+    try:
+        auth_conn = get_auth_connection(sqlite3.Row)
+        auth_cursor = auth_conn.cursor()
+        auth_cursor.execute(
+            "SELECT u.id, u.display_name, u.email, l.patient_dni "
+            "FROM users u LEFT JOIN patient_user_link l ON u.id = l.user_id "
+            "WHERE u.id = ?",
+            [uid],
+        )
+        row = auth_cursor.fetchone()
+        if not row:
+            auth_conn.close()
+            return None  # auth user no existe — no podemos crear nada
+        d = dict(row)
+        if display_name is None:
+            display_name = d.get('display_name') or f'Usuario {uid}'
+        if email is None:
+            email = d.get('email')
+
+        synthetic_dni = d.get('patient_dni') or f'u{uid}'
+
+        # Crear el link si falta
+        if not d.get('patient_dni'):
+            try:
+                auth_cursor.execute(
+                    "INSERT OR IGNORE INTO patient_user_link (user_id, patient_dni) "
+                    "VALUES (?, ?)",
+                    [uid, synthetic_dni],
+                )
+                auth_conn.commit()
+            except Exception:
+                pass
+        auth_conn.close()
+    except Exception:
+        return None
+
+    # 2) ¿Ya hay clinical.db.patients?
+    try:
+        clin_conn = get_clinical_connection(sqlite3.Row)
+        ccur = clin_conn.cursor()
+        ccur.execute("SELECT id, dni, nombre FROM patients WHERE dni = ?", [synthetic_dni])
+        prow = ccur.fetchone()
+        if prow:
+            clin_conn.close()
+            return {
+                'dni': prow[1],
+                'nombre_apellido': prow[2],
+                'patient_id': prow[0],
+            }
+        # No existe → crear
+        ccur.execute(
+            "INSERT INTO patients (dni, nombre, email) VALUES (?, ?, ?)",
+            [synthetic_dni, display_name, email],
+        )
+        clin_conn.commit()
+        new_id = ccur.lastrowid
+        clin_conn.close()
+        return {
+            'dni': synthetic_dni,
+            'nombre_apellido': display_name,
+            'patient_id': new_id,
+        }
+    except Exception:
+        return None
+
+
 def resolve_user_identity(user_id_or_name):
     """
     Resolves any user identifier (auth.db numeric ID, DNI, or nombre_apellido)
     into a dict with {dni, nombre_apellido}.
 
-    Lookup order:
+    Lookup order (con auto-provisión OMV-89bis):
     1. Try auth.db: user_id -> patient_dni
+        - Si el auth-user existe pero no tiene patient_user_link, lo creamos
+          con DNI sintético "u<id>" + fila en clinical.db.patients.
     2. Try legacy DB: DNI -> NOMBRE_APELLIDO
     3. Try legacy DB: NOMBRE_APELLIDO directly
+    4. Si el uid es un auth user_id sin link y sin legacy match, provisionamos
+       el trio (link + clinical) y devolvemos eso.
 
-    Returns dict {dni, nombre_apellido} or None if not found.
+    Returns dict {dni, nombre_apellido} or None if the auth user doesn't exist.
     """
     if not user_id_or_name:
         return None
 
     uid = str(user_id_or_name).strip()
+    resolved_dni = None
+    display_name_hint = None
 
-    # Step 1: If it looks like a numeric auth.db ID, resolve via patient_user_link
+    # Step 1: auth.db user_id -> patient_dni (+ display_name para fallbacks)
     try:
         auth_conn = get_auth_connection(sqlite3.Row)
         auth_cursor = auth_conn.cursor()
         auth_cursor.execute(
-            "SELECT l.patient_dni FROM patient_user_link l WHERE l.user_id = ?",
-            [uid]
+            "SELECT u.id, u.display_name, l.patient_dni "
+            "FROM users u LEFT JOIN patient_user_link l ON u.id = l.user_id "
+            "WHERE u.id = ?",
+            [uid],
         )
         link = auth_cursor.fetchone()
         auth_conn.close()
         if link:
-            uid = link[0]  # Now uid = DNI
+            d = dict(link)
+            display_name_hint = d.get('display_name')
+            if d.get('patient_dni'):
+                resolved_dni = str(d['patient_dni'])
+                uid = resolved_dni  # legacy lookup continúa con DNI real
     except Exception:
         pass
 
-    # Step 2: Try as DNI in legacy DB
+    # Step 2: legacy DB por DNI
     try:
         conn = get_db_connection(sqlite3.Row)
         cursor = conn.cursor()
         cursor.execute(
             "SELECT DNI, NOMBRE_APELLIDO FROM PERFILESTATICO WHERE DNI = ?",
-            [uid]
+            [uid],
         )
         row = cursor.fetchone()
         if row:
             conn.close()
             return {'dni': row[0], 'nombre_apellido': row[1]}
 
-        # Step 3: Try as nombre_apellido
+        # Step 3: legacy DB por NOMBRE_APELLIDO
         cursor.execute(
             "SELECT DNI, NOMBRE_APELLIDO FROM PERFILESTATICO WHERE NOMBRE_APELLIDO = ?",
-            [uid]
+            [uid],
         )
         row = cursor.fetchone()
         conn.close()
@@ -378,6 +473,19 @@ def resolve_user_identity(user_id_or_name):
             return {'dni': row[0], 'nombre_apellido': row[1]}
     except Exception:
         pass
+
+    # Step 4: si el uid original es un auth user_id, provisionamos el trio.
+    # Esto cubre el caso de cuentas nuevas que se registraron por el flow v3
+    # (sin DNI, sin PERFILESTATICO) y a las que algún profesional ya las
+    # vinculó como pacientes.
+    original_uid = str(user_id_or_name).strip()
+    if original_uid.isdigit():
+        ensured = _ensure_patient_link(original_uid, display_name=display_name_hint)
+        if ensured:
+            return {
+                'dni': ensured['dni'],
+                'nombre_apellido': ensured['nombre_apellido'],
+            }
 
     return None
 
