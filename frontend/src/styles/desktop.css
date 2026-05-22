@@ -877,6 +877,7 @@ button { font-family: inherit; }
   gap: 16px;
   max-width: 480px;
   margin: 0 auto;
+  padding: 24px 20px;
   color: var(--text-1);
 }
 .reg-top { display: flex; align-items: center; gap: 12px; }
