@@ -9,6 +9,7 @@ import { PublicPrograms } from './screens/PublicPrograms'
 import { Login } from './screens/Login'
 import { Register } from './screens/Register'
 import { RegisterSuccess } from './screens/RegisterSuccess'
+import { SelectRole } from './screens/SelectRole'
 import { Placeholder } from './screens/Placeholder'
 import { PatientHome } from './screens/PatientHome'
 import { CheckIn } from './screens/patient/CheckIn'
@@ -37,6 +38,36 @@ const DEFAULT_SCREEN: Record<Role, string> = {
   nutritionist: 'd-home',
   trainer: 'd-home',
   admin: 'a-home',
+}
+
+/** Persisted role choice per auth user (only when the user opted to remember).
+ *  Scoped by userId so multiple users on the same browser do not collide. */
+const PREFERRED_ROLE_PREFIX = 'omd.preferred_role:'
+function readRememberedRole(userId: string | null | undefined, allowed: Role[]): Role | null {
+  if (!userId) return null
+  try {
+    const raw = window.localStorage.getItem(PREFERRED_ROLE_PREFIX + userId)
+    if (!raw) return null
+    return (allowed as string[]).includes(raw) ? (raw as Role) : null
+  } catch {
+    return null
+  }
+}
+function writeRememberedRole(userId: string | null | undefined, role: Role) {
+  if (!userId) return
+  try {
+    window.localStorage.setItem(PREFERRED_ROLE_PREFIX + userId, role)
+  } catch {
+    // best-effort; storage may be disabled (private mode)
+  }
+}
+function clearRememberedRole(userId: string | null | undefined) {
+  if (!userId) return
+  try {
+    window.localStorage.removeItem(PREFERRED_ROLE_PREFIX + userId)
+  } catch {
+    // best-effort
+  }
 }
 
 // Screens that present as a modal sub-window — they hide the global mobile
@@ -162,12 +193,39 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [editProfileOpen, setEditProfileOpen] = useState(false)
+  // True between login/bootstrap and the moment the user picks a role; only
+  // ever true when the user has more than one role available AND no remembered
+  // choice for this device. Single-role users skip this entirely.
+  const [needsRoleSelection, setNeedsRoleSelection] = useState(false)
   // Auth flow state when there's no logged-in user
   const [authScreen, setAuthScreen] = useState<'landing' | 'login' | 'register' | 'register-success' | 'programs'>('landing')
   const [registeredEmail, setRegisteredEmail] = useState<string>('')
   // ID of the patient whose detail screen is open (set when navigating to
   // d-patient-detail). null while no patient is selected.
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null)
+
+  /** Sets role/screen post-auth, deciding whether the user has to go through
+   *  the role selector first. Used by both bootstrap (token in storage) and
+   *  the Login screen success handler. */
+  const resolvePostAuth = (u: AuthUser) => {
+    setUser(u)
+    const allowed = availableUIRoles(u)
+    if (allowed.length <= 1) {
+      const r = allowed[0] ?? userRole(u)
+      setRole(r)
+      setScreen(DEFAULT_SCREEN[r])
+      setNeedsRoleSelection(false)
+      return
+    }
+    const remembered = readRememberedRole(u.id, allowed)
+    if (remembered) {
+      setRole(remembered)
+      setScreen(DEFAULT_SCREEN[remembered])
+      setNeedsRoleSelection(false)
+      return
+    }
+    setNeedsRoleSelection(true)
+  }
 
   useEffect(() => {
     const token = tokenStore.get()
@@ -176,16 +234,12 @@ export default function App() {
       return
     }
     authService.me()
-      .then((u) => {
-        const r = userRole(u)
-        setUser(u)
-        setRole(r)
-        setScreen(DEFAULT_SCREEN[r])
-      })
+      .then((u) => resolvePostAuth(u))
       .catch(() => {
         tokenStore.clear()
       })
       .finally(() => setBootstrapping(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (bootstrapping) {
@@ -225,12 +279,7 @@ export default function App() {
     if (authScreen === 'login') {
       return (
         <Login
-          onLogin={(u) => {
-            const r = userRole(u)
-            setUser(u)
-            setRole(r)
-            setScreen(DEFAULT_SCREEN[r])
-          }}
+          onLogin={(u) => resolvePostAuth(u)}
           onCreateAccount={() => setAuthScreen('register')}
         />
       )
@@ -249,11 +298,37 @@ export default function App() {
   const handleLogout = async () => {
     await authService.logout()
     setUser(null)
+    setNeedsRoleSelection(false)
   }
+
+  if (needsRoleSelection) {
+    return (
+      <SelectRole
+        userName={userName}
+        availableRoles={availableRoles}
+        onSelect={(r, remember) => {
+          if (remember) writeRememberedRole(user.id, r)
+          else clearRememberedRole(user.id)
+          setRole(r)
+          setScreen(DEFAULT_SCREEN[r])
+          setNeedsRoleSelection(false)
+        }}
+        onLogout={handleLogout}
+      />
+    )
+  }
+
   const switchRole = (r: Role) => {
     if (!availableRoles.includes(r)) return
     setRole(r)
     setScreen(DEFAULT_SCREEN[r])
+    // When the user manually switches roles inside the app, update the
+    // remembered choice IF one was already saved — so the next login lands
+    // on whatever they most recently used. If they never opted to remember,
+    // do nothing (they'll see the picker again next login).
+    if (user.id && window.localStorage.getItem(PREFERRED_ROLE_PREFIX + user.id)) {
+      writeRememberedRole(user.id, r)
+    }
   }
   const def = resolveScreen(
     screen,
