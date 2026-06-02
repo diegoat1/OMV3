@@ -19,6 +19,82 @@ from ..common.database import (
 
 
 # ============================================================================
+# 1RM ESTIMATION (Fitbod-style prescription) — formulas citables
+# ============================================================================
+# Refs (rep-max -> 1RM):
+#   Epley (1985):    1RM = w*(1 + r/30)
+#   Brzycki (1993):  1RM = w*36/(37 - r)
+#   Lombardi (1989): 1RM = w*r^0.10
+#   O'Conner (1989): 1RM = w*(1 + r/40)
+ONE_RM_FORMULAS = ('epley', 'brzycki', 'lombardi', 'oconner')
+
+
+def one_rm_estimate(weight, reps, formula='epley'):
+    """Estima el 1RM a partir de un peso levantado por `reps` repeticiones.
+
+    Devuelve None si los inputs no son validos. Para reps == 1 devuelve el peso.
+    Brzycki no es valido para reps >= 37 (denominador <= 0) -> None.
+    """
+    try:
+        w = float(weight)
+        r = int(reps)
+    except (TypeError, ValueError):
+        return None
+    if w <= 0 or r <= 0:
+        return None
+    if r == 1:
+        return round(w, 2)
+    f = (formula or 'epley').lower()
+    if f == 'epley':
+        rm = w * (1 + r / 30.0)
+    elif f == 'brzycki':
+        if r >= 37:
+            return None
+        rm = w * 36.0 / (37.0 - r)
+    elif f == 'lombardi':
+        rm = w * (r ** 0.10)
+    elif f == 'oconner':
+        rm = w * (1 + r / 40.0)
+    else:
+        return None
+    return round(rm, 2)
+
+
+def one_rm_all(weight, reps):
+    """1RM por todas las formulas soportadas + promedio de las validas."""
+    out = {f: one_rm_estimate(weight, reps, f) for f in ONE_RM_FORMULAS}
+    valid = [v for v in out.values() if v is not None]
+    out['average'] = round(sum(valid) / len(valid), 2) if valid else None
+    return out
+
+
+def pct_1rm_by_reps(reps):
+    """% del 1RM que representa un peso levantado por `reps` (Brzycki).
+
+    pct = (37 - reps)/36 * 100. peso_objetivo = 1RM * pct/100.
+    """
+    try:
+        r = int(reps)
+    except (TypeError, ValueError):
+        return None
+    if r < 1 or r >= 37:
+        return None
+    return round((37.0 - r) / 36.0 * 100.0, 1)
+
+
+def weight_for_reps(one_rm, reps):
+    """Peso prescrito para `reps` repeticiones dado un 1RM (Brzycki inverso)."""
+    try:
+        rm = float(one_rm)
+    except (TypeError, ValueError):
+        return None
+    pct = pct_1rm_by_reps(reps)
+    if rm is None or rm <= 0 or pct is None:
+        return None
+    return round(rm * pct / 100.0, 2)
+
+
+# ============================================================================
 # STRENGTH TEST PERSISTENCE (OMV-56: replaces functions.guardar_historia_levantamiento_completa)
 # ============================================================================
 
@@ -734,6 +810,332 @@ def advance_plan_day(patient_id: int) -> Optional[dict]:
             'total_dias': total,
             'cycle_week': cycle_week,
             'cycle_completed': wrapped,
+        }
+    finally:
+        conn.close()
+
+
+def _extract_day_exercises(plan_data, dia):
+    """Ejercicios crudos de un día del plan (soporta dias como lista o dict).
+    Misma lógica que el endpoint /sessions/today."""
+    if not isinstance(plan_data, dict):
+        return []
+    dias = plan_data.get('dias', [])
+    if isinstance(dias, list):
+        for d in dias:
+            if isinstance(d, dict) and d.get('dia') == dia:
+                return d.get('ejercicios', []) or []
+    elif isinstance(dias, dict):
+        day_data = dias.get(str(dia)) or dias.get(f'dia_{dia}')
+        if day_data:
+            return day_data if isinstance(day_data, list) else day_data.get('ejercicios', []) or []
+    return []
+
+
+def predict_next_workouts(patient_id, num_predictions=5):
+    """Previsualiza las próximas N sesiones del plan activo (port v3 de
+    functions.predict_next_workouts, OMV).
+
+    Recorre los días del plan desde current_day (con wraparound al completar el
+    ciclo) y, para cada ejercicio, adjunta su prescripción VIGENTE
+    (exercise_progress + matriz de progresión). Es un preview: no simula el
+    avance de nivel entre las sesiones futuras (eso ocurre al registrar cada
+    sesión real vía advance_progression_after_session).
+    """
+    plan = get_active_plan(patient_id)
+    if not plan:
+        return []
+    plan_data = plan.get('plan_data')
+    total = plan.get('total_dias', 1) or 1
+    dia = plan.get('current_dia', 1) or 1
+
+    out = []
+    guard = 0
+    max_iter = num_predictions * (total + 1) + total
+    while len(out) < num_predictions and guard < max_iter:
+        guard += 1
+        if dia > total:
+            dia = 1
+        raw = _extract_day_exercises(plan_data, dia)
+        if raw:
+            ejercicios = []
+            for ex in raw:
+                if isinstance(ex, dict):
+                    key = str(ex.get('exercise_key') or ex.get('ejercicio') or '').strip()
+                    base = dict(ex)
+                else:
+                    key = str(ex).strip()
+                    base = {'exercise_key': key}
+                if not key:
+                    continue
+                try:
+                    presc = get_progression_prescription(patient_id, key)
+                    if presc:
+                        base.setdefault('prescription', presc.get('prescription'))
+                        base.setdefault('current_session', presc.get('current_session'))
+                        base.setdefault('current_level', presc.get('current_level'))
+                        base.setdefault('current_weight', presc.get('current_weight'))
+                        base.setdefault('is_test', presc.get('is_test'))
+                        base.setdefault('sets', presc.get('sets'))
+                except Exception:
+                    pass
+                ejercicios.append(base)
+            out.append({'orden': len(out) + 1, 'dia': dia, 'ejercicios': ejercicios})
+        dia += 1
+    return out
+
+
+# ============================================================================
+# MUSCLE RECOVERY + EXERCISE ALTERNATIVES (Fitbod-style, P3)
+# ============================================================================
+
+# Ventana de recuperación (días) según rol del músculo en el ejercicio.
+_RECOVERY_WINDOW_DAYS = {'primary': 3.0, 'secondary': 2.0}
+
+
+def _load_exercise_muscle_map(cur):
+    """exercise_key -> (primary[], secondary[]) desde clinical.db.exercises."""
+    ex_map = {}
+    for r in cur.execute("SELECT key, muscle_groups, secondary_muscles FROM exercises"):
+        try:
+            prim = json.loads(r['muscle_groups']) if r['muscle_groups'] else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            prim = []
+        try:
+            sec = json.loads(r['secondary_muscles']) if r['secondary_muscles'] else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            sec = []
+        ex_map[r['key']] = (prim or [], sec or [])
+    return ex_map
+
+
+def compute_muscle_recovery(patient_id, lookback_days=10):
+    """Recuperación por grupo muscular a partir del historial real de sesiones.
+
+    Para cada músculo entrenado en `lookback_days`, el % de recuperación es
+    min(100, días_desde / ventana * 100), donde la ventana depende de si el
+    músculo fue primario (3d) o secundario (2d) en el ejercicio. Se toma el
+    estímulo MÁS exigente (menor %). Músculos no entrenados recientemente = 100.
+    """
+    conn = get_clinical_connection(sqlite3.Row)
+    try:
+        cur = conn.cursor()
+        ex_map = _load_exercise_muscle_map(cur)
+        cur.execute(
+            """SELECT s.fecha AS fecha, se.exercise_key AS exercise_key
+               FROM training_sessions s
+               JOIN session_exercises se ON se.session_id = s.id
+               WHERE s.patient_id = ? AND s.fecha >= date('now', ?)""",
+            [patient_id, f'-{int(lookback_days)} days'],
+        )
+        today = datetime.now().date()
+        rec, last_trained = {}, {}
+        for row in cur.fetchall():
+            try:
+                d = datetime.strptime(str(row['fecha'])[:10], '%Y-%m-%d').date()
+            except (TypeError, ValueError):
+                continue
+            days_ago = max(0, (today - d).days)
+            prim, sec = ex_map.get(row['exercise_key'], ([], []))
+            for role, muscles in (('primary', prim), ('secondary', sec)):
+                window = _RECOVERY_WINDOW_DAYS[role]
+                pct = min(100.0, days_ago / window * 100.0)
+                for m in muscles:
+                    if m not in rec or pct < rec[m]:
+                        rec[m] = pct
+                    if m not in last_trained or d > last_trained[m]:
+                        last_trained[m] = d
+        out = []
+        for m, pct in sorted(rec.items(), key=lambda kv: kv[1]):
+            p = round(pct)
+            out.append({
+                'muscle': m,
+                'recovery_pct': p,
+                'status': 'fresh' if p >= 90 else ('recovering' if p >= 50 else 'fatigued'),
+                'last_trained': last_trained[m].isoformat() if m in last_trained else None,
+                'days_ago': (today - last_trained[m]).days if m in last_trained else None,
+            })
+        return out
+    finally:
+        conn.close()
+
+
+def get_exercise_alternatives(exercise_key, limit=8):
+    """Ejercicios alternativos que comparten grupo muscular primario.
+
+    El "exercise replacement" de Fitbod: dado un ejercicio, devuelve otros que
+    trabajan los mismos músculos primarios (rankeados por solapamiento y misma
+    categoría), para que el paciente elija un reemplazo equivalente.
+    """
+    conn = get_clinical_connection(sqlite3.Row)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM exercises WHERE key = ?", [exercise_key])
+        base = cur.fetchone()
+        if not base:
+            return None
+        try:
+            prim = set(json.loads(base['muscle_groups']) if base['muscle_groups'] else [])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            prim = set()
+        base_cat = base['category']
+        ranked = []
+        for r in cur.execute(
+            "SELECT key, name_es, name_en, muscle_groups, secondary_muscles, "
+            "equipment, category, modality, is_compound FROM exercises WHERE key != ?",
+            [exercise_key],
+        ):
+            try:
+                mg = set(json.loads(r['muscle_groups']) if r['muscle_groups'] else [])
+            except (TypeError, ValueError, json.JSONDecodeError):
+                mg = set()
+            overlap = len(prim & mg)
+            if overlap > 0:
+                ranked.append((overlap, 0 if r['category'] == base_cat else 1, dict(r)))
+        ranked.sort(key=lambda t: (-t[0], t[1]))
+        return {
+            'base': {'key': base['key'], 'name_es': base['name_es'],
+                     'muscle_groups': list(prim)},
+            'alternatives': [t[2] for t in ranked[:limit]],
+        }
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# STRENGTH STANDARDS / PERCENTILE (P6 — datos de Strength Level)
+# ============================================================================
+
+_LB_PER_KG = 2.2046226218
+# Nivel -> percentil aproximado (convención Strength Level).
+_TIERS = [('beginner', 5), ('novice', 20), ('intermediate', 50), ('advanced', 80), ('elite', 95)]
+_LEVEL_LABEL = {
+    'untrained': 'Sin entrenar', 'beginner': 'Principiante', 'novice': 'Novato',
+    'intermediate': 'Intermedio', 'advanced': 'Avanzado', 'elite': 'Élite',
+}
+
+
+def _interp_percentile(lift_lb, xs, ys):
+    if lift_lb <= xs[0]:
+        return round(max(0.0, lift_lb / xs[0] * ys[0]), 1) if xs[0] > 0 else 0.0
+    if lift_lb >= xs[-1]:
+        return round(min(99.0, ys[-1] + (lift_lb - xs[-1]) / xs[-1] * (100 - ys[-1])), 1)
+    for i in range(len(xs) - 1):
+        if xs[i] <= lift_lb <= xs[i + 1]:
+            frac = (lift_lb - xs[i]) / (xs[i + 1] - xs[i]) if xs[i + 1] > xs[i] else 0
+            return round(ys[i] + frac * (ys[i + 1] - ys[i]), 1)
+    return None
+
+
+def classify_strength(exercise_slug, sex, bodyweight, lift, unit='kg'):
+    """Clasifica un levantamiento contra los estándares poblacionales.
+
+    Devuelve nivel (untrained..elite), percentil estimado y los umbrales por
+    nivel al peso corporal más cercano. None si no hay estándares.
+    """
+    conn = get_clinical_connection(sqlite3.Row)
+    try:
+        cur = conn.cursor()
+        bw_lb = bodyweight * _LB_PER_KG if unit == 'kg' else bodyweight
+        lift_lb = lift * _LB_PER_KG if unit == 'kg' else lift
+        cur.execute(
+            """SELECT * FROM strength_standards_pop
+               WHERE exercise_slug = ? AND sex = ? AND metric = 'bodyweight'
+               ORDER BY ABS(bin - ?) ASC LIMIT 1""",
+            [exercise_slug, sex.upper(), bw_lb],
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        tiers = {k: row[k] for k, _ in _TIERS}
+        xs = [tiers[k] for k, _ in _TIERS]
+        ys = [p for _, p in _TIERS]
+        pct = _interp_percentile(lift_lb, xs, ys)
+        level = 'untrained'
+        for k, _ in _TIERS:
+            if lift_lb >= tiers[k]:
+                level = k
+            else:
+                break
+
+        def to_unit(v):
+            return round(v / _LB_PER_KG, 1) if unit == 'kg' else round(v, 1)
+
+        return {
+            'exercise_slug': exercise_slug,
+            'exercise_name': row['exercise_name'],
+            'sex': sex.upper(),
+            'bodyweight_bin_lb': row['bin'],
+            'unit': unit,
+            'lift': round(lift, 1),
+            'level': level,
+            'level_label': _LEVEL_LABEL.get(level, level),
+            'percentile': pct,
+            'thresholds': {k: to_unit(tiers[k]) for k, _ in _TIERS},
+        }
+    finally:
+        conn.close()
+
+
+# Cardio: nivel -> percentil (más rápido = mejor; tiempos ascendentes elite..beginner)
+_CARDIO_TIERS = [('elite', 95), ('advanced', 80), ('intermediate', 50), ('novice', 20), ('beginner', 5)]
+
+
+def _fmt_secs(s):
+    if s is None:
+        return None
+    s = int(round(s))
+    h, r = divmod(s, 3600)
+    m, sec = divmod(r, 60)
+    return f'{h}:{m:02d}:{sec:02d}' if h else f'{m}:{sec:02d}'
+
+
+def classify_cardio(sport, distance, sex, age, time_seconds):
+    """Clasifica un tiempo de carrera contra cardio_standards (Running Level).
+
+    Menor tiempo = mejor. Devuelve nivel, percentil estimado y los umbrales por
+    nivel a la edad más cercana. None si no hay estándares.
+    """
+    conn = get_clinical_connection(sqlite3.Row)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT * FROM cardio_standards
+               WHERE sport = ? AND distance = ? AND sex = ?
+               ORDER BY ABS(age - ?) ASC LIMIT 1""",
+            [sport, distance, sex.upper(), age],
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        tiers = {k: row[k] for k, _ in _CARDIO_TIERS}
+        t = float(time_seconds)
+        level = 'untrained'
+        for k, _ in _CARDIO_TIERS:  # elite -> beginner (tiempos crecientes)
+            if tiers[k] is not None and t <= tiers[k]:
+                level = k
+                break
+        xs = [tiers[k] for k, _ in _CARDIO_TIERS]
+        ys = [p for _, p in _CARDIO_TIERS]
+        if None in xs:
+            pct = None
+        elif t <= xs[0]:
+            pct = round(min(99.0, ys[0] + (xs[0] - t) / xs[0] * (99 - ys[0])), 1)
+        elif t >= xs[-1]:
+            pct = round(max(0.0, ys[-1] * (xs[-1] / t)), 1)
+        else:
+            pct = None
+            for i in range(len(xs) - 1):
+                if xs[i] <= t <= xs[i + 1]:
+                    frac = (t - xs[i]) / (xs[i + 1] - xs[i]) if xs[i + 1] > xs[i] else 0
+                    pct = round(ys[i] + frac * (ys[i + 1] - ys[i]), 1)
+                    break
+        return {
+            'sport': sport, 'distance': distance, 'sex': sex.upper(),
+            'age_bin': row['age'], 'time_seconds': round(t, 1), 'time': _fmt_secs(t),
+            'level': level, 'level_label': _LEVEL_LABEL.get(level, level), 'percentile': pct,
+            'thresholds': {k: _fmt_secs(tiers[k]) for k, _ in _CARDIO_TIERS},
+            'world_record': _fmt_secs(row['world_record']),
         }
     finally:
         conn.close()

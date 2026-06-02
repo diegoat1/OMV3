@@ -883,6 +883,82 @@ def calculate_body_fat():
     })
 
 
+@analytics_bp.route('/calculators/race-time', methods=['POST'])
+def calculate_race_time():
+    """Predice el tiempo en una distancia objetivo (formula de Riegel).
+
+    T2 = T1 * (D2/D1)^exp   (exp = 1.06 por defecto, ReferenceWeb/RunReps).
+
+    Request Body:
+        {
+          "current_distance_km": 5,
+          "current_time": "00:22:30",      // o "current_time_seconds": 1350
+          "target_distance_km": 10,
+          "riegel_exp": 1.06               // opcional
+        }
+    """
+    data = request.get_json() or {}
+
+    def _parse_time(d):
+        secs = d.get('current_time_seconds')
+        if secs is not None:
+            try:
+                return float(secs)
+            except (TypeError, ValueError):
+                return None
+        s = str(d.get('current_time') or '').strip()
+        if not s:
+            return None
+        try:
+            parts = [float(p) for p in s.split(':')]
+        except ValueError:
+            return None
+        if len(parts) == 3:
+            h, m, sec = parts
+        elif len(parts) == 2:
+            h, m, sec = 0.0, parts[0], parts[1]
+        elif len(parts) == 1:
+            h, m, sec = 0.0, parts[0], 0.0   # interpretado como minutos
+        else:
+            return None
+        return h * 3600 + m * 60 + sec
+
+    t1 = _parse_time(data)
+    try:
+        d1 = float(data.get('current_distance_km', 0) or 0)
+        d2 = float(data.get('target_distance_km', 0) or 0)
+        exp = float(data.get('riegel_exp', 1.06) or 1.06)
+    except (TypeError, ValueError):
+        return error_response('Parametros numericos invalidos',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    if not t1 or t1 <= 0 or d1 <= 0 or d2 <= 0:
+        return error_response(
+            'Se requieren current_time (>0), current_distance_km (>0) y target_distance_km (>0)',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+    t2 = t1 * (d2 / d1) ** exp
+
+    def _fmt(secs):
+        secs = int(round(secs))
+        h, rem = divmod(secs, 3600)
+        m, s = divmod(rem, 60)
+        return f'{h}:{m:02d}:{s:02d}' if h else f'{m}:{s:02d}'
+
+    return success_response({
+        'predicted_time_seconds': round(t2, 1),
+        'predicted_time': _fmt(t2),
+        'pace_per_km': _fmt(t2 / d2),
+        'inputs': {
+            'current_distance_km': d1,
+            'current_time_seconds': round(t1, 1),
+            'target_distance_km': d2,
+            'riegel_exp': exp,
+        },
+        'metodo': 'Riegel',
+    })
+
+
 @analytics_bp.route('/calculators/ffmi', methods=['POST'])
 def calculate_ffmi():
     """

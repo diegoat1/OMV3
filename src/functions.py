@@ -2523,9 +2523,17 @@ def solve_meal(alimentos, objetivo, libertad, dependencias=None):
             medida_casera[aid] = float(a.get('medida_casera_g', 100))
             medida_desc_map[aid] = a.get('medida_desc', 'g')
 
-        # Create LP variables (porciones in units of medida_casera)
-        # Minimum 0.1 portions so no food gets eliminated
-        porciones = LpVariable.dicts("P", free_ids, 0.1)
+        # Create LP variables (porciones in units of medida_casera).
+        # Minimum 0.1 portions so no food gets eliminated. Los alimentos con
+        # flag is_not_divisible (ej: 1 huevo) usan variable ENTERA (>=1 unidad)
+        # — Fitia: estos no se fraccionan. (P4 / flags de optimizador)
+        indivisibles = {str(a['id']) for a in alimentos if a.get('is_not_divisible')}
+        porciones = {}
+        for i in free_ids:
+            if i in indivisibles:
+                porciones[i] = LpVariable(f"P_{i}", lowBound=1, cat='Integer')
+            else:
+                porciones[i] = LpVariable(f"P_{i}", lowBound=0.1)
 
         # Build expressions for dependent alimentos
         porcionesnovar = {}

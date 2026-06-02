@@ -11,11 +11,13 @@ const NAV: Record<Role, NavGroup[]> = {
     { title: 'General', items: [
       { id: 'p-home', label: 'Inicio', icon: 'home' },
       { id: 'p-progress', label: 'Progreso', icon: 'chart' },
+      { id: 'p-prevention', label: 'Prevención', icon: 'shield' },
       { id: 'p-appointments', label: 'Consultas', icon: 'calendar' },
     ]},
     { title: 'Módulos', items: [
       { id: 'p-training', label: 'Entrenamiento', icon: 'dumbbell' },
       { id: 'p-nutrition', label: 'Nutrición', icon: 'apple' },
+      { id: 'p-mobility', label: 'Movilidad', icon: 'activity' },
       { id: 'p-medicine', label: 'Medicina', icon: 'heart' },
     ]},
   ],
@@ -57,6 +59,7 @@ const NAV: Record<Role, NavGroup[]> = {
       { id: 'a-home', label: 'Panel', icon: 'home' },
       { id: 'a-pending', label: 'Pendientes', icon: 'user' },
       { id: 'a-users', label: 'Usuarios', icon: 'users' },
+      { id: 'a-strength', label: 'Fuerza', icon: 'dumbbell' },
       { id: 'a-audit', label: 'Auditoría', icon: 'shield' },
       { id: 'a-db', label: 'Base de datos', icon: 'db' },
     ]},
@@ -104,6 +107,7 @@ const MOBILE_TABS: Record<Role, NavItem[]> = {
   admin: [
     { id: 'a-home', label: 'Panel', icon: 'dashboard' },
     { id: 'a-pending', label: 'Pendientes', icon: 'user' },
+    { id: 'a-strength', label: 'Fuerza', icon: 'training' },
     { id: 'a-audit', label: 'Audit', icon: 'history' },
     { id: 'a-db', label: 'Datos', icon: 'data' },
   ],

@@ -17,6 +17,8 @@ import { NewMeasurementSheet } from '../../components/NewMeasurementSheet'
 import { ProposeGoalSheet } from '../../components/ProposeGoalSheet'
 import { PatientNutritionPlan } from './PatientNutritionPlan'
 import { PatientTrainingPlan } from './PatientTrainingPlan'
+import { Prevention } from '../patient/Prevention'
+import { MobilityTest } from '../patient/MobilityTest'
 
 interface Props {
   patientId: number | null
@@ -28,7 +30,8 @@ type Tab = (typeof TABS)[number]
 
 // Tabs not implemented yet — show them disabled with a "Pronto" hint
 // instead of letting users click into broken empty screens.
-const DISABLED_TABS: Set<Tab> = new Set(['Labs', 'Archivos'])
+// 'Labs' ahora muestra Prevención (USPSTF) scoped al paciente.
+const DISABLED_TABS: Set<Tab> = new Set(['Archivos'])
 
 interface PlanRow {
   label: string
@@ -78,6 +81,7 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
   const [newMeasurement, setNewMeasurement] = useState(false)
   const [proposeGoal, setProposeGoal] = useState(false)
   const [planesSubTab, setPlanesSubTab] = useState<'nutricion' | 'entreno'>('nutricion')
+  const [labsView, setLabsView] = useState<'prevencion' | 'movilidad'>('prevencion')
 
   const reload = useCallback(async () => {
     if (patientId === null) return
@@ -438,11 +442,42 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
         </>
       )}
 
-      {(tab === 'Labs' || tab === 'Archivos') && !isEmpty && (
+      {tab === 'Labs' && !isEmpty && (
+        profile?.nombre ? (
+          <>
+            <div className="goal-mode-toggle" style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                className={'goal-mode-chip' + (labsView === 'prevencion' ? ' is-active' : '')}
+                onClick={() => setLabsView('prevencion')}
+              >
+                <Icon name="shield" size={14} /> Prevención
+              </button>
+              <button
+                type="button"
+                className={'goal-mode-chip' + (labsView === 'movilidad' ? ' is-active' : '')}
+                onClick={() => setLabsView('movilidad')}
+              >
+                <Icon name="activity" size={14} /> Movilidad
+              </button>
+            </div>
+            {labsView === 'prevencion'
+              ? <Prevention patient={profile.nombre} />
+              : <MobilityTest patient={profile.nombre} />}
+          </>
+        ) : (
+          <div className="card">
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
+              {loading ? 'Cargando…' : 'Sin paciente seleccionado.'}
+            </p>
+          </div>
+        )
+      )}
+
+      {tab === 'Archivos' && !isEmpty && (
         <div className="card">
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-            {tab === 'Labs' && 'Sin laboratorios cargados.'}
-            {tab === 'Archivos' && 'Sin archivos compartidos.'}
+            Sin archivos compartidos.
           </p>
         </div>
       )}

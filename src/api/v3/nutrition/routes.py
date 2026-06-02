@@ -747,6 +747,86 @@ def get_food(food_id):
         )
 
 
+@nutrition_bp.route('/foods/rechange', methods=['POST'])
+@require_auth
+def rechange_food():
+    """Sugiere alimentos equivalentes (Fitia 'Rechange').
+
+    Reemplazar un alimento por otro manteniendo los macros: matchea por calorías
+    (gramos del candidato = kcal_objetivo / kcal_por_g) y rankea por cercanía de
+    macros (|dP|+|dG|+|dCH|).
+
+    Body:
+        food_id + grams                  -> objetivo = macros del alimento origen
+        ó proteina/grasa/carbohidratos   -> objetivo directo (gramos)
+        limit (default 10)
+    """
+    data = request.get_json(silent=True) or {}
+    limit = max(1, min(int(data.get('limit', 10) or 10), 30))
+    try:
+        conn = get_db_connection(sqlite3.Row)
+        cur = conn.cursor()
+        source_id = data.get('food_id')
+        source_name = None
+        if source_id is not None:
+            cur.execute("SELECT * FROM ALIMENTOS WHERE ID = ?", [source_id])
+            src = cur.fetchone()
+            if not src:
+                conn.close()
+                return error_response('Alimento origen no encontrado',
+                                      code=ErrorCodes.NOT_FOUND, status_code=404)
+            f = float(data.get('grams', 100) or 100) / 100.0
+            tgt_p = (src['P'] or 0) * f
+            tgt_g = (src['G'] or 0) * f
+            tgt_ch = (src['CH'] or 0) * f
+            source_name = src['Largadescripcion']
+        else:
+            tgt_p = float(data.get('proteina', 0) or 0)
+            tgt_g = float(data.get('grasa', 0) or 0)
+            tgt_ch = float(data.get('carbohidratos', 0) or 0)
+
+        tgt_kcal = tgt_p * 4 + tgt_g * 9 + tgt_ch * 4
+        if tgt_kcal <= 0:
+            conn.close()
+            return error_response('Objetivo de macros inválido (kcal <= 0)',
+                                  code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+
+        cur.execute("SELECT ID, Largadescripcion, P, G, CH FROM ALIMENTOS")
+        equivalents = []
+        for r in cur.fetchall():
+            if source_id is not None and r['ID'] == source_id:
+                continue
+            p100, g100, ch100 = (r['P'] or 0), (r['G'] or 0), (r['CH'] or 0)
+            kcal100 = p100 * 4 + g100 * 9 + ch100 * 4
+            if kcal100 <= 0:
+                continue
+            grams_b = tgt_kcal * 100.0 / kcal100  # igualar calorías
+            res_p, res_g, res_ch = p100 * grams_b / 100.0, g100 * grams_b / 100.0, ch100 * grams_b / 100.0
+            err = abs(res_p - tgt_p) + abs(res_g - tgt_g) + abs(res_ch - tgt_ch)
+            equivalents.append({
+                'food_id': r['ID'],
+                'nombre': r['Largadescripcion'],
+                'suggested_grams': round(grams_b, 1),
+                'macros': {'proteina': round(res_p, 1), 'grasa': round(res_g, 1),
+                           'carbohidratos': round(res_ch, 1)},
+                'macro_error': round(err, 2),
+            })
+        conn.close()
+        equivalents.sort(key=lambda c: c['macro_error'])
+        return success_response({
+            'source': {
+                'food_id': source_id, 'nombre': source_name,
+                'target': {'proteina': round(tgt_p, 1), 'grasa': round(tgt_g, 1),
+                           'carbohidratos': round(tgt_ch, 1), 'kcal': round(tgt_kcal, 0)},
+            },
+            'equivalents': equivalents[:limit],
+            'total_evaluated': len(equivalents),
+        })
+    except Exception as e:
+        return error_response(f'Error en rechange: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
 @nutrition_bp.route('/foods/<int:food_id>/portions', methods=['GET'])
 @require_auth
 def get_food_portions(food_id):
@@ -851,13 +931,17 @@ def create_food():
     try:
         conn = get_db_connection(sqlite3.Row)
         cursor = conn.cursor()
+        def _flag(k):
+            return 1 if data.get(k) else 0
         cursor.execute("""
             INSERT INTO ALIMENTOS
-                (Largadescripcion, P, G, CH, F, Gramo1, Medidacasera1, Gramo2, Medidacasera2)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (Largadescripcion, P, G, CH, F, Gramo1, Medidacasera1, Gramo2, Medidacasera2,
+                 is_not_divisible, is_not_optimizable, is_legume)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             payload['Largadescripcion'], payload['P'], payload['G'], payload['CH'], payload['F'],
             payload['Gramo1'], payload['Medidacasera1'], payload['Gramo2'], payload['Medidacasera2'],
+            _flag('is_not_divisible'), _flag('is_not_optimizable'), _flag('is_legume'),
         ])
         new_id = cursor.lastrowid
         conn.commit()
@@ -897,6 +981,10 @@ def update_food(food_id):
     ]:
         if col in data or any(k in data for k in alt_keys):
             updates[col] = full[col]
+    # Flags de optimizador (P4): solo si el caller los envió.
+    for flag in ('is_not_divisible', 'is_not_optimizable', 'is_legume'):
+        if flag in data:
+            updates[flag] = 1 if data.get(flag) else 0
     if not updates:
         return error_response('Nada que actualizar', code=ErrorCodes.VALIDATION_ERROR, status_code=400)
     try:

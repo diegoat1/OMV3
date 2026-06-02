@@ -11,6 +11,8 @@ import type {
   MedicalRecordsResponse,
   SituationsResponse,
   VitalsResponse,
+  CreateMobilityPayload,
+  MobilityListResponse,
 } from '../types/api'
 
 /** Build a query string from a filter object, skipping undefined/empty values. */
@@ -121,8 +123,13 @@ export const telemedicineService = {
   createSpeed(payload: Record<string, unknown>) { return api.post('/telemedicine/performance/speed', payload) },
   listFlexibility() { return api.get('/telemedicine/performance/flexibility') },
   createFlexibility(payload: Record<string, unknown>) { return api.post('/telemedicine/performance/flexibility', payload) },
-  listMobility() { return api.get('/telemedicine/performance/mobility') },
-  createMobility(payload: Record<string, unknown>) { return api.post('/telemedicine/performance/mobility', payload) },
+  /** GET mobility tests. `user` (nombre/id del paciente) solo lo usa el profesional. */
+  listMobility(user?: string): Promise<MobilityListResponse> {
+    return api.get<MobilityListResponse>(`/telemedicine/performance/mobility${qs({ user })}`)
+  },
+  createMobility(payload: CreateMobilityPayload): Promise<{ id: number; message: string }> {
+    return api.post<{ id: number; message: string }>('/telemedicine/performance/mobility', payload)
+  },
   listEndurance() { return api.get('/telemedicine/performance/endurance') },
   createEndurance(payload: Record<string, unknown>) { return api.post('/telemedicine/performance/endurance', payload) },
 

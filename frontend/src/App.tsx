@@ -18,11 +18,14 @@ import { BrowseSpecialists } from './screens/patient/BrowseSpecialists'
 import { TrainingPlan } from './screens/patient/TrainingPlan'
 import { Nutrition } from './screens/patient/Nutrition'
 import { Progress as PatientProgress } from './screens/patient/Progress'
+import { Prevention } from './screens/patient/Prevention'
+import { MobilityTest } from './screens/patient/MobilityTest'
 import { AdminHome } from './screens/AdminHome'
 import { AdminAudit } from './screens/admin/AdminAudit'
 import { AdminPending } from './screens/admin/AdminPending'
 import { AdminUsers } from './screens/admin/AdminUsers'
 import { AdminDatabase } from './screens/admin/AdminDatabase'
+import { AdminStrength } from './screens/admin/AdminStrength'
 import { DoctorResources } from './screens/doctor/DoctorResources'
 import { DoctorTrainingLab } from './screens/doctor/DoctorTrainingLab'
 import { DoctorHome } from './screens/doctor/DoctorHome'
@@ -121,6 +124,10 @@ function resolveScreen(
       return { node: <Nutrition />, crumbs: ['Omega Medicina', 'Nutrición'] }
     case 'p-medicine':
       return { node: <Appointments />, crumbs: ['Omega Medicina', 'Medicina'] }
+    case 'p-prevention':
+      return { node: <Prevention />, crumbs: ['Omega Medicina', 'Prevención'] }
+    case 'p-mobility':
+      return { node: <MobilityTest />, crumbs: ['Omega Medicina', 'Movilidad'] }
     case 'd-home':
       return { node: <DoctorHome role={role} />, crumbs: ['Omega Medicina', 'Panel'] }
     case 'd-patients':
@@ -160,6 +167,7 @@ function resolveScreen(
             onOpenAudit={() => setScreen('a-audit')}
             onOpenUsers={() => setScreen('a-users')}
             onOpenDb={() => setScreen('a-db')}
+            onOpenStrength={() => setScreen('a-strength')}
           />
         ),
         crumbs: ['Omega Medicina', 'Sistema'],
@@ -172,6 +180,8 @@ function resolveScreen(
       return { node: <AdminAudit />, crumbs: ['Omega Medicina', 'Auditoría'] }
     case 'a-db':
       return { node: <AdminDatabase />, crumbs: ['Omega Medicina', 'Base de datos'] }
+    case 'a-strength':
+      return { node: <AdminStrength />, crumbs: ['Omega Medicina', 'Fuerza'] }
     default:
       return { node: <Placeholder title="Sección no encontrada" />, crumbs: ['Omega Medicina'] }
   }

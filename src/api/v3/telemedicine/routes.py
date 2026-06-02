@@ -6,11 +6,20 @@ Migrated from legacy /api/telemed/* endpoints in main.py
 from flask import request
 from . import telemedicine_bp
 from ..common.responses import success_response, error_response, ErrorCodes
-from ..common.auth import require_auth, require_admin, get_current_user, write_audit
-from ..common.database import get_telemed_connection, execute_telemed_query
+from ..common.auth import (
+    require_auth, require_admin, get_current_user, write_audit,
+    check_patient_access,
+)
+from ..common.database import (
+    get_telemed_connection, execute_telemed_query,
+    get_clinical_connection, resolve_patient_id, resolve_user_identity,
+)
 import sqlite3
 import json
-from datetime import datetime
+import os
+import urllib.request
+import urllib.error
+from datetime import datetime, date
 
 
 # OMV-8: helper de control de rol para escrituras clínicas. Los POST de
@@ -1032,14 +1041,229 @@ def create_prevention_program():
 
 
 # ============================================
+# PREVENTIVE SCREENINGS (USPSTF) — proxy a prevention-task-force-api
+# ============================================
+
+# Recomendaciones USPSTF: por defecto se usa el motor in-process
+# (prevention_engine.py + uspstf_data.json), así OMV3 es all-in-one y no
+# depende de un segundo servicio en producción. Si se setea PREVENTION_API_URL
+# (p.ej. http://127.0.0.1:5000), se delega a ese servicio externo en su lugar.
+PREVENTION_API_URL = os.environ.get('PREVENTION_API_URL')
+
+
+def _age_from_birthdate(fecha_nacimiento):
+    """Edad en años a partir de 'YYYY-MM-DD' (o None si no se puede parsear)."""
+    if not fecha_nacimiento:
+        return None
+    try:
+        y, m, d = str(fecha_nacimiento)[:10].split('-')
+        born = date(int(y), int(m), int(d))
+        today = date.today()
+        return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    except Exception:
+        return None
+
+
+@telemedicine_bp.route('/prevention/recommendations', methods=['POST'])
+@require_auth
+def prevention_recommendations():
+    """
+    Recomendaciones de prevención (screenings USPSTF) para un paciente.
+
+    Arma el perfil clínico desde clinical.db (sexo, edad, altura/peso) y delega
+    el matching a la Prevention Task Force API externa. Los datos que OMV3 no
+    modela (tabaco, actividad sexual, embarazo) llegan como overrides opcionales.
+
+    Body (todo opcional):
+      patient | nombre_apellido : ver otro paciente (solo profesional/admin)
+      tobacco, sexuallyActive, pregnant : bool
+      keywords : str   ·   grades : ['A','B',...]
+    """
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+
+    # Scoping: un paciente solo ve lo suyo; profesional/admin puede pedir otro.
+    target = data.get('patient') or data.get('nombre_apellido')
+    if target and not _is_clinical_writer(user):
+        return error_response(
+            'Solo profesionales o administradores pueden consultar otros pacientes',
+            code=ErrorCodes.FORBIDDEN, status_code=403,
+        )
+    identifier = target or user.get('user_id') or user.get('nombre_apellido')
+    resolved = resolve_patient_id(identifier)
+    if not resolved:
+        return error_response('No se pudo resolver el paciente',
+                              code=ErrorCodes.NOT_FOUND, status_code=404)
+    patient_id = resolved['patient_id']
+
+    # Datos clínicos desde clinical.db
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT sexo, fecha_nacimiento, altura, es_fumador, "
+            "activo_sexualmente, embarazo FROM patients WHERE id = ?",
+            [patient_id],
+        )
+        prow = cursor.fetchone()
+        cursor.execute(
+            "SELECT peso FROM measurements WHERE patient_id = ? "
+            "ORDER BY fecha DESC, id DESC LIMIT 1",
+            [patient_id],
+        )
+        mrow = cursor.fetchone()
+        conn.close()
+    except Exception as e:
+        return error_response(f'Error leyendo datos del paciente: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+    if not prow:
+        return error_response('El paciente no tiene ficha clínica',
+                              code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    age = _age_from_birthdate(prow['fecha_nacimiento'])
+    sexo = (prow['sexo'] or '').upper()
+    sex = 'male' if sexo == 'M' else 'female' if sexo == 'F' else None
+    if age is None or sex is None:
+        return error_response(
+            'Faltan datos del paciente (sexo y/o fecha de nacimiento) para calcular prevención',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400,
+            details={'age': age, 'sex': sex},
+        )
+
+    altura = prow['altura']
+    peso = mrow['peso'] if mrow else None
+
+    # Flags clínicos: el override de la request manda; si no viene, se usa el
+    # valor persistido en el perfil (patients); si tampoco hay, False.
+    def _flag(key, persisted):
+        if key in data:
+            return bool(data[key])
+        return bool(persisted) if persisted is not None else False
+
+    tobacco_eff = _flag('tobacco', prow['es_fumador'])
+    sexually_eff = _flag('sexuallyActive', prow['activo_sexualmente'])
+    pregnant_eff = (sex == 'female') and _flag('pregnant', prow['embarazo'])
+
+    # Persistir los flags que el usuario tocó explícitamente (el profesional o
+    # el propio paciente) — "set once and it sticks". Best-effort.
+    to_persist = {}
+    if 'tobacco' in data:
+        to_persist['es_fumador'] = 1 if bool(data['tobacco']) else 0
+    if 'sexuallyActive' in data:
+        to_persist['activo_sexualmente'] = 1 if bool(data['sexuallyActive']) else 0
+    if 'pregnant' in data:
+        to_persist['embarazo'] = 1 if bool(data['pregnant']) else 0
+    if to_persist:
+        try:
+            wconn = get_clinical_connection()
+            sets = ', '.join(f'{k} = ?' for k in to_persist)
+            wconn.execute(
+                f"UPDATE patients SET {sets}, updated_at = datetime('now') WHERE id = ?",
+                list(to_persist.values()) + [patient_id],
+            )
+            wconn.commit()
+            wconn.close()
+        except Exception:
+            pass
+
+    payload = {
+        'age': age,
+        'sex': sex,
+        'tobacco': tobacco_eff,
+        'sexuallyActive': sexually_eff,
+    }
+    if pregnant_eff:
+        payload['pregnant'] = True
+    if altura and peso:
+        payload['heightCm'] = float(altura)
+        payload['weightKg'] = float(peso)
+    if data.get('keywords'):
+        payload['keywords'] = str(data['keywords'])
+    if isinstance(data.get('grades'), list) and data['grades']:
+        payload['grades'] = data['grades']
+
+    # Resolver las recomendaciones. Por defecto se usa el motor in-process
+    # (all-in-one: OMV3 no necesita un segundo servicio en prod). Si se setea
+    # PREVENTION_API_URL, se delega a ese servicio externo (override opcional).
+    if PREVENTION_API_URL:
+        url = PREVENTION_API_URL.rstrip('/') + '/api/v1/recommendations'
+        try:
+            body = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(
+                url, data=body,
+                headers={'Content-Type': 'application/json'}, method='POST',
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                prevention = json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode('utf-8', 'ignore')
+            return error_response(
+                f'La API de prevención devolvió {e.code}: {detail}',
+                code=ErrorCodes.INTERNAL_ERROR, status_code=502,
+            )
+        except Exception as e:
+            return error_response(
+                f'No se pudo contactar la API de prevención ({url}): {e}',
+                code=ErrorCodes.INTERNAL_ERROR, status_code=502,
+            )
+    else:
+        try:
+            from .prevention_engine import recommend as _recommend
+            prevention = _recommend(payload)
+        except Exception as e:
+            return error_response(
+                f'No se pudieron calcular las recomendaciones de prevención: {e}',
+                code=ErrorCodes.INTERNAL_ERROR, status_code=500,
+            )
+
+    pat_echo = prevention.get('patient', {}) if isinstance(prevention, dict) else {}
+    return success_response({
+        'patient': {
+            'patient_id': patient_id,
+            'nombre': resolved.get('nombre'),
+            'age': age,
+            'sex': sex,
+            'heightCm': payload.get('heightCm'),
+            'weightKg': payload.get('weightKg'),
+            'bmi': pat_echo.get('bmi'),
+            'bmiCategory': pat_echo.get('bmiCategory'),
+            'tobacco': tobacco_eff,
+            'sexuallyActive': sexually_eff,
+            'pregnant': pregnant_eff,
+        },
+        'count': prevention.get('count', 0),
+        'recommendations': prevention.get('recommendations', []),
+    })
+
+
+# ============================================
 # PERFORMANCE TESTS (2.5 modules - migrated from legacy placeholders)
 # Generic GET/POST pattern for: body measurements, speed, flexibility, mobility, endurance
 # ============================================
 
+def _resolve_performance_user_id(user, target):
+    """Devuelve (user_id, error_response). Si `target` se pasa (admin/especialista
+    viendo a un paciente), valida acceso y resuelve su nombre_apellido (estas
+    tablas legacy keyean por user_id = nombre_apellido). Sin target → uno mismo."""
+    if target:
+        if not check_patient_access(user, target):
+            return None, error_response(
+                'No tienes permisos para ver datos de este paciente',
+                code=ErrorCodes.FORBIDDEN, status_code=403)
+        ident = resolve_user_identity(target)
+        return (ident['nombre_apellido'] if ident else target), None
+    return user['nombre_apellido'], None
+
+
 def _generic_performance_get(table_name, db_type='legacy'):
-    """Generic GET for performance tables."""
+    """Generic GET for performance tables. Admin/especialista puede ver a un
+    paciente con ?user=<nombre|id> (o ?patient=)."""
     user = get_current_user()
-    user_id = user['nombre_apellido']
+    target = request.args.get('user') or request.args.get('patient')
+    user_id, err = _resolve_performance_user_id(user, target)
+    if err is not None:
+        return err
     try:
         if db_type == 'telemed':
             conn = get_telemed_connection(sqlite3.Row)
@@ -1056,10 +1280,16 @@ def _generic_performance_get(table_name, db_type='legacy'):
 
 
 def _generic_performance_post(table_name, db_type='legacy', success_msg='Registro guardado'):
-    """Generic POST for performance tables."""
+    """Generic POST for performance tables. Un especialista/admin puede registrar
+    para un paciente pasando 'patient' (o 'nombre_apellido') en el body."""
     user = get_current_user()
-    user_id = user['nombre_apellido']
     data = request.get_json() or {}
+    target = data.get('patient') or data.get('nombre_apellido')
+    user_id, err = _resolve_performance_user_id(user, target)
+    if err is not None:
+        return err
+    # 'patient'/'nombre_apellido' son claves de control, no columnas.
+    data = {k: v for k, v in data.items() if k not in ('patient', 'nombre_apellido')}
     try:
         if db_type == 'telemed':
             conn = get_telemed_connection()
@@ -1145,10 +1375,16 @@ def get_mobility_tests():
 @telemedicine_bp.route('/performance/mobility', methods=['POST'])
 @require_auth
 def create_mobility_test():
-    _guard = _require_clinical_writer()
-    if _guard is not None:
-        return _guard
-    """Record a new mobility test."""
+    """Registrar una evaluación de movilidad.
+
+    El paciente puede auto-reportar la SUYA (test guiado estilo GoWOD).
+    Registrarla para OTRO paciente requiere ser profesional/admin.
+    """
+    data = request.get_json(silent=True) or {}
+    if data.get('patient') or data.get('nombre_apellido'):
+        guard = _require_clinical_writer()
+        if guard is not None:
+            return guard
     return _generic_performance_post('RENDIMIENTO_MOVILIDAD', 'legacy', 'Evaluación de movilidad registrada')
 
 
@@ -1156,8 +1392,13 @@ def create_mobility_test():
 @telemedicine_bp.route('/performance/endurance', methods=['GET'])
 @require_auth
 def get_endurance_tests():
-    """Get endurance test history (RENDIMIENTO_RESISTENCIA) — stored in telemed DB."""
-    return _generic_performance_get('RENDIMIENTO_RESISTENCIA', 'telemed')
+    """Get endurance test history (RENDIMIENTO_RESISTENCIA).
+
+    OMV: la tabla vive en Basededatos (legacy), igual que las otras 3 de
+    rendimiento físico. Antes apuntaba por error a telemedicina.db, donde la
+    tabla no existe → 'no such table' al consultar/insertar.
+    """
+    return _generic_performance_get('RENDIMIENTO_RESISTENCIA', 'legacy')
 
 @telemedicine_bp.route('/performance/endurance', methods=['POST'])
 @require_auth
@@ -1166,7 +1407,7 @@ def create_endurance_test():
     if _guard is not None:
         return _guard
     """Record a new endurance test."""
-    return _generic_performance_post('RENDIMIENTO_RESISTENCIA', 'telemed', 'Prueba de resistencia registrada')
+    return _generic_performance_post('RENDIMIENTO_RESISTENCIA', 'legacy', 'Prueba de resistencia registrada')
 
 
 # ============================================

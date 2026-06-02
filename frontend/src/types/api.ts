@@ -1749,3 +1749,175 @@ export function availableUIRoles(user: AuthUser): Role[] {
   if (parts.some((p) => ['patient', 'paciente', 'user'].includes(p))) roles.push('patient')
   return roles.length > 0 ? roles : [backendRoleToUIRole(user.rol, user.is_admin)]
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Preventive screenings (USPSTF) — POST /telemedicine/prevention/recommendations
+// ──────────────────────────────────────────────────────────────────────────
+
+/** USPSTF recommendation grade. A/B = recomendado; C = selectivo; D = en contra;
+ *  I = evidencia insuficiente. */
+export type PreventionGrade = 'A' | 'B' | 'C' | 'D' | 'I'
+
+/** Overrides clínicos que OMV3 no modela en el perfil; el resto (edad, sexo,
+ *  altura/peso) lo arma el backend desde clinical.db. Todos opcionales. */
+export interface PreventionRequest {
+  /** nombre/id del paciente — solo profesional/admin para consultar a otro. */
+  patient?: string
+  tobacco?: boolean
+  sexuallyActive?: boolean
+  pregnant?: boolean
+  keywords?: string
+  grades?: PreventionGrade[]
+}
+
+/** Una recomendación de screening del dataset USPSTF. */
+export interface PreventionRecommendation {
+  id: number
+  title: string
+  grade: PreventionGrade
+  text: string
+  servFreq?: string
+  general?: string
+  riskName?: string
+  riskText?: string
+  ageRange?: [number, number]
+  sex?: string
+}
+
+/** Eco del perfil usado para el matching + metadatos. */
+export interface PreventionPatientEcho {
+  patient_id: number
+  nombre: string | null
+  age: number
+  sex: 'male' | 'female'
+  heightCm: number | null
+  weightKg: number | null
+  bmi: number | null
+  bmiCategory: string | null
+  tobacco: boolean
+  sexuallyActive: boolean
+  pregnant: boolean
+}
+
+export interface PreventionResponse {
+  patient: PreventionPatientEcho
+  count: number
+  recommendations: PreventionRecommendation[]
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Test de movilidad (autoevaluación estilo GoWOD) — RENDIMIENTO_MOVILIDAD
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Nivel por zona: 1=Limitado, 2=Moderado, 3=Bueno. */
+export type MobilityLevel = 1 | 2 | 3
+
+/** Detalle por zona corporal (key = zona, value = nivel). */
+export type MobilityZoneScores = Record<string, MobilityLevel>
+
+/** Payload para registrar una evaluación de movilidad. */
+export interface CreateMobilityPayload {
+  /** Profesional registrando para un paciente; el paciente lo omite (auto-reporte). */
+  patient?: string
+  tipo_evaluacion?: string
+  puntuacion_total: number
+  puntuacion_detalle?: string   // JSON.stringify(MobilityZoneScores)
+  limitaciones_identificadas?: string
+  asimetrias_detectadas?: string
+  recomendaciones?: string
+  dolor_durante_prueba?: number
+  areas_dolor?: string
+  notas?: string
+}
+
+/** Una evaluación de movilidad persistida. */
+export interface MobilityRecord {
+  id: number
+  user_id: string
+  fecha_registro: string
+  tipo_evaluacion?: string
+  puntuacion_total?: number
+  puntuacion_detalle?: string
+  limitaciones_identificadas?: string
+  asimetrias_detectadas?: string
+  dolor_durante_prueba?: number
+  areas_dolor?: string
+  recomendaciones?: string
+  notas?: string
+}
+
+export interface MobilityListResponse {
+  registros: MobilityRecord[]
+  total: number
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// P3 — Recuperación muscular, alternativas de ejercicio, predicción de sesiones
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface MuscleRecovery {
+  muscle: string
+  recovery_pct: number
+  status: 'fresh' | 'recovering' | 'fatigued'
+  last_trained: string | null
+  days_ago: number | null
+}
+export interface MuscleRecoveryResponse {
+  muscles: MuscleRecovery[]
+  total: number
+}
+
+export interface ExerciseAlternative {
+  key: string
+  name_es?: string
+  name_en?: string
+  muscle_groups?: string
+  secondary_muscles?: string
+  equipment?: string
+  category?: string
+  modality?: string
+  is_compound?: number
+}
+export interface ExerciseAlternativesResponse {
+  base: { key: string; name_es?: string; muscle_groups: string[] }
+  alternatives: ExerciseAlternative[]
+}
+
+export interface PredictedSession {
+  orden: number
+  dia: number
+  ejercicios: Array<Record<string, unknown>>
+}
+export interface PredictSessionsResponse {
+  predicciones: PredictedSession[]
+  total: number
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// P4 — Rechange (equivalencias por macros)
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface RechangeEquivalent {
+  food_id: number
+  nombre: string
+  suggested_grams: number
+  macros: { proteina: number; grasa: number; carbohidratos: number }
+  macro_error: number
+}
+export interface RechangePayload {
+  food_id?: number
+  grams?: number
+  proteina?: number
+  grasa?: number
+  carbohidratos?: number
+  limit?: number
+}
+export interface RechangeResponse {
+  source: {
+    food_id: number | null
+    nombre: string | null
+    target: { proteina: number; grasa: number; carbohidratos: number; kcal: number }
+  }
+  equivalents: RechangeEquivalent[]
+  total_evaluated: number
+}

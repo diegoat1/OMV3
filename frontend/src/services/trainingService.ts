@@ -3,7 +3,10 @@ import type {
   CreateSessionPayload,
   CreateStrengthPayload,
   ExercisesResponse,
+  ExerciseAlternativesResponse,
   LiftsResponse,
+  MuscleRecoveryResponse,
+  PredictSessionsResponse,
   OptimizePlanPayload,
   OptimizePlanResponse,
   StrengthResponse,
@@ -166,6 +169,23 @@ export const trainingService = {
   /** GET /training/exercises — exercise catalog with metadata. */
   listExercises(): Promise<ExercisesResponse> {
     return api.get<ExercisesResponse>('/training/exercises')
+  },
+
+  /* ──────────────── Recuperación / alternativas / predicción (P3) ──────────────── */
+
+  /** GET /training/recovery — % de recuperación por grupo muscular (Fitbod). */
+  getMuscleRecovery(opts: { patient?: string; lookback?: number } = {}): Promise<MuscleRecoveryResponse> {
+    return api.get<MuscleRecoveryResponse>(`/training/recovery${qs({ user: opts.patient, lookback: opts.lookback })}`)
+  },
+  /** GET /training/exercises/<key>/alternatives — ejercicios equivalentes. */
+  getExerciseAlternatives(exerciseKey: string, limit?: number): Promise<ExerciseAlternativesResponse> {
+    return api.get<ExerciseAlternativesResponse>(
+      `/training/exercises/${encodeURIComponent(exerciseKey)}/alternatives${qs({ limit })}`,
+    )
+  },
+  /** GET /training/sessions/predict — preview de las próximas N sesiones. */
+  predictSessions(opts: { patient?: string; num?: number } = {}): Promise<PredictSessionsResponse> {
+    return api.get<PredictSessionsResponse>(`/training/sessions/predict${qs({ user: opts.patient, num: opts.num })}`)
   },
 
   /* ──────────────── Programs (preset templates) ──────────────── */

@@ -1,4 +1,5 @@
 import { api } from './apiClient'
+import type { RechangePayload, RechangeResponse } from '../types/api'
 import type {
   AcceptOptionPayload,
   AcceptOptionResponse,
@@ -142,6 +143,10 @@ export const nutritionService = {
   },
   getFoodPortions(foodId: number): Promise<{ portions: FoodPortion[] }> {
     return api.get<{ portions: FoodPortion[] }>(`/nutrition/foods/${foodId}/portions`)
+  },
+  /** POST /nutrition/foods/rechange — alimentos equivalentes por macros (Fitia). */
+  rechange(payload: RechangePayload): Promise<RechangeResponse> {
+    return api.post<RechangeResponse>('/nutrition/foods/rechange', payload)
   },
   listFoodGroups(): Promise<{ groups: FoodGroup[] }> {
     return api.get<{ groups: FoodGroup[] }>('/nutrition/food-groups')

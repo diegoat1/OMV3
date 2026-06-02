@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icon } from './Icon'
 import { dailyLogService } from '../services/dailyLogService'
 import { ApiError } from '../services/apiClient'
+import { RechangeSheet } from './RechangeSheet'
 import type { Food, LoggedFood, MealKey } from '../types/api'
 
 interface Props {
@@ -44,6 +45,7 @@ export function AddFoodSheet({ mealKey: _mealKey, mealLabel, existing, onClose, 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [foods, setFoods] = useState<LoggedFood[]>(existing)
+  const [swapFor, setSwapFor] = useState<{ food: LoggedFood; idx: number } | null>(null)
 
   // Debounced search
   useEffect(() => {
@@ -150,6 +152,16 @@ export function AddFoodSheet({ mealKey: _mealKey, mealLabel, existing, onClose, 
                       {' · '}{Math.round(f.proteina_g)} P · {Math.round(f.carbohidratos_g)} C · {Math.round(f.grasa_g)} G
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="ph-link-btn"
+                    onClick={() => setSwapFor({ food: f, idx: i })}
+                    aria-label="Reemplazar por equivalente"
+                    title="Reemplazar (Rechange)"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    <Icon name="history" size={14} />
+                  </button>
                   <button
                     type="button"
                     className="ph-link-btn ph-link-reject"
@@ -303,6 +315,17 @@ export function AddFoodSheet({ mealKey: _mealKey, mealLabel, existing, onClose, 
           {saving ? 'Guardando…' : 'Guardar comida'}
         </button>
       </div>
+
+      {swapFor && (
+        <RechangeSheet
+          food={swapFor.food}
+          onClose={() => setSwapFor(null)}
+          onReplace={(next) => {
+            setFoods((prev) => prev.map((f, i) => (i === swapFor.idx ? next : f)))
+            setSwapFor(null)
+          }}
+        />
+      )}
     </>
   )
 }

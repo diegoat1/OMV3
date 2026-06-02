@@ -17,7 +17,7 @@ interface SystemAction {
   title: string
   sub: string
   icon: IconName
-  target?: 'audit' | 'users' | 'db'
+  target?: 'audit' | 'users' | 'db' | 'strength'
 }
 
 interface Props {
@@ -25,9 +25,10 @@ interface Props {
   onOpenAudit?: () => void
   onOpenUsers?: () => void
   onOpenDb?: () => void
+  onOpenStrength?: () => void
 }
 
-export function AdminHome({ onOpenPending, onOpenAudit, onOpenUsers, onOpenDb }: Props = {}) {
+export function AdminHome({ onOpenPending, onOpenAudit, onOpenUsers, onOpenDb, onOpenStrength }: Props = {}) {
   const [pendingCount, setPendingCount] = useState<number | null>(null)
   const [pendingErr, setPendingErr] = useState<string | null>(null)
   const [stats, setStats] = useState<AdminDashboardStats | null>(null)
@@ -36,6 +37,7 @@ export function AdminHome({ onOpenPending, onOpenAudit, onOpenUsers, onOpenDb }:
 
   const SYSTEM_ACTIONS: SystemAction[] = [
     { title: 'Usuarios', sub: 'Cuentas activas', icon: 'user', target: 'users' },
+    { title: 'Tests de fuerza', sub: 'Por paciente', icon: 'dumbbell', target: 'strength' },
     { title: 'Audit log', sub: 'Ver eventos', icon: 'history', target: 'audit' },
     { title: 'Base de datos', sub: 'Tablas + export', icon: 'data', target: 'db' },
     { title: 'Limpieza', sub: 'Temporales · logs', icon: 'settings' },
@@ -179,6 +181,7 @@ export function AdminHome({ onOpenPending, onOpenAudit, onOpenUsers, onOpenDb }:
               a.target === 'audit' ? onOpenAudit
               : a.target === 'users' ? onOpenUsers
               : a.target === 'db' ? onOpenDb
+              : a.target === 'strength' ? onOpenStrength
               : undefined
             return (
               <button

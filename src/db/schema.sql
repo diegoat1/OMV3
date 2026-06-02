@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS patients (
     circ_cuello     REAL,
     circ_muneca     REAL,
     circ_tobillo    REAL,
+    -- Datos clínicos para prevención USPSTF (migration 021). NULL = sin definir.
+    es_fumador          INTEGER,
+    activo_sexualmente  INTEGER,
+    embarazo            INTEGER,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );

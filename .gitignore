@@ -85,3 +85,14 @@ omega-medicina-app/
 
 # Database backups
 *.db.bak
+*.bak_before_*
+*.bak_test_*
+src/Basededatos.bak_*
+
+# Reference data mirrors (scraped, cientos de MB — NO se commitean).
+# Los seeds portables en src/db/seed/ son la fuente para PythonAnywhere.
+ReferenceWeb/
+ReferencesApp/
+
+# Export offline (junk)
+Omega Medicina _offline_.html

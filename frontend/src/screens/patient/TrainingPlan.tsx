@@ -5,6 +5,8 @@ import { trainingService } from '../../services/trainingService'
 import { ApiError } from '../../services/apiClient'
 import type { TodayExercise, TodaySession } from '../../types/api'
 import { ActiveTrainingSession } from './ActiveTrainingSession'
+import { MuscleRecoveryCard } from '../../components/MuscleRecoveryCard'
+import { ExerciseAlternativesSheet } from '../../components/ExerciseAlternativesSheet'
 
 interface Props {
   userName?: string
@@ -39,6 +41,7 @@ export function TrainingPlan({ userName = '' }: Props) {
   const [registering, setRegistering] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState(false)
+  const [altFor, setAltFor] = useState<TodayExercise | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -239,12 +242,25 @@ export function TrainingPlan({ userName = '' }: Props) {
                       test
                     </span>
                   )}
+                  <button
+                    type="button"
+                    className="ph-link-btn"
+                    onClick={() => setAltFor(ex)}
+                    aria-label="Ver ejercicios alternativos"
+                    title="Cambiar ejercicio"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    <Icon name="history" size={14} />
+                  </button>
                 </div>
               )
             })}
           </div>
         )}
       </div>
+
+      {/* Recuperación muscular (Fitbod) — P3 */}
+      <MuscleRecoveryCard />
 
       {/* Action: start active session OR quick-register */}
       {!loading && session && session.ejercicios.length > 0 && !session.already_done && (
@@ -310,6 +326,14 @@ export function TrainingPlan({ userName = '' }: Props) {
           </div>
         </div>
       </div>
+
+      {altFor && (
+        <ExerciseAlternativesSheet
+          exerciseKey={altFor.exercise_key || altFor.ejercicio || ''}
+          exerciseName={exerciseLabel(altFor)}
+          onClose={() => setAltFor(null)}
+        />
+      )}
     </div>
   )
 }

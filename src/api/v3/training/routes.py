@@ -240,6 +240,44 @@ def delete_strength_record(record_id):
         )
 
 
+@training_bp.route('/strength/1rm', methods=['GET'])
+@require_auth
+def estimate_one_rm():
+    """Estima 1RM (Epley/Brzycki/Lombardi/O'Conner) + tabla de prescripcion %1RM.
+
+    Calculadora pura (no persiste). Da la "sensacion Fitbod" de prescripcion:
+    a partir de un peso levantado por N reps, estima el 1RM y sugiere el peso
+    para distintos rangos de reps.
+
+    Query params:
+        weight  (req, float)  peso levantado
+        reps    (req, int)    repeticiones realizadas
+        formula (opt)         epley (default) | brzycki | lombardi | oconner
+    """
+    weight = request.args.get('weight', type=float)
+    reps = request.args.get('reps', type=int)
+    if weight is None or reps is None:
+        return error_response('weight y reps son requeridos',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    formula = (request.args.get('formula') or 'epley').lower()
+    one_rm = helpers.one_rm_estimate(weight, reps, formula)
+    if one_rm is None:
+        return error_response(
+            'Parametros invalidos para la formula solicitada',
+            code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    prescription = {
+        str(r): {'pct': helpers.pct_1rm_by_reps(r),
+                 'weight': helpers.weight_for_reps(one_rm, r)}
+        for r in (1, 2, 3, 5, 8, 10, 12, 15)
+    }
+    return success_response({
+        'input': {'weight': weight, 'reps': reps, 'formula': formula},
+        'one_rm': one_rm,
+        'one_rm_by_formula': helpers.one_rm_all(weight, reps),
+        'prescription': prescription,
+    })
+
+
 # ============================================
 # OMV-57: Strength standards desde DB
 # ============================================
@@ -882,6 +920,244 @@ def get_session_history():
             f'Error obteniendo historial de sesiones: {str(e)}',
             code=ErrorCodes.INTERNAL_ERROR, status_code=500
         )
+
+
+@training_bp.route('/strength/standards-lookup', methods=['GET'])
+@require_auth
+def strength_standards_lookup():
+    """Clasifica un levantamiento contra estándares poblacionales (Strength Level).
+
+    Query params:
+        exercise (slug, ej: bench-press), sex (M|F), bodyweight, lift,
+        unit (kg|lb, default kg).
+    Devuelve nivel + percentil estimado + umbrales por nivel.
+    """
+    exercise = (request.args.get('exercise') or '').strip()
+    sex = (request.args.get('sex') or 'M').upper()
+    bodyweight = request.args.get('bodyweight', type=float)
+    lift = request.args.get('lift', type=float)
+    unit = (request.args.get('unit') or 'kg').lower()
+    if not exercise or bodyweight is None or lift is None:
+        return error_response('exercise, bodyweight y lift son requeridos',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    if sex not in ('M', 'F'):
+        sex = 'M'
+    if unit not in ('kg', 'lb'):
+        unit = 'kg'
+    try:
+        result = helpers.classify_strength(exercise, sex, bodyweight, lift, unit)
+        if result is None:
+            return error_response('Sin estándares para ese ejercicio/sexo',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+        return success_response(result)
+    except Exception as e:
+        return error_response(f'Error clasificando fuerza: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/cardio-standards', methods=['GET'])
+@require_auth
+def cardio_standards_lookup():
+    """Clasifica un tiempo de carrera contra estándares (Running Level).
+
+    Query params: sport (default running), distance (5k, 10k, marathon…), sex (M|F),
+    age, y time (mm:ss / hh:mm:ss) o time_seconds. Devuelve nivel + percentil.
+    """
+    import re as _re
+    sport = (request.args.get('sport') or 'running').lower()
+    distance = (request.args.get('distance') or '').strip()
+    sex = (request.args.get('sex') or 'M').upper()
+    age = request.args.get('age', type=int)
+    t = request.args.get('time_seconds', type=float)
+    if t is None:
+        raw = (request.args.get('time') or '').strip()
+        if _re.match(r'^\d{1,2}(:\d{2}){1,2}$', raw):
+            parts = [int(x) for x in raw.split(':')]
+            t = parts[0] * 60 + parts[1] if len(parts) == 2 else parts[0] * 3600 + parts[1] * 60 + parts[2]
+    if not distance or age is None or t is None:
+        return error_response('distance, age y time (o time_seconds) son requeridos',
+                              code=ErrorCodes.VALIDATION_ERROR, status_code=400)
+    if sex not in ('M', 'F'):
+        sex = 'M'
+    try:
+        result = helpers.classify_cardio(sport, distance, sex, age, t)
+        if result is None:
+            return error_response('Sin estándares para ese deporte/distancia/sexo',
+                                  code=ErrorCodes.NOT_FOUND, status_code=404)
+        return success_response(result)
+    except Exception as e:
+        return error_response(f'Error clasificando cardio: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/recovery', methods=['GET'])
+@require_auth
+def get_muscle_recovery():
+    """Recuperación muscular por grupo (estilo Fitbod), computada del historial.
+
+    Query params: lookback (días, default 10), user/patient (admin/especialista).
+    """
+    user = get_current_user()
+    target_name = request.args.get('user') or request.args.get('patient') or request.args.get('nombre_apellido')
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+        target = resolve_patient_id(target_name)
+    else:
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
+    if not target:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+    lookback = request.args.get('lookback', 10, type=int) or 10
+    lookback = max(1, min(lookback, 60))
+    try:
+        muscles = helpers.compute_muscle_recovery(target['patient_id'], lookback)
+        return success_response({'muscles': muscles, 'total': len(muscles)})
+    except Exception as e:
+        return error_response(f'Error calculando recuperación: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/exercises/<exercise_key>/alternatives', methods=['GET'])
+@require_auth
+def get_alternatives(exercise_key):
+    """Ejercicios alternativos equivalentes (mismo grupo muscular primario)."""
+    limit = request.args.get('limit', 8, type=int) or 8
+    limit = max(1, min(limit, 25))
+    try:
+        result = helpers.get_exercise_alternatives(exercise_key, limit)
+        if result is None:
+            return error_response('Ejercicio no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+        return success_response(result)
+    except Exception as e:
+        return error_response(f'Error obteniendo alternativas: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/exercise-catalog', methods=['GET'])
+@require_auth
+def exercise_catalog():
+    """Catálogo amplio de ejercicios (EXRX, ~1328): browse/búsqueda por nombre o grupo.
+
+    Query params: q (nombre), muscle_group, limit (default 50, max 200).
+    """
+    q = (request.args.get('q') or '').strip()
+    group = (request.args.get('muscle_group') or '').strip()
+    limit = max(1, min(request.args.get('limit', 50, type=int) or 50, 200))
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='exercise_catalog'")
+        if not cur.fetchone():
+            conn.close()
+            return success_response({'exercises': [], 'total': 0, 'note': 'catalogo no sembrado'})
+        sql = ("SELECT slug, name, muscle_group, target_json, synergists_json, "
+               "utility, mechanics, force FROM exercise_catalog WHERE 1=1")
+        params = []
+        if q:
+            sql += " AND name LIKE ?"
+            params.append(f'%{q}%')
+        if group:
+            sql += " AND muscle_group = ?"
+            params.append(group)
+        sql += " ORDER BY name LIMIT ?"
+        params.append(limit)
+        rows = []
+        for r in cur.execute(sql, params).fetchall():
+            d = dict(r)
+            for jk, nk in (('target_json', 'target'), ('synergists_json', 'synergists')):
+                if d.get(jk):
+                    try:
+                        d[nk] = json.loads(d[jk])
+                    except (TypeError, ValueError):
+                        d[nk] = []
+                d.pop(jk, None)
+            rows.append(d)
+        conn.close()
+        return success_response({'exercises': rows, 'total': len(rows)})
+    except Exception as e:
+        return error_response(f'Error en catalogo: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/darebee-catalog', methods=['GET'])
+@require_auth
+def darebee_catalog():
+    """Catálogo Darebee (workouts/exercises/recipes/programs/challenges).
+
+    Query params: kind (workout|exercise|recipe|program|challenge), q, limit.
+    """
+    kind = (request.args.get('kind') or '').strip()
+    q = (request.args.get('q') or '').strip()
+    limit = max(1, min(request.args.get('limit', 50, type=int) or 50, 200))
+    try:
+        conn = get_clinical_connection(sqlite3.Row)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='darebee_catalog'")
+        if not cur.fetchone():
+            conn.close()
+            return success_response({'items': [], 'total': 0, 'note': 'catalogo no sembrado'})
+        sql = "SELECT darebee_id, kind, name, url, thumbnail, hits, tags_json FROM darebee_catalog WHERE 1=1"
+        params = []
+        if kind:
+            sql += " AND kind = ?"
+            params.append(kind)
+        if q:
+            sql += " AND name LIKE ?"
+            params.append(f'%{q}%')
+        sql += " ORDER BY hits DESC LIMIT ?"
+        params.append(limit)
+        rows = []
+        for r in cur.execute(sql, params).fetchall():
+            d = dict(r)
+            if d.get('tags_json'):
+                try:
+                    d['tags'] = json.loads(d['tags_json'])
+                except (TypeError, ValueError):
+                    d['tags'] = []
+            d.pop('tags_json', None)
+            rows.append(d)
+        conn.close()
+        return success_response({'items': rows, 'total': len(rows)})
+    except Exception as e:
+        return error_response(f'Error en catalogo Darebee: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
+
+
+@training_bp.route('/sessions/predict', methods=['GET'])
+@require_auth
+def predict_sessions():
+    """Previsualiza las próximas N sesiones del plan activo (port v3 de
+    predict_next_workouts) — la "sensación Fitbod" de ver qué viene.
+
+    Query params:
+        num  (1..14, default 5)
+        user / patient / nombre_apellido  (admin/especialista para ver a otro)
+    """
+    user = get_current_user()
+    target_name = (request.args.get('user') or request.args.get('patient')
+                   or request.args.get('nombre_apellido'))
+    if target_name:
+        if not check_patient_access(user, target_name):
+            return error_response('No tienes permisos para este paciente',
+                                  code=ErrorCodes.FORBIDDEN, status_code=403)
+        target = resolve_patient_id(target_name)
+    else:
+        target = resolve_patient_id(user.get('nombre_apellido') or str(user.get('user_id') or ''))
+    if not target:
+        return error_response('Paciente no encontrado', code=ErrorCodes.NOT_FOUND, status_code=404)
+
+    num = request.args.get('num', 5, type=int) or 5
+    num = max(1, min(num, 14))
+    try:
+        predicciones = helpers.predict_next_workouts(target['patient_id'], num)
+        return success_response({
+            'predicciones': predicciones,
+            'total': len(predicciones),
+        })
+    except Exception as e:
+        return error_response(f'Error prediciendo sesiones: {e}',
+                              code=ErrorCodes.INTERNAL_ERROR, status_code=500)
 
 
 @training_bp.route('/sessions/today', methods=['GET'])
