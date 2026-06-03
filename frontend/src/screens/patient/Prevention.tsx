@@ -103,7 +103,7 @@ export function Prevention({ patient }: Props = {}) {
   const grouped = useMemo(() => {
     if (!data) return [] as { grade: PreventionGrade; items: PreventionRecommendation[] }[]
     const byGrade = new Map<PreventionGrade, PreventionRecommendation[]>()
-    for (const rec of data.recommendations) {
+    for (const rec of Array.isArray(data.recommendations) ? data.recommendations : []) {
       const list = byGrade.get(rec.grade) ?? []
       list.push(rec)
       byGrade.set(rec.grade, list)

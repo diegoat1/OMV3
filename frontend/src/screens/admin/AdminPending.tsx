@@ -41,7 +41,7 @@ export function AdminPending() {
     setError(null)
     try {
       const r = await adminService.listPendingUsers()
-      setUsers(r.users)
+      setUsers(Array.isArray(r?.users) ? r.users : [])
       if (r.breakdown) {
         setBreakdown({
           verified: r.breakdown.email_verified_awaiting_admin,

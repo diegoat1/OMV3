@@ -28,6 +28,8 @@ function defaultLog(ex: TodayExercise): ExerciseLog {
   }
 }
 
+const EMPTY_LOG: ExerciseLog = { done: false, reps: '', peso: '', rir: '', test_reps: '' }
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -46,9 +48,11 @@ const REST_DEFAULTS = [60, 90, 120, 180] as const
  *  POST /training/sessions/complete. Mimics the legacy `entrenamiento_actual.html`
  *  flow but with a single shared rest timer for simplicity. */
 export function ActiveTrainingSession({ session, onClose, onCompleted }: Props) {
+  const ejercicios = Array.isArray(session.ejercicios) ? session.ejercicios : []
+
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>(() => {
     const init: Record<string, ExerciseLog> = {}
-    session.ejercicios.forEach((ex) => { init[ex.exercise_key] = defaultLog(ex) })
+    ejercicios.forEach((ex) => { init[ex.exercise_key] = defaultLog(ex) })
     return init
   })
 
@@ -110,17 +114,17 @@ export function ActiveTrainingSession({ session, onClose, onCompleted }: Props) 
   }, [])
 
   const update = (key: string, patch: Partial<ExerciseLog>) => {
-    setLogs((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+    setLogs((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_LOG), ...patch } }))
   }
 
   const toggleDone = (key: string) => {
-    const next = !logs[key].done
+    const next = !(logs[key]?.done)
     update(key, { done: next })
     if (next) startTimer(timerTarget)
   }
 
-  const allDone = session.ejercicios.length > 0 && session.ejercicios.every((ex) => logs[ex.exercise_key]?.done)
-  const someDone = session.ejercicios.some((ex) => logs[ex.exercise_key]?.done)
+  const allDone = ejercicios.length > 0 && ejercicios.every((ex) => logs[ex.exercise_key]?.done)
+  const someDone = ejercicios.some((ex) => logs[ex.exercise_key]?.done)
 
   const submit = async () => {
     setError(null)
@@ -128,7 +132,7 @@ export function ActiveTrainingSession({ session, onClose, onCompleted }: Props) 
     try {
       const payload = {
         advance_day: true,
-        ejercicios: session.ejercicios.map((ex) => {
+        ejercicios: ejercicios.map((ex) => {
           const log = logs[ex.exercise_key] || defaultLog(ex)
           const out: {
             exercise_key?: string
@@ -229,12 +233,12 @@ export function ActiveTrainingSession({ session, onClose, onCompleted }: Props) 
         <div className="row-between" style={{ marginBottom: 10 }}>
           <div className="section-label">Ejercicios</div>
           <div className="mono" style={{ color: 'var(--text-3)' }}>
-            {session.ejercicios.filter((ex) => logs[ex.exercise_key]?.done).length}/{session.ejercicios.length}
+            {ejercicios.filter((ex) => logs[ex.exercise_key]?.done).length}/{ejercicios.length}
           </div>
         </div>
 
         <div className="card" style={{ padding: 0 }}>
-          {session.ejercicios.map((ex, i) => {
+          {ejercicios.map((ex, i) => {
             const log = logs[ex.exercise_key] || defaultLog(ex)
             return (
               <div

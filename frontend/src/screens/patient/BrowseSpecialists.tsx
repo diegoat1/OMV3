@@ -57,7 +57,7 @@ export function BrowseSpecialists({ onClose, onRequested, preselectRole }: Props
     setError(null)
     try {
       const res = await assignmentService.listAvailableSpecialists(role || undefined, qDebounced || undefined)
-      setList(res.specialists)
+      setList(Array.isArray(res?.specialists) ? res.specialists : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando profesionales')
     } finally {
@@ -196,8 +196,9 @@ function SpecialistRow({
 }: SpecialistRowProps) {
   // Default to the preselected role if this specialist offers it; otherwise
   // the first available role.
+  const roles = Array.isArray(spec.roles) ? spec.roles : []
   const initialRole =
-    preselectRole && spec.roles.includes(preselectRole) ? preselectRole : spec.roles[0]
+    preselectRole && roles.includes(preselectRole) ? preselectRole : roles[0]
   const [chosen, setChosen] = useState<string>(initialRole)
   const color = ROLE_COLOR[chosen] || 'var(--medic)'
 
@@ -218,9 +219,9 @@ function SpecialistRow({
           <div className="ph-link-meta">{spec.email}</div>
         </div>
       </div>
-      {spec.roles.length > 1 && (
+      {roles.length > 1 && (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {spec.roles.map((r) => {
+          {roles.map((r) => {
             const active = chosen === r
             const c = ROLE_COLOR[r] || 'var(--medic)'
             return (

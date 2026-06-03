@@ -50,9 +50,9 @@ export function DoctorHome({ role = 'doctor' }: Props) {
         // We use myRequests() and keep only `pending_specialist`.
         assignmentService.myRequests().catch(() => ({ requests: [] })),
       ])
-      setPatients(pat.patients)
+      setPatients(Array.isArray(pat?.patients) ? pat.patients : [])
       setIncoming(
-        inc.requests
+        (Array.isArray(inc?.requests) ? inc.requests : [])
           .filter((r) => r.status === 'pending_specialist')
           .map((r) => ({
             id: r.id,

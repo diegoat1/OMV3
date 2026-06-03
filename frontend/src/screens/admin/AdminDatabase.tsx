@@ -193,7 +193,7 @@ export function AdminDatabase() {
                   {t.name}
                 </span>
                 <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  {t.rows.toLocaleString('es-AR')} filas
+                  {(t.rows ?? 0).toLocaleString('es-AR')} filas
                 </span>
               </button>
             )
@@ -228,9 +228,9 @@ export function AdminDatabase() {
       {/* Sidebar: lists of tables grouped by database */}
       {!selected && tables && (
         <>
-          {renderTableList('Principal · src/Basededatos', 'main', tables.main_database)}
-          {renderTableList('Clinical · src/db/clinical.db', 'clinical', tables.clinical_database)}
-          {renderTableList('Telemedicina · src/telemedicina.db', 'telemedicina', tables.telemedicina_database)}
+          {renderTableList('Principal · src/Basededatos', 'main', Array.isArray(tables.main_database) ? tables.main_database : [])}
+          {renderTableList('Clinical · src/db/clinical.db', 'clinical', Array.isArray(tables.clinical_database) ? tables.clinical_database : [])}
+          {renderTableList('Telemedicina · src/telemedicina.db', 'telemedicina', Array.isArray(tables.telemedicina_database) ? tables.telemedicina_database : [])}
         </>
       )}
 
@@ -273,7 +273,7 @@ export function AdminDatabase() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-2)' }}>
-                      {tableData.columns.map((c) => (
+                      {(tableData.columns ?? []).map((c) => (
                         <th
                           key={c.name}
                           style={{
@@ -295,19 +295,19 @@ export function AdminDatabase() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tableData.data.length === 0 && (
+                    {(tableData.data ?? []).length === 0 && (
                       <tr>
                         <td
-                          colSpan={tableData.columns.length}
+                          colSpan={(tableData.columns ?? []).length}
                           style={{ padding: 16, color: 'var(--text-3)', textAlign: 'center' }}
                         >
                           Tabla vacía.
                         </td>
                       </tr>
                     )}
-                    {tableData.data.map((row, i) => (
+                    {(tableData.data ?? []).map((row, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid var(--line)' }}>
-                        {tableData.columns.map((c, colIdx) => {
+                        {(tableData.columns ?? []).map((c, colIdx) => {
                           const isEditing = editing?.rowIndex === i && editing?.column === c.name
                           // First column is the PK — not editable.
                           const editable = colIdx > 0
@@ -362,8 +362,8 @@ export function AdminDatabase() {
 
               <div className="row-between" style={{ marginTop: 10 }}>
                 <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Página {tableData.pagination.page} / {tableData.pagination.total_pages || 1} ·{' '}
-                  {tableData.pagination.total.toLocaleString('es-AR')} filas totales
+                  Página {tableData.pagination?.page ?? 1} / {tableData.pagination?.total_pages || 1} ·{' '}
+                  {(tableData.pagination?.total ?? 0).toLocaleString('es-AR')} filas totales
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
@@ -378,7 +378,7 @@ export function AdminDatabase() {
                     type="button"
                     className="btn btn-ghost"
                     onClick={() => setPage((p) => p + 1)}
-                    disabled={page >= (tableData.pagination.total_pages || 1)}
+                    disabled={page >= (tableData.pagination?.total_pages || 1)}
                   >
                     Siguiente <Icon name="chevR" size={14} />
                   </button>

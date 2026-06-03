@@ -13,7 +13,8 @@ interface Props {
 }
 
 function kcalOf(e: RechangeEquivalent): number {
-  return Math.round(e.macros.proteina * 4 + e.macros.grasa * 9 + e.macros.carbohidratos * 4)
+  const m = e.macros ?? { proteina: 0, grasa: 0, carbohidratos: 0 }
+  return Math.round((m.proteina || 0) * 4 + (m.grasa || 0) * 9 + (m.carbohidratos || 0) * 4)
 }
 
 /** Fitia "Rechange": dado un alimento de la comida, sugiere equivalentes que
@@ -28,7 +29,7 @@ export function RechangeSheet({ food, onClose, onReplace }: Props) {
     let alive = true
     setLoading(true)
     nutritionService.rechange({ food_id: food.food_id, grams: food.gramos, limit: 12 })
-      .then((r) => { if (alive) setEquivalents(r.equivalents) })
+      .then((r) => { if (alive) setEquivalents(Array.isArray(r.equivalents) ? r.equivalents : []) })
       .catch((e) => { if (alive) setError(e instanceof ApiError ? e.message : 'Error buscando equivalentes') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -91,7 +92,7 @@ export function RechangeSheet({ food, onClose, onReplace }: Props) {
                   <div className="ph-link-name">{e.nombre}</div>
                   <div className="ph-link-meta">
                     {e.suggested_grams} g · <span style={{ color: 'var(--nutri)' }}>{kcalOf(e)} kcal</span>
-                    {' · '}P {Math.round(e.macros.proteina)} · C {Math.round(e.macros.carbohidratos)} · G {Math.round(e.macros.grasa)}
+                    {' · '}P {Math.round(e.macros?.proteina ?? 0)} · C {Math.round(e.macros?.carbohidratos ?? 0)} · G {Math.round(e.macros?.grasa ?? 0)}
                   </div>
                 </div>
                 <Icon name="chevR" size={14} />

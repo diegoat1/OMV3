@@ -4,6 +4,7 @@ import { Topbar } from './components/Topbar'
 import { UserMenuSheet } from './components/UserMenuSheet'
 import { EditConstitutionalSheet } from './components/EditConstitutionalSheet'
 import { MobilePageHeader } from './components/MobilePageHeader'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { Landing } from './screens/Landing'
 import { PublicPrograms } from './screens/PublicPrograms'
 import { Login } from './screens/Login'
@@ -365,7 +366,9 @@ export default function App() {
         {!FOCUSED_SCREENS.has(screen) && (
           <MobilePageHeader userName={userName} onAvatarTap={() => setUserMenuOpen(true)} />
         )}
-        {def.node}
+        <ErrorBoundary resetKey={screen}>
+          {def.node}
+        </ErrorBoundary>
       </main>
       <UserMenuSheet
         open={userMenuOpen}

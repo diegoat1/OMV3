@@ -67,10 +67,10 @@ export function AdminHome({ onOpenPending, onOpenAudit, onOpenUsers, onOpenDb, o
    *  percent of the largest module so the bars stay comparable. */
   const moduleUsage: ModuleUsage[] = (() => {
     const raw = modStats ? [
-      { name: 'Entrenamiento', raw: modStats.entrenamiento.planes_activos, color: 'var(--omega)' as const },
-      { name: 'Nutrición', raw: modStats.nutricion.planes_nutricionales, color: 'var(--nutri)' as const },
-      { name: 'Medicina', raw: modStats.telemedicina.situaciones + modStats.telemedicina.documentos, color: 'var(--medic)' as const },
-      { name: 'Analítica', raw: modStats.usuarios.activos_30_dias, color: 'var(--analytic)' as const },
+      { name: 'Entrenamiento', raw: modStats.entrenamiento?.planes_activos ?? 0, color: 'var(--omega)' as const },
+      { name: 'Nutrición', raw: modStats.nutricion?.planes_nutricionales ?? 0, color: 'var(--nutri)' as const },
+      { name: 'Medicina', raw: (modStats.telemedicina?.situaciones ?? 0) + (modStats.telemedicina?.documentos ?? 0), color: 'var(--medic)' as const },
+      { name: 'Analítica', raw: modStats.usuarios?.activos_30_dias ?? 0, color: 'var(--analytic)' as const },
     ] : [
       { name: 'Entrenamiento', raw: 0, color: 'var(--omega)' as const },
       { name: 'Nutrición', raw: 0, color: 'var(--nutri)' as const },

@@ -46,8 +46,8 @@ export function PatientTrainingPlan({ patientId: _patientId, patientName }: Prop
         trainingService.getStrength(patientName).catch(() => ({ user: '', strength_data: null })),
         trainingService.listPlans(patientName).catch(() => ({ plans: [], total: 0 })),
       ])
-      setStrength(sr.strength_data)
-      setPlans(pr.plans)
+      setStrength(sr?.strength_data ?? null)
+      setPlans(Array.isArray(pr?.plans) ? pr.plans : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando datos de entrenamiento')
     } finally {

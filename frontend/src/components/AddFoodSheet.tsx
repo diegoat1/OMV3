@@ -44,7 +44,7 @@ export function AddFoodSheet({ mealKey: _mealKey, mealLabel, existing, onClose, 
   const [gramos, setGramos] = useState('100')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [foods, setFoods] = useState<LoggedFood[]>(existing)
+  const [foods, setFoods] = useState<LoggedFood[]>(() => existing ?? [])
   const [swapFor, setSwapFor] = useState<{ food: LoggedFood; idx: number } | null>(null)
 
   // Debounced search
@@ -59,7 +59,7 @@ export function AddFoodSheet({ mealKey: _mealKey, mealLabel, existing, onClose, 
       setSearching(true)
       setSearchError(null)
       dailyLogService.searchFoods(q.trim(), 30)
-        .then((r) => { if (!cancelled) setResults(r.data) })
+        .then((r) => { if (!cancelled) setResults(Array.isArray(r?.data) ? r.data : []) })
         .catch((e) => {
           if (cancelled) return
           setSearchError(e instanceof ApiError ? e.message : 'Error buscando alimentos')

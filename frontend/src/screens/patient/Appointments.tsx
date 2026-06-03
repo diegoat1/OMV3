@@ -60,8 +60,8 @@ export function Appointments() {
         telemedicineService.listAppointments({ limit: 50 }).catch(() => ({ appointments: [], total: 0 })),
         telemedicineService.listSituations({ activa: 1, limit: 20 }).catch(() => ({ situations: [], total: 0 })),
       ])
-      setAppointments(apptRes.appointments)
-      setSituations(situRes.situations)
+      setAppointments(Array.isArray(apptRes?.appointments) ? apptRes.appointments : [])
+      setSituations(Array.isArray(situRes?.situations) ? situRes.situations : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando citas')
     } finally {

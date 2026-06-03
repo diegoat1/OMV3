@@ -25,9 +25,10 @@ function matchesFilter(entry: AdminAuditEntry, filter: Filter): boolean {
 }
 
 function formatRelative(iso: string): string {
-  if (!iso) return ''
-  const d = new Date(iso.replace(' ', 'T'))
-  if (isNaN(d.getTime())) return iso
+  const s = iso == null ? '' : String(iso)
+  if (!s) return s
+  const d = new Date(s.replace(' ', 'T'))
+  if (isNaN(d.getTime())) return s
   const diff = Date.now() - d.getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'recién'
@@ -50,7 +51,7 @@ export function AdminAudit() {
     setError(null)
     try {
       const res = await adminService.audit(100)
-      setEntries(res.entries)
+      setEntries(Array.isArray(res?.entries) ? res.entries : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando audit log')
     } finally {

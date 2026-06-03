@@ -90,7 +90,7 @@ export function AdminStrength() {
         if (cancelled) return
         const flattened: StrengthRow[] = res
           .filter((r): r is StrengthResponse & { strength_data: StrengthTest } => r.strength_data != null)
-          .map((r) => ({ user: r.user, test: r.strength_data }))
+          .map((r) => ({ user: r.user ?? '', test: r.strength_data }))
         // Most recent test first.
         flattened.sort((a, b) => (b.test.fecha || '').localeCompare(a.test.fecha || ''))
         setRows(flattened)
@@ -107,7 +107,7 @@ export function AdminStrength() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase()
     if (!term) return rows
-    return rows.filter((r) => r.user.toLowerCase().includes(term))
+    return rows.filter((r) => (r.user ?? '').toLowerCase().includes(term))
   }, [rows, q])
 
   const total = filtered.length

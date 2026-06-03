@@ -442,7 +442,7 @@ function SymptomQuickLog() {
 
   useEffect(() => {
     checkinService.listSymptoms({ days: 7 })
-      .then((r) => setRecent(r.symptoms.slice(0, 3).map((s) => ({ tipo: s.tipo, fecha: s.fecha }))))
+      .then((r) => setRecent((Array.isArray(r.symptoms) ? r.symptoms : []).slice(0, 3).map((s) => ({ tipo: s.tipo, fecha: s.fecha }))))
       .catch(() => { /* swallow — feature is best-effort */ })
   }, [])
 
@@ -461,7 +461,7 @@ function SymptomQuickLog() {
       setDescripcion('')
       setOk(true)
       const r = await checkinService.listSymptoms({ days: 7 })
-      setRecent(r.symptoms.slice(0, 3).map((s) => ({ tipo: s.tipo, fecha: s.fecha })))
+      setRecent((Array.isArray(r.symptoms) ? r.symptoms : []).slice(0, 3).map((s) => ({ tipo: s.tipo, fecha: s.fecha })))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No pudimos guardar el síntoma.')
     } finally {
@@ -524,7 +524,7 @@ function SymptomQuickLog() {
             </div>
             {recent.map((s, i) => (
               <div key={i} className="mono" style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                · {s.tipo} ({s.fecha.slice(0, 10)})
+                · {s.tipo} ({(s.fecha ?? '').slice(0, 10)})
               </div>
             ))}
           </div>

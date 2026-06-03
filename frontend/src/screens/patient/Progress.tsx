@@ -66,8 +66,8 @@ export function Progress({ userId }: Props = {}) {
         checkinService.getHealthIndexTrend(90).catch(() => ({ trend: [], total: 0 })),
         checkinService.getStats({ days: 30 }).catch(() => null),
       ])
-      setMeasurements(mRes.measurements)
-      setTrend(tRes.trend)
+      setMeasurements(Array.isArray(mRes.measurements) ? mRes.measurements : [])
+      setTrend(Array.isArray(tRes.trend) ? tRes.trend : [])
       setStats(sRes)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando progreso')
@@ -88,7 +88,7 @@ export function Progress({ userId }: Props = {}) {
   const filteredMeasurements = useMemo(() => {
     if (!cutoffMs) return measurements
     return measurements.filter((m) => {
-      const d = new Date(m.fecha.replace(' ', 'T')).getTime()
+      const d = m.fecha ? new Date(m.fecha.replace(' ', 'T')).getTime() : NaN
       return !isNaN(d) && d >= cutoffMs
     })
   }, [measurements, cutoffMs])
@@ -97,7 +97,7 @@ export function Progress({ userId }: Props = {}) {
   const metricSummary = useMemo(() => {
     return METRICS.map((m) => {
       const sorted = [...filteredMeasurements].sort((a, b) =>
-        new Date(a.fecha.replace(' ', 'T')).getTime() - new Date(b.fecha.replace(' ', 'T')).getTime()
+        (a.fecha ? new Date(a.fecha.replace(' ', 'T')).getTime() : 0) - (b.fecha ? new Date(b.fecha.replace(' ', 'T')).getTime() : 0)
       )
       const series = sorted.map(m.pick).filter((v): v is number => v != null)
       const current = series.length ? series[series.length - 1] : null
@@ -280,7 +280,7 @@ export function Progress({ userId }: Props = {}) {
           <div className="row-between" style={{ marginBottom: 10 }}>
             <div className="section-label">Health Index · {trend.length} días</div>
             <div className="mono" style={{ color: 'var(--text-3)' }}>
-              {trend[trend.length - 1]?.score.toFixed(0)}/100
+              {(trend[trend.length - 1]?.score ?? 0).toFixed(0)}/100
             </div>
           </div>
           <div className="card pr-chart" style={{ padding: 14 }}>
@@ -330,7 +330,7 @@ export function Progress({ userId }: Props = {}) {
           <div className="card" style={{ padding: 0 }}>
             {[...filteredMeasurements]
               .sort((a, b) =>
-                new Date(b.fecha.replace(' ', 'T')).getTime() - new Date(a.fecha.replace(' ', 'T')).getTime()
+                (b.fecha ? new Date(b.fecha.replace(' ', 'T')).getTime() : 0) - (a.fecha ? new Date(a.fecha.replace(' ', 'T')).getTime() : 0)
               )
               .slice(0, 10)
               .map((m, i) => (

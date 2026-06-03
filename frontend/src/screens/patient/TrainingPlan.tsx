@@ -153,7 +153,7 @@ export function TrainingPlan({ userName = '' }: Props) {
         <div className="tp-chips">
           {session ? (
             <>
-              <div className="chip">{session.ejercicios.length} ejercicios</div>
+              <div className="chip">{session.ejercicios?.length ?? 0} ejercicios</div>
               {session.cycle_week ? <div className="chip">Sem {session.cycle_week}</div> : null}
             </>
           ) : (
@@ -181,7 +181,7 @@ export function TrainingPlan({ userName = '' }: Props) {
         <div className="row-between" style={{ marginBottom: 10 }}>
           <div className="section-label">Ejercicios</div>
           <div className="mono" style={{ color: 'var(--text-3)' }}>
-            {session?.ejercicios.length ?? 0} ejercicio{(session?.ejercicios.length ?? 0) === 1 ? '' : 's'}
+            {session?.ejercicios?.length ?? 0} ejercicio{(session?.ejercicios?.length ?? 0) === 1 ? '' : 's'}
           </div>
         </div>
         {loading && (
@@ -196,16 +196,16 @@ export function TrainingPlan({ userName = '' }: Props) {
             </p>
           </div>
         )}
-        {!loading && session && session.ejercicios.length === 0 && (
+        {!loading && session && (session.ejercicios?.length ?? 0) === 0 && (
           <div className="card">
             <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
               Día de descanso · sin ejercicios programados para hoy.
             </p>
           </div>
         )}
-        {!loading && session && session.ejercicios.length > 0 && (
+        {!loading && session && (session.ejercicios?.length ?? 0) > 0 && (
           <div className="card" style={{ padding: 0 }}>
-            {session.ejercicios.map((ex, i) => {
+            {session.ejercicios?.map((ex, i) => {
               const descriptor = exerciseDescriptor(ex)
               return (
                 <div
@@ -263,7 +263,7 @@ export function TrainingPlan({ userName = '' }: Props) {
       <MuscleRecoveryCard />
 
       {/* Action: start active session OR quick-register */}
-      {!loading && session && session.ejercicios.length > 0 && !session.already_done && (
+      {!loading && session && (session.ejercicios?.length ?? 0) > 0 && !session.already_done && (
         <>
           <button
             type="button"

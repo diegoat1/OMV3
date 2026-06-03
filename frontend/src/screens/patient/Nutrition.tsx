@@ -99,7 +99,7 @@ export function Nutrition() {
   useEffect(() => {
     let cancelled = false
     nutritionService.listPlans()
-      .then((r) => { if (!cancelled) setPlan(r.plans[0] ?? null) })
+      .then((r) => { if (!cancelled) setPlan((Array.isArray(r.plans) ? r.plans : [])[0] ?? null) })
       .catch((e) => { if (!cancelled) setError(e instanceof ApiError ? e.message : 'Error cargando plan') })
       .finally(() => { if (!cancelled) setPlanLoading(false) })
     return () => { cancelled = true }
@@ -109,7 +109,7 @@ export function Nutrition() {
     setLogLoading(true)
     try {
       const r = await dailyLogService.get(selectedIso)
-      setLogMeals(r.meals)
+      setLogMeals(Array.isArray(r.meals) ? r.meals : [])
     } catch (e) {
       // Treat as empty if unauthorized / 404
       if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {

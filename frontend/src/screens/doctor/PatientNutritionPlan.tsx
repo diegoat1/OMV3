@@ -416,12 +416,14 @@ function AutoCalculateSheet({ patientName, onClose, onAccepted }: AutoCalcProps)
         </>
       )}
 
-      {result && (
+      {result && (() => {
+        const opciones = Array.isArray(result.opciones_velocidad) ? result.opciones_velocidad : []
+        return (
         <>
           <p className="mono" style={{ fontSize: 11, color: 'var(--text-3)', margin: '0 0 10px' }}>
-            TDEE {result.tdee_mantenimiento} kcal · {result.tipo_objetivo} · {result.opciones_velocidad.length} opciones
+            TDEE {result.tdee_mantenimiento} kcal · {result.tipo_objetivo} · {opciones.length} opciones
           </p>
-          {result.opciones_velocidad.map((o) => (
+          {opciones.map((o) => (
             <div key={o.nombre} className="card" style={{ marginBottom: 8 }}>
               <div className="row-between" style={{ marginBottom: 4 }}>
                 <strong style={{ fontSize: 14 }}>{o.nombre}</strong>
@@ -432,12 +434,12 @@ function AutoCalculateSheet({ patientName, onClose, onAccepted }: AutoCalcProps)
               <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 6px' }}>{o.descripcion}</p>
               <div className="dpd-latest-grid">
                 <Cell k="kcal" v={o.calorias} c="var(--nutri)" />
-                <Cell k="P" v={o.macros.proteina_g} u="g" c="#E8A93A" />
-                <Cell k="G" v={o.macros.grasa_g} u="g" c="#F16B57" />
-                <Cell k="C" v={o.macros.carbohidratos_g} u="g" c="#F2D35F" />
+                <Cell k="P" v={o.macros?.proteina_g ?? null} u="g" c="#E8A93A" />
+                <Cell k="G" v={o.macros?.grasa_g ?? null} u="g" c="#F16B57" />
+                <Cell k="C" v={o.macros?.carbohidratos_g ?? null} u="g" c="#F2D35F" />
               </div>
               <p className="mono" style={{ fontSize: 11, color: 'var(--text-3)', margin: '6px 0 8px' }}>
-                EA {o.disponibilidad_energetica.ea_valor} ({o.disponibilidad_energetica.ea_status})
+                EA {o.disponibilidad_energetica?.ea_valor} ({o.disponibilidad_energetica?.ea_status})
                 {o.semanas_estimadas > 0 ? ` · ~${o.semanas_estimadas} semanas` : ''}
               </p>
               <button
@@ -459,7 +461,8 @@ function AutoCalculateSheet({ patientName, onClose, onAccepted }: AutoCalcProps)
             ← Recalcular con otros parámetros
           </button>
         </>
-      )}
+        )
+      })()}
 
       {error && (
         <p style={{ fontSize: 12, color: 'var(--omega)', margin: '8px 0 0' }}>{error}</p>

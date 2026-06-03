@@ -69,7 +69,7 @@ function ProgramsTab() {
 
   useEffect(() => {
     trainingService.listPrograms()
-      .then((r) => setPrograms(r.programs))
+      .then((r) => setPrograms(r.programs ?? []))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Error cargando programas'))
       .finally(() => setLoading(false))
   }, [])
@@ -149,14 +149,14 @@ function ExercisesTab() {
 
   useEffect(() => {
     trainingService.listExercises()
-      .then((r) => setExercises(r.exercises))
+      .then((r) => setExercises(r.exercises ?? []))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Error cargando ejercicios'))
       .finally(() => setLoading(false))
   }, [])
 
   const filtered = exercises.filter((e) => {
     if (!q) return true
-    return e.nombre.toLowerCase().includes(q.toLowerCase())
+    return (e.nombre || '').toLowerCase().includes(q.toLowerCase())
         || (e.key || '').toLowerCase().includes(q.toLowerCase())
   })
 
@@ -227,9 +227,9 @@ function V2LibraryTab() {
       trainingService.v2.listDistributions().catch(() => ({ distributions: [] })),
     ])
       .then(([e, p, d]) => {
-        setExercises(e.exercises)
-        setProgressions(p.progressions)
-        setDistributions(d.distributions)
+        setExercises(e.exercises ?? [])
+        setProgressions(p.progressions ?? [])
+        setDistributions(d.distributions ?? [])
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Error cargando catálogo v2'))
       .finally(() => setLoading(false))
@@ -338,8 +338,8 @@ function V2PlansTab() {
         trainingService.v2.progress().catch(() => ({ progress: [], total: 0 })),
         trainingService.v2.stats().catch(() => null),
       ])
-      setPlans(pl.plans)
-      setProgress(pr.progress)
+      setPlans(pl.plans ?? [])
+      setProgress(pr.progress ?? [])
       setStats(st)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando v2')
@@ -483,7 +483,7 @@ function StrengthHistoryTab() {
       trainingService.strengthStandards().catch(() => null),
     ])
       .then(([h, st]) => {
-        setHistory(h.tests)
+        setHistory(h.tests ?? [])
         // Standards loaded on-demand — pre-warming the endpoint so the
         // doctor sees coverage in the audit log. Result is intentionally
         // discarded; the catalog is consulted inline by future flows.

@@ -52,8 +52,8 @@ export function DoctorPatients({ role = 'doctor', onOpenPatient }: Props) {
           throw e
         }),
       ])
-      setPatients(pRes.patients)
-      setRequests(rRes.requests)
+      setPatients(Array.isArray(pRes?.patients) ? pRes.patients : [])
+      setRequests(Array.isArray(rRes?.requests) ? rRes.requests : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando vinculaciones')
     } finally {

@@ -56,7 +56,7 @@ export function AdminUsers() {
     setError(null)
     try {
       const res = await adminService.listAuthUsers({ q: q.trim() || undefined, status: status || undefined })
-      setUsers(res.users)
+      setUsers(Array.isArray(res.users) ? res.users : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando usuarios')
     } finally {

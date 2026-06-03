@@ -45,7 +45,7 @@ export function Topbar({ crumbs, role, setRole, availableRoles, toggleCollapsed,
 function RoleSwitcher({
   role,
   setRole,
-  availableRoles,
+  availableRoles = [],
 }: {
   role: Role
   setRole: (r: Role) => void
@@ -90,7 +90,10 @@ function RoleSwitcher({
             }}
           >
             <div className="mono" style={{ padding: '8px 10px 4px' }}>Cambiar de rol</div>
-            {availableRoles.map((r) => (
+            {availableRoles.map((r) => {
+              const colors = RoleColors[r] ?? RoleColors.patient
+              const label = RoleLabels[r] ?? r
+              return (
               <button
                 key={r}
                 onClick={() => { setRole(r); setOpen(false) }}
@@ -106,15 +109,16 @@ function RoleSwitcher({
                   className="av"
                   style={{
                     width: 24, height: 24, fontSize: 10,
-                    background: RoleColors[r].bg, color: RoleColors[r].txt,
+                    background: colors.bg, color: colors.txt,
                   }}
                 >
-                  {RoleLabels[r][0]}
+                  {label[0]}
                 </span>
-                <span style={{ flex: 1 }}>{RoleLabels[r]}</span>
+                <span style={{ flex: 1 }}>{label}</span>
                 {r === role && <Icon name="check" size={14} />}
               </button>
-            ))}
+              )
+            })}
           </div>
         </>
       )}

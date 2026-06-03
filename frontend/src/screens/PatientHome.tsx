@@ -100,9 +100,9 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
         assignmentService.pendingForPatient().catch(() => ({ pending: [] })),
         assignmentService.myOutgoingRequests().catch(() => ({ requests: [] })),
       ])
-      setSpecialists(sp.specialists)
-      setIncoming(inc.pending)
-      setOutgoing(out.requests)
+      setSpecialists(Array.isArray(sp.specialists) ? sp.specialists : [])
+      setIncoming(Array.isArray(inc.pending) ? inc.pending : [])
+      setOutgoing(Array.isArray(out.requests) ? out.requests : [])
     } catch (e) {
       setLinksError(e instanceof ApiError ? e.message : 'Error cargando vínculos')
     } finally {
@@ -148,9 +148,9 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
       engagementService.listTasks({ status: 'pending', limit: 5 }).catch(() => ({ tasks: [], total: 0 })),
       engagementService.insights().catch(() => ({ insights: [], total: 0 })),
     ])
-    setReminders(remRes.reminders)
-    setTasks(taskRes.tasks)
-    setInsights(insRes.insights.slice(0, 3))
+    setReminders(Array.isArray(remRes.reminders) ? remRes.reminders : [])
+    setTasks(Array.isArray(taskRes.tasks) ? taskRes.tasks : [])
+    setInsights((Array.isArray(insRes.insights) ? insRes.insights : []).slice(0, 3))
   }, [])
 
   useEffect(() => { reloadLinks() }, [reloadLinks])
@@ -281,7 +281,7 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
                 Proyección
               </div>
               <div style={{ fontSize: 14 }}>
-                {'★'.repeat(projection.stars)}<span style={{ color: 'var(--text-3)' }}>{'★'.repeat(Math.max(0, 5 - projection.stars))}</span>
+                {'★'.repeat(Math.max(0, Math.min(5, Math.round(projection.stars || 0))))}<span style={{ color: 'var(--text-3)' }}>{'★'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, Math.round(projection.stars || 0)))))}</span>
               </div>
             </div>
             {projection.estimates ? (
@@ -295,7 +295,7 @@ export function PatientHome({ userId, onCheckIn, onBrowseSpecialists, onOpenModu
                 </div>
                 <div className="mono" style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 6 }}>
                   Score {Math.round(projection.score)}/100
-                  {projection.rates?.peso_kg_per_week != null && ` · Ritmo ${projection.rates.peso_kg_per_week > 0 ? '+' : ''}${projection.rates.peso_kg_per_week.toFixed(2)} kg/sem`}
+                  {projection.rates?.peso_kg_per_week != null && Number.isFinite(Number(projection.rates.peso_kg_per_week)) && ` · Ritmo ${Number(projection.rates.peso_kg_per_week) > 0 ? '+' : ''}${Number(projection.rates.peso_kg_per_week).toFixed(2)} kg/sem`}
                 </div>
               </>
             ) : (

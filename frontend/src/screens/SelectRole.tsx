@@ -57,7 +57,7 @@ const ROLE_META: Record<Role, RoleMeta> = {
   },
 }
 
-export function SelectRole({ userName, availableRoles, onSelect, onLogout }: SelectRoleProps) {
+export function SelectRole({ userName, availableRoles = [], onSelect, onLogout }: SelectRoleProps) {
   const [remember, setRemember] = useState(false)
   const [hoveredRole, setHoveredRole] = useState<Role | null>(null)
 
@@ -99,6 +99,7 @@ export function SelectRole({ userName, availableRoles, onSelect, onLogout }: Sel
         <div className="role-grid" style={{ marginBottom: 18 }}>
           {availableRoles.map((r) => {
             const meta = ROLE_META[r]
+            if (!meta) return null
             const isHover = hoveredRole === r
             return (
               <button

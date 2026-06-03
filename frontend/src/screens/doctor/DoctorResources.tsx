@@ -79,7 +79,7 @@ function RecipesTab() {
     setError(null)
     try {
       const res = await nutritionService.listRecipes({ q: q.trim() || undefined })
-      setRecipes(res.recipes)
+      setRecipes(Array.isArray(res.recipes) ? res.recipes : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando recetas')
     } finally {
@@ -232,8 +232,8 @@ function BlocksTab() {
         nutritionService.listBlocks({ meal_key: mealKey }).catch(() => ({ blocks: [], total: 0 })),
         nutritionService.blockSuggestions({ meal_key: mealKey }).catch(() => ({ blocks: [], total: 0 })),
       ])
-      setBlocks(allRes.blocks)
-      setSuggestions(sugRes.blocks)
+      setBlocks(Array.isArray(allRes.blocks) ? allRes.blocks : [])
+      setSuggestions(Array.isArray(sugRes.blocks) ? sugRes.blocks : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando bloques')
     } finally {
@@ -388,7 +388,7 @@ function LibraryTab() {
     setError(null)
     try {
       const res = await nutritionService.library({ only_favorites: onlyFav ? 1 : 0 })
-      setItems(res.presets)
+      setItems(Array.isArray(res.presets) ? res.presets : [])
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando biblioteca')
     } finally {
@@ -501,7 +501,7 @@ function CatalogTab() {
   // Load groups once
   useEffect(() => {
     nutritionService.listFoodGroups()
-      .then((r) => setGroups(r.groups))
+      .then((r) => setGroups(Array.isArray(r.groups) ? r.groups : []))
       .catch(() => setGroups([]))
   }, [])
 
@@ -515,8 +515,8 @@ function CatalogTab() {
         per_page: 25,
         group_id: groupId,
       })
-      setFoods(res.data)
-      setTotal(res.pagination.total)
+      setFoods(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.pagination?.total ?? 0)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando alimentos')
     } finally {

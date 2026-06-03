@@ -97,7 +97,7 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
         goalService.getActive(patientId).catch(() => ({ user_id: '', goal: null })),
       ])
       setProfile(p)
-      setMeasurements(m.measurements)
+      setMeasurements(Array.isArray(m.measurements) ? m.measurements : [])
       setActiveGoal(gActive.goal)
       // Second wave — analytics requires the patient's display name. Fire
       // these in parallel after the profile so we know who to query for.
@@ -110,7 +110,7 @@ export function DoctorPatientDetail({ patientId, onClose }: Props) {
         ])
         setScores(sc)
         setBodyComp(bc)
-        setHistory(hist.history)
+        setHistory(Array.isArray(hist.history) ? hist.history : [])
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error cargando paciente')
